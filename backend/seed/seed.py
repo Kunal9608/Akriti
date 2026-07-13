@@ -99,27 +99,33 @@ def seed():
         from backend.app.repositories.user_repo import normalize_email
         admin_email = normalize_email(settings.ADMIN_SEED_EMAIL)
         existing_admin = db.query(User).filter(User.email == admin_email).first()
+        
         if not existing_admin:
+            import secrets
+            import string
+            # Generate a random temporary password
+            chars = string.ascii_letters + string.digits
+            temp_pwd = "".join(secrets.choice(chars) for _ in range(12))
+            
             admin = User(
                 role=RoleEnum.admin,
                 name="Admin",
                 email=admin_email,
-                password_hash=hash_password(settings.ADMIN_SEED_TEMP_PASSWORD),
+                password_hash=hash_password(temp_pwd),
                 is_active=True,
-                must_reset_password=False,
+                must_reset_password=True,  # Force password reset on first login
                 face_registered=False,
             )
             db.add(admin)
             db.flush()
             print(f"  [OK] Admin account created: {admin_email}")
-            print(f"       Password: {settings.ADMIN_SEED_TEMP_PASSWORD}")
+            print(f"       Temporary random password seeded: {temp_pwd}")
         else:
+            # Do NOT reset or overwrite password on restart if admin already exists
             existing_admin.email = admin_email
-            existing_admin.password_hash = hash_password(settings.ADMIN_SEED_TEMP_PASSWORD)
-            existing_admin.must_reset_password = False
             existing_admin.is_active = True
             db.flush()
-            print(f"  [OK] Admin account password reset to: {settings.ADMIN_SEED_TEMP_PASSWORD}")
+            print(f"  [OK] Admin account verified: {admin_email}")
 
         # ── 65 Tests ────────────────────────────────────────────────────────
         inserted = 0
