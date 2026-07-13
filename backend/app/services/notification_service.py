@@ -22,6 +22,7 @@ class EmailProvider(NotificationProvider):
         try:
             from backend.app.config import settings
             if not settings.MAIL_USERNAME or not settings.MAIL_PASSWORD:
+                print("  [MAIL WARNING] Email not configured — settings.MAIL_USERNAME or settings.MAIL_PASSWORD is empty")
                 logger.warning("Email not configured — skipping notification")
                 return False
 
@@ -134,10 +135,14 @@ class EmailProvider(NotificationProvider):
                 server.login(settings.MAIL_USERNAME, settings.MAIL_PASSWORD)
                 server.sendmail(settings.MAIL_FROM, recipient_email, msg.as_string())
 
+            print(f"  [MAIL OK] Email sent successfully: {event_type} -> {recipient_email}")
             logger.info(f"Email sent: {event_type} -> {recipient_email}")
             return True
 
         except Exception as e:
+            import traceback
+            traceback.print_exc()
+            print(f"  [MAIL ERROR] Email send failed: {e}")
             logger.error(f"Email send failed: {e}")
             return False
 
@@ -169,6 +174,7 @@ def notify(event_type: str, recipient_email: str, context: Dict[str, Any]):
     Never call provider.send() directly — always go through this function.
     """
     if not EMAIL_NOTIFICATIONS_ENABLED:
+        print(f"  [MAIL SKIP] Notification skipped (emails disabled globally): {event_type} -> {recipient_email}")
         logger.info(f"Notification skipped (emails disabled globally): {event_type} -> {recipient_email}")
         return
 
