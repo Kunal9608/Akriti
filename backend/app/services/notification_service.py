@@ -128,6 +128,51 @@ class EmailProvider(NotificationProvider):
             msg["From"] = f"{settings.MAIL_FROM_NAME} <{settings.MAIL_FROM}>"
             msg["To"] = recipient_email
 
+            # Check if Brevo HTTP API is configured (to bypass Render SMTP block)
+            brevo_api_key = os.getenv("BREVO_API_KEY")
+            if brevo_api_key:
+                print(f"  [MAIL INFO] Sending email via Brevo HTTP API: {event_type} -> {recipient_email}")
+                import httpx
+                import base64
+                
+                headers = {
+                    "accept": "application/json",
+                    "api-key": brevo_api_key,
+                    "content-type": "application/json"
+                }
+                
+                html_body = body_map.get(event_type, f"<p>{context}</p>")
+                subject = subject_map.get(event_type, "Notification from Akriti Diagnostics")
+                
+                payload = {
+                    "sender": {"name": settings.MAIL_FROM_NAME, "email": settings.MAIL_FROM},
+                    "to": [{"email": recipient_email}],
+                    "subject": subject,
+                    "htmlContent": html_body
+                }
+                
+                attachment_bytes = context.get("attachment_bytes")
+                attachment_name = context.get("attachment_name")
+                if attachment_bytes and attachment_name:
+                    encoded_content = base64.b64encode(attachment_bytes).decode("utf-8")
+                    payload["attachments"] = [
+                        {
+                            "content": encoded_content,
+                            "name": attachment_name
+                        }
+                    ]
+                
+                resp = httpx.post("https://api.brevo.com/v3/smtp/email", json=payload, headers=headers, timeout=10.0)
+                if resp.status_code in (200, 201, 202):
+                    print(f"  [MAIL OK] Email sent successfully via Brevo: {event_type} -> {recipient_email}")
+                    logger.info(f"Email sent via Brevo: {event_type} -> {recipient_email}")
+                    return True
+                else:
+                    print(f"  [MAIL ERROR] Brevo API failed ({resp.status_code}): {resp.text}")
+                    logger.error(f"Brevo API failed: {resp.text}")
+                    return False
+
+            # Fallback to standard SMTP if Brevo is not set (Local Development)
             with smtplib.SMTP(settings.MAIL_SERVER, settings.MAIL_PORT, timeout=10.0) as server:
                 server.ehlo()
                 if settings.MAIL_TLS:
