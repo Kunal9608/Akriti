@@ -160,9 +160,9 @@ def get_today_stats(db: Session):
         Patient.deleted_at.is_(None)
     ).count()
 
-    due = db.query(func.sum(Patient.total_amount - Patient.amount_paid)).filter(
+    due = db.query(func.sum(Patient.total_amount - Patient.discount_amount - Patient.amount_paid)).filter(
         Patient.deleted_at.is_(None),
-        Patient.amount_paid < Patient.total_amount
+        Patient.amount_paid < (Patient.total_amount - Patient.discount_amount)
     ).scalar() or 0
 
     return {"revenue": revenue, "count": count, "pending": pending, "due": float(due)}
