@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Audit Log — Akriti Diagnostics Center</title>
+  <link rel="stylesheet" href="/assets/css/tokens.css">
+  <link rel="stylesheet" href="/assets/css/components.css">
+  <link rel="stylesheet" href="/assets/css/skeleton.css">
+  <link rel="stylesheet" href="/assets/css/layout.css">
+  <script src="/assets/js/theme.js"></script>
+  <style>
+    .hash-cell { font-family: monospace; font-size: 10px; color: var(--color-ink-faint); max-width: 120px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .diff-cell { font-family: monospace; font-size: 11px; max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--color-ink-muted); }
+    .readonly-notice { display: flex; align-items: center; gap: 8px; background: var(--color-info-tint); border-radius: var(--radius-md); padding: 10px 16px; font-size: var(--text-sm); color: var(--color-info); margin-bottom: 20px; border-left: 3px solid var(--color-info); }
+  </style>
+</head>
+<body>
+<div class="app-shell">
+  <div class="sidebar-overlay" id="sidebar-overlay"></div>
+  <nav class="sidebar" id="sidebar"></nav>
+
+  <div class="main-area">
+    <header class="topbar">
+      <div class="topbar-left">
+        <button class="hamburger" id="hamburger-btn" aria-label="Open menu">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+        </button>
+        <h1 class="page-heading" id="topbar-title">Audit Log</h1>
+      </div>
+      <div class="topbar-right">
+        <button class="topbar-btn" data-theme-toggle aria-label="Toggle theme">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></svg>
+        </button>
+      </div>
+    </header>
+    <div class="offline-banner" role="status"></div>
+
+    <main class="page-content">
+      <div class="page-header">
+        <div>
+          <h2 class="page-title">Immutable Audit Log</h2>
+          <p class="page-subtitle">Hash-chained, insert-only record of all system actions</p>
+        </div>
+      </div>
+
+      <!-- Read-only notice -->
+      <div class="readonly-notice">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+        This log is immutable. Records cannot be edited or deleted. Hash chaining ensures tamper detection.
+      </div>
+
+      <div class="filters-bar">
+        <input type="date" class="form-input" id="log-from" style="height:36px;font-size:13px;width:150px">
+        <input type="date" class="form-input" id="log-to"   style="height:36px;font-size:13px;width:150px">
+        <select class="form-select" id="log-action" style="height:36px;min-width:160px;font-size:13px">
+          <option value="">All Actions</option>
+          <option value="patient.create">patient.create</option>
+          <option value="patient.update">patient.update</option>
+          <option value="expense.create">expense.create</option>
+          <option value="test.create">test.create</option>
+          <option value="test.update_price">test.update_price</option>
+          <option value="staff.create">staff.create</option>
+          <option value="staff.update">staff.update</option>
+          <option value="report.upload">report.upload</option>
+        </select>
+        <button class="btn btn-secondary btn-sm" id="log-refresh-btn">Refresh</button>
+      </div>
+
+      <div id="audit-table-container"></div>
+    </main>
+  </div>
+</div>
+
+<!-- Detail Modal -->
+<div class="modal-backdrop" id="audit-detail-modal">
+  <div class="modal modal-lg" role="dialog" aria-modal="true" aria-labelledby="audit-detail-title">
+    <div class="modal-header">
+      <h2 class="modal-title" id="audit-detail-title">Audit Entry Detail</h2>
+      <button class="modal-close" id="audit-detail-close" aria-label="Close">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <div class="modal-body" id="audit-detail-body"></div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="Modal.close('audit-detail-modal')">Close</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast-container"></div>
+<script src="/assets/js/toast.js"></script>
+<script src="/assets/js/modal.js"></script>
+<script src="/assets/js/api-client.js"></script>
+<script src="/assets/js/table.js"></script>
+<script src="/assets/js/shell.js"></script>
+<script>
+(async function() {
+  await Shell.init({ role: 'admin', pageTitle: 'Audit Log' });
+
+  const today = new Date();
+  const fmtDate = d => d.toISOString().split('T')[0];
+  const from7 = new Date(today); from7.setDate(today.getDate() - 6);
+  document.getElementById('log-from').value = fmtDate(from7);
+  document.getElementById('log-to').value   = fmtDate(today);
+
+  const table = new DataTable({
+    containerId: 'audit-table-container',
+    columns: [
+      { key: 'occurred_at',  label: 'Timestamp',    width: '160px', render: v => formatDateTime(v) },
+      { key: 'action',       label: 'Action',       width: '160px', render: v => `<code style="font-size:11px;background:rgba(42,35,32,.06);padding:2px 6px;border-radius:4px">${escapeHtml(v)}</code>` },
+      { key: 'entity_type',  label: 'Entity',       width: '110px', render: v => escapeHtml(v||'—') },
+      { key: 'actor_name',   label: 'Actor',        width: '130px', render: v => escapeHtml(v||'System') },
+      { key: 'after_value',  label: 'Changes',                      render: (v,row) => {
+        const text = v ? JSON.stringify(v).substring(0,80) : '—';
+        return `<span class="diff-cell" title="${escapeHtml(JSON.stringify(v||{}))}">... ${escapeHtml(text)}</span>`;
+      }},
+      { key: 'record_hash',  label: 'Hash',         width: '100px', render: v => `<span class="hash-cell" title="${escapeHtml(v||'')}">${v ? v.substring(0,12)+'...' : '—'}</span>` },
+      { key: null,           label: '',             width: '60px',  render: (_, row) => `<button class="btn btn-sm btn-ghost" onclick="showDetail(${JSON.stringify(JSON.stringify(row)).replace(/"/g,'&quot;')})">View</button>` },
+    ],
+    fetchFn: async (params) => {
+      const qs = new URLSearchParams({ page: params.page, page_size: params.page_size,
+        ...(params.date_from && { date_from: params.date_from }),
+        ...(params.date_to   && { date_to:   params.date_to }),
+        ...(params.action    && { action:    params.action }),
+      });
+      return await API.get(`/api/v1/audit-logs?${qs}`);
+    },
+    pageSize: 30,
+    emptyMessage: 'No audit events in this period',
+  });
+
+  function loadLog() {
+    table.setFilter('date_from', document.getElementById('log-from').value);
+    table.setFilter('date_to',   document.getElementById('log-to').value);
+    table.setFilter('action',    document.getElementById('log-action').value);
+    table.load();
+  }
+
+  loadLog();
+  document.getElementById('log-refresh-btn').addEventListener('click', loadLog);
+  document.getElementById('log-action').addEventListener('change', loadLog);
+
+  window.showDetail = function(rowJson) {
+    const row = JSON.parse(rowJson);
+    document.getElementById('audit-detail-title').textContent = `${row.action} — ${formatDateTime(row.occurred_at)}`;
+    document.getElementById('audit-detail-body').innerHTML = `
+      <table style="width:100%;border-collapse:collapse;font-size:var(--text-sm)">
+        ${[
+          ['Action',      row.action],
+          ['Entity Type', row.entity_type],
+          ['Entity ID',   row.entity_id],
+          ['Actor',       row.actor_name || 'System'],
+          ['IP Address',  row.ip_address || '—'],
+          ['Timestamp',   formatDateTime(row.occurred_at)],
+          ['Record Hash', `<code style="font-size:11px;word-break:break-all">${escapeHtml(row.record_hash||'—')}</code>`],
+        ].map(([label, value]) => `<tr><td style="padding:8px 12px;font-weight:500;color:var(--color-ink-muted);min-width:120px">${label}</td><td style="padding:8px 12px">${value}</td></tr>`).join('')}
+        <tr><td style="padding:8px 12px;font-weight:500;color:var(--color-ink-muted);vertical-align:top">Before</td><td style="padding:8px 12px"><pre style="font-size:11px;background:rgba(42,35,32,.04);padding:8px;border-radius:6px;overflow:auto;max-height:150px">${JSON.stringify(row.before_value, null, 2) || '—'}</pre></td></tr>
+        <tr><td style="padding:8px 12px;font-weight:500;color:var(--color-ink-muted);vertical-align:top">After</td><td style="padding:8px 12px"><pre style="font-size:11px;background:rgba(42,35,32,.04);padding:8px;border-radius:6px;overflow:auto;max-height:150px">${JSON.stringify(row.after_value, null, 2) || '—'}</pre></td></tr>
+      </table>
+    `;
+    Modal.open('audit-detail-modal');
+  };
+
+  document.getElementById('audit-detail-close').addEventListener('click', () => Modal.close('audit-detail-modal'));
+})();
+</script>
+</body>
+</html>

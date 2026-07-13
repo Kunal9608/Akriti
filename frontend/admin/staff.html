@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Staff — Akriti Diagnostics Center</title>
+  <link rel="stylesheet" href="/assets/css/tokens.css">
+  <link rel="stylesheet" href="/assets/css/components.css">
+  <link rel="stylesheet" href="/assets/css/skeleton.css">
+  <link rel="stylesheet" href="/assets/css/layout.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+  <script src="/assets/js/theme.js"></script>
+  <style>
+    /* Custom Flatpickr styling to match design theme */
+    .flatpickr-calendar {
+      background: var(--color-surface) !important;
+      border: 1.5px solid var(--color-border) !important;
+      box-shadow: var(--shadow-md) !important;
+      font-family: var(--font-body) !important;
+      border-radius: var(--radius-md) !important;
+    }
+    .flatpickr-calendar .flatpickr-months {
+      background: transparent !important;
+    }
+    .flatpickr-current-month {
+      color: var(--color-ink) !important;
+    }
+    .flatpickr-current-month input.cur-year {
+      color: var(--color-ink) !important;
+    }
+    .flatpickr-calendar .flatpickr-weekday {
+      color: var(--color-ink-muted) !important;
+      font-weight: 600 !important;
+    }
+    .flatpickr-day {
+      color: var(--color-ink) !important;
+      border-radius: var(--radius-sm) !important;
+    }
+    .flatpickr-day.today {
+      border-color: var(--color-ink-muted) !important;
+    }
+    .flatpickr-day.today:hover {
+      background: var(--color-border) !important;
+      color: var(--color-ink) !important;
+    }
+    .flatpickr-day.selected, .flatpickr-day.selected:focus, .flatpickr-day.selected:hover {
+      background: var(--color-cherry-cola) !important;
+      border-color: var(--color-cherry-cola) !important;
+      color: #fff !important;
+    }
+    .flatpickr-day:hover {
+      background: var(--color-border) !important;
+    }
+    .flatpickr-months .flatpickr-prev-month, .flatpickr-months .flatpickr-next-month {
+      fill: var(--color-ink) !important;
+      color: var(--color-ink) !important;
+    }
+    .flatpickr-months .flatpickr-prev-month:hover svg, .flatpickr-months .flatpickr-next-month:hover svg {
+      fill: var(--color-cherry-cola) !important;
+    }
+  </style>
+</head>
+<body>
+<div class="app-shell">
+  <div class="sidebar-overlay" id="sidebar-overlay"></div>
+  <nav class="sidebar" id="sidebar"></nav>
+
+  <div class="main-area">
+    <header class="topbar">
+      <div class="topbar-left">
+        <button class="hamburger" id="hamburger-btn" aria-label="Open menu">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+        </button>
+        <h1 class="page-heading" id="topbar-title">Staff</h1>
+      </div>
+      <div class="topbar-right">
+        <button class="topbar-btn" data-theme-toggle aria-label="Toggle theme">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></svg>
+        </button>
+      </div>
+    </header>
+    <div class="offline-banner" role="status"></div>
+
+    <main class="page-content">
+      <div class="page-header">
+        <div>
+          <h2 class="page-title">Manage Staff</h2>
+          <p class="page-subtitle">Add, edit, and manage staff accounts and credentials</p>
+        </div>
+        <div class="page-actions">
+          <button class="btn btn-primary" id="add-staff-btn">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            Add Staff
+          </button>
+        </div>
+      </div>
+
+      <div class="filters-bar">
+        <div class="topbar-search" style="width:240px">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          <input type="text" id="search-staff" placeholder="Name or email…" autocomplete="off">
+        </div>
+        <select class="form-select" id="filter-active" style="height:36px;min-width:130px;font-size:13px">
+          <option value="">All Status</option>
+          <option value="true">Active</option>
+          <option value="false">Inactive</option>
+        </select>
+      </div>
+
+      <div id="staff-table-container"></div>
+    </main>
+  </div>
+</div>
+
+<!-- Add/Edit Staff Modal -->
+<div class="modal-backdrop" id="staff-modal">
+  <div class="modal modal-lg" role="dialog" aria-modal="true" aria-labelledby="staff-modal-title">
+    <div class="modal-header">
+      <h2 class="modal-title" id="staff-modal-title">Add Staff Member</h2>
+      <button class="modal-close" id="staff-modal-close" aria-label="Close">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <div class="modal-body">
+      <form id="staff-form" novalidate>
+        <input type="hidden" id="staff-id">
+        <div class="form-row mb-4">
+          <div class="form-field">
+            <label class="form-label" for="staff-name">Full Name <span class="required">*</span></label>
+            <input class="form-input" type="text" id="staff-name" placeholder="Enter full name">
+          </div>
+          <div class="form-field">
+            <label class="form-label" for="staff-email">Email <span class="required">*</span></label>
+            <input class="form-input" type="email" id="staff-email" placeholder="email@example.com">
+          </div>
+        </div>
+        <div class="form-row mb-4">
+          <div class="form-field">
+            <label class="form-label" for="staff-mobile">Mobile <span class="required">*</span></label>
+            <input class="form-input" type="tel" id="staff-mobile" placeholder="10-digit mobile number" maxlength="10">
+          </div>
+          <div class="form-field">
+            <label class="form-label" for="staff-dob">Date of Birth <span class="required">*</span></label>
+            <input class="form-input" type="text" id="staff-dob" placeholder="Select Date of Birth">
+          </div>
+        </div>
+        <div class="form-row mb-4">
+          <div class="form-field">
+            <label class="form-label" for="staff-aadhar">Aadhar Number <span class="required">*</span></label>
+            <input class="form-input" type="text" id="staff-aadhar" placeholder="12-digit Aadhar" maxlength="12" inputmode="numeric">
+            <span class="form-hint">Stored securely hashed. Only last 4 digits visible.</span>
+          </div>
+          <div class="form-field">
+            <label class="form-label" for="staff-scope">View Scope <span class="required">*</span></label>
+            <select class="form-select" id="staff-scope">
+              <option value="own">Own Patients Only</option>
+              <option value="all">All Patients</option>
+            </select>
+          </div>
+        </div>
+        <!-- Status Row (Shown only on edit) -->
+        <div class="form-row mb-4" id="edit-status-row" style="display:none">
+          <div class="form-field">
+            <label class="form-label" for="staff-status">Account Status</label>
+            <select class="form-select" id="staff-status">
+              <option value="true">Active (Unblocked)</option>
+              <option value="false">Inactive (Blocked)</option>
+            </select>
+          </div>
+          <div class="form-field"></div>
+        </div>
+      </form>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" id="staff-cancel-btn">Cancel</button>
+      <button class="btn btn-primary" id="staff-save-btn">Save Staff Member</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast-container"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+<script src="/assets/js/toast.js"></script>
+<script src="/assets/js/modal.js"></script>
+<script src="/assets/js/api-client.js"></script>
+<script src="/assets/js/table.js"></script>
+<script src="/assets/js/shell.js"></script>
+<script>
+(async function() {
+  await Shell.init({ role: 'admin', pageTitle: 'Staff' });
+
+  // Initialize Flatpickr Custom Date Picker for DOB
+  flatpickr("#staff-dob", {
+    dateFormat: "Y-m-d",
+    maxDate: "today",
+    allowInput: true
+  });
+
+  let editingId = null;
+
+  // ── Staff Table ───────────────────────────────────────────────────────────
+  const table = new DataTable({
+    containerId: 'staff-table-container',
+    columns: [
+      { key: null,               label: 'S.No.',          width: '60px',  render: (_, __, idx) => `<span class="tabular">${idx}</span>` },
+      { key: 'staff_code',       label: 'Staff ID',       width: '110px', render: v => v ? `<span class="tabular fw-600 text-primary">${escapeHtml(v)}</span>` : '—' },
+      { key: 'name',             label: 'Name',           render: (v, row) => `<div class="fw-600">${escapeHtml(v)}</div><div class="text-xs text-muted">${escapeHtml(row.email||'')}</div>` },
+      { key: 'mobile',           label: 'Mobile',         width: '130px' },
+      { key: 'aadhar_last4',     label: 'Aadhar',         width: '90px',  render: v => v ? `XXXX-XXXX-${escapeHtml(v)}` : '—' },
+      { key: 'is_active',        label: 'Status',         width: '130px', render: v => v ? `<span class="badge badge-success">Active</span>` : `<span class="badge badge-neutral">Inactive</span>` },
+      { key: 'view_scope',       label: 'Scope',          width: '110px', render: v => v === 'all' ? 'All Patients' : 'Own Only' },
+      { key: null,               label: 'Actions',        width: '140px', render: (_, row) => `
+        <div style="display:flex;gap:5px">
+          <button class="btn btn-sm btn-ghost" onclick="openEdit('${row.id}')">Edit</button>
+          ${row.is_active ? `<button class="btn btn-sm btn-danger" onclick="deactivateStaff('${row.id}','${escapeHtml(row.name)}')">Deactivate</button>` : ''}
+        </div>
+      ` },
+    ],
+    fetchFn: async (params) => {
+      const qs = new URLSearchParams({ page: params.page, page_size: params.page_size, ...(params.q && {q:params.q}), ...(params.is_active !== undefined && params.is_active !== '' && {is_active:params.is_active}) });
+      return await API.get(`/api/v1/staff?${qs}`);
+    },
+    pageSize: 20,
+    emptyMessage: 'No staff members found',
+  });
+  table.load();
+
+  // ── Filters ───────────────────────────────────────────────────────────────
+  let searchTimer;
+  document.getElementById('search-staff').addEventListener('input', e => {
+    clearTimeout(searchTimer);
+    searchTimer = setTimeout(() => { table.setFilter('q', e.target.value); table.load(); }, 400);
+  });
+  document.getElementById('filter-active').addEventListener('change', e => { table.setFilter('is_active', e.target.value); table.load(); });
+
+  // ── Add Staff ─────────────────────────────────────────────────────────────
+  document.getElementById('add-staff-btn').addEventListener('click', () => {
+    editingId = null;
+    document.getElementById('staff-modal-title').textContent = 'Add Staff Member';
+    document.getElementById('staff-form').reset();
+    document.getElementById('staff-id').value = '';
+    document.getElementById('edit-status-row').style.display = 'none';
+    document.getElementById('staff-email').disabled = false;
+    Modal.open('staff-modal');
+  });
+
+  window.openEdit = async function(id) {
+    editingId = id;
+    document.getElementById('staff-modal-title').textContent = 'Edit Staff Member';
+    document.getElementById('edit-status-row').style.display = '';
+    document.getElementById('staff-email').disabled = true; // Email cannot be changed during edit
+    Modal.open('staff-modal');
+    try {
+      const s = await API.get(`/api/v1/staff/${id}`);
+      document.getElementById('staff-name').value   = s.name || '';
+      document.getElementById('staff-email').value  = s.email || '';
+      document.getElementById('staff-mobile').value = s.mobile || '';
+      document.getElementById('staff-dob').value    = s.dob ? s.dob.substring(0,10) : '';
+      document.getElementById('staff-scope').value  = s.view_scope || 'own';
+      document.getElementById('staff-status').value = s.is_active ? 'true' : 'false';
+      document.getElementById('staff-aadhar').value = '';
+      document.getElementById('staff-aadhar').placeholder = s.aadhar_last4 ? `Ends in ${s.aadhar_last4} (leave blank to keep)` : '12-digit Aadhar';
+    } catch { Toast.show('Failed to load staff data', 'error'); Modal.close('staff-modal'); }
+  };
+
+  document.getElementById('staff-save-btn').addEventListener('click', async () => {
+    const name   = document.getElementById('staff-name').value.trim();
+    const email  = document.getElementById('staff-email').value.trim();
+    const mobile = document.getElementById('staff-mobile').value.trim();
+    const dob    = document.getElementById('staff-dob').value;
+    const aadhar = document.getElementById('staff-aadhar').value.trim();
+    const scope  = document.getElementById('staff-scope').value;
+
+    if (!name || !email || !mobile || !dob) { Toast.show('Please fill all required fields', 'warning'); return; }
+    if (!/^[6-9]\d{9}$/.test(mobile)) { Toast.show('Enter a valid 10-digit Indian mobile number', 'error'); return; }
+    if (!editingId && (!aadhar || aadhar.length !== 12)) { Toast.show('Aadhar must be exactly 12 digits', 'error'); return; }
+
+    const btn = document.getElementById('staff-save-btn');
+    btn.setAttribute('aria-busy','true'); btn.innerHTML = `<span class="btn-loading-spinner"></span> Saving...`;
+
+    try {
+      const payload = { name, email, mobile, dob, view_scope: scope };
+      if (aadhar) payload.aadhar = aadhar;
+      if (editingId) {
+        payload.is_active = document.getElementById('staff-status').value === 'true';
+      }
+
+      if (editingId) {
+        await API.patch(`/api/v1/staff/${editingId}`, payload);
+        Toast.show('Staff member updated', 'success');
+      } else {
+        await API.post('/api/v1/staff', payload);
+        Toast.show('Staff member created. Credentials have been emailed.', 'success');
+      }
+      Modal.close('staff-modal');
+      table.refresh();
+    } catch (err) {
+      Toast.show(err.message || 'Failed to save', 'error');
+    } finally {
+      btn.removeAttribute('aria-busy'); btn.innerHTML = 'Save Staff Member';
+    }
+  });
+
+  document.getElementById('staff-cancel-btn').addEventListener('click', () => Modal.close('staff-modal'));
+  document.getElementById('staff-modal-close').addEventListener('click', () => Modal.close('staff-modal'));
+
+  // ── Deactivate ────────────────────────────────────────────────────────────
+  window.deactivateStaff = async function(id, name) {
+    const ok = await Modal.confirm('Deactivate Staff', `Deactivate ${name}? They will lose access immediately. Their historical records remain intact.`, { confirmText: 'Deactivate', danger: true });
+    if (!ok) return;
+    try {
+      await API.patch(`/api/v1/staff/${id}`, { is_active: false });
+      Toast.show(`${name} deactivated`, 'success');
+      table.refresh();
+    } catch { Toast.show('Failed to deactivate', 'error'); }
+  };
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,335 @@
+/**
+ * AKRITI — Shared Shell Utilities
+ * Injects the sidebar + topbar into any authenticated page.
+ * Also handles: logout, current user display, active nav highlighting,
+ * mobile hamburger, and role-gating.
+ */
+
+// Global helper functions
+if (typeof window.escapeHtml === 'undefined') {
+  window.escapeHtml = function(str) {
+    if (!str) return '';
+    return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  };
+}
+if (typeof window.formatCurrency === 'undefined') {
+  window.formatCurrency = function(n) {
+    if (n == null) return '—';
+    return '₹' + Number(n).toLocaleString('en-IN', { minimumFractionDigits: 0 });
+  };
+}
+if (typeof window.formatDate === 'undefined') {
+  window.formatDate = function(iso) {
+    if (!iso) return '—';
+    return new Date(iso).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
+  };
+}
+if (typeof window.formatDateTime === 'undefined') {
+  window.formatDateTime = function(iso) {
+    if (!iso) return '—';
+    return new Date(iso).toLocaleString('en-IN', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+  };
+}
+if (typeof window.statusBadge === 'undefined') {
+  window.statusBadge = function(status) {
+    const map = {
+      'sample_collected': ['badge-info',    'Collected'],
+      'under_process':    ['badge-warning', 'Processing'],
+      'report_ready':     ['badge-success', 'Report Ready'],
+      'paid':             ['badge-success', 'Paid'],
+      'partial':          ['badge-warning', 'Partial'],
+      'due':              ['badge-error',   'Due'],
+      'active':           ['badge-success', 'Active'],
+      'inactive':         ['badge-neutral', 'Inactive'],
+      'face_pending':     ['badge-warning', 'Face Pending'],
+      'success':          ['badge-success', 'Success'],
+      'bad_password':     ['badge-error',   'Failed'],
+      'locked_out':       ['badge-error',   'Locked'],
+      'unknown_email':    ['badge-error',   'Unknown'],
+    };
+    const [cls, label] = map[status] || ['badge-neutral', status];
+    return `<span class="badge ${cls}">${label}</span>`;
+  };
+}
+
+const Shell = (() => {
+  const NAV_ADMIN = [
+    {
+      group: 'Main',
+      items: [
+        { href: '/admin/dashboard.html',         label: 'Dashboard',        icon: 'grid' },
+        { href: '/admin/patients.html',           label: 'Patients',         icon: 'users' },
+        { href: '/admin/staff.html',              label: 'Staff',            icon: 'user-check' },
+        { href: '/admin/tests.html',              label: 'Tests',            icon: 'clipboard' },
+      ],
+    },
+    {
+      group: 'Finance',
+      items: [
+        { href: '/admin/revenue.html',            label: 'Revenue',          icon: 'trending-up' },
+        { href: '/admin/expenses.html',           label: 'Expenses',         icon: 'credit-card' },
+      ],
+    },
+    {
+      group: 'Admin',
+      items: [
+        { href: '/admin/audit-log.html',          label: 'Audit Log',        icon: 'shield' },
+        { href: '/admin/settings.html',           label: 'Settings',         icon: 'settings' },
+        { href: '/profile.html',                  label: 'My Profile',       icon: 'person' },
+      ],
+    },
+  ];
+
+  const NAV_STAFF = [
+    {
+      group: 'Main',
+      items: [
+        { href: '/staff/add-patient.html',        label: 'Add Patient',      icon: 'user-plus' },
+        { href: '/staff/patients.html',           label: 'Patients',         icon: 'users' },
+      ],
+    },
+    {
+      group: 'Account',
+      items: [
+        { href: '/profile.html',                  label: 'My Profile',       icon: 'person' },
+        { href: '/staff/settings.html',           label: 'Settings',         icon: 'settings' },
+      ],
+    },
+  ];
+
+  const ICONS = {
+    'grid':         `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>`,
+    'users':        `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>`,
+    'user-check':   `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="8.5" cy="7" r="4"/><polyline points="17 11 19 13 23 9"/></svg>`,
+    'user-plus':    `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="8.5" cy="7" r="4"/><line x1="20" y1="8" x2="20" y2="14"/><line x1="23" y1="11" x2="17" y2="11"/></svg>`,
+    'clipboard':    `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M16 4h2a2 2 0 012 2v14a2 2 0 01-2 2H6a2 2 0 01-2-2V6a2 2 0 012-2h2"/><rect x="8" y="2" width="8" height="4" rx="1" ry="1"/></svg>`,
+    'camera':       `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/><circle cx="12" cy="13" r="4"/></svg>`,
+    'trending-up':  `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>`,
+    'credit-card':  `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>`,
+    'calendar':     `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>`,
+    'shield':       `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>`,
+    'settings':     `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93l-1.41 1.41M4.93 4.93l1.41 1.41M12 2v2M12 20v2M2 12h2M20 12h2M19.07 19.07l-1.41-1.41M4.93 19.07l1.41-1.41"/></svg>`,
+    'log-out':      `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>`,
+    'person':       `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>`,
+  };
+
+  function icon(name, size = 16) {
+    const svg = ICONS[name] || '';
+    return svg.replace('<svg ', `<svg width="${size}" height="${size}" `);
+  }
+
+  async function init({ role = 'admin', pageTitle = '', searchable = false } = {}) {
+    // Auth check
+    let me;
+    try {
+      me = await API.get('/api/v1/auth/me', { silent: true });
+    } catch (err) {
+      window.location.href = '/index.html';
+      throw new Error('Redirecting to login... Access denied.');
+    }
+
+    const nav = me.role === 'admin' ? NAV_ADMIN : NAV_STAFF;
+    const currentPath = window.location.pathname;
+
+    // Render sidebar
+    const sidebarEl = document.getElementById('sidebar');
+    if (sidebarEl) {
+      const initials = (me.name || 'U').split(' ').map(w => w[0]).join('').toUpperCase().slice(0,2);
+      sidebarEl.innerHTML = `
+        <a href="${me.role === 'admin' ? '/admin/dashboard.html' : '/staff/patients.html'}" class="sidebar-brand" aria-label="Home">
+          <div class="brand-mark">A</div>
+          <div class="brand-text">
+            <div class="brand-name">Akriti Diagnostics</div>
+            <div class="brand-sub">Lab Management</div>
+          </div>
+        </a>
+        ${nav.map(group => `
+          <div class="nav-group">
+            <div class="nav-group-label">${group.group}</div>
+            ${group.items.map(item => `
+              <a href="${item.href}" class="nav-item ${currentPath === item.href || currentPath.endsWith(item.href.replace('/','')) ? 'active' : ''}">
+                ${icon(item.icon)} ${item.label}
+              </a>
+            `).join('')}
+          </div>
+        `).join('')}
+        <div class="sidebar-footer">
+          <a href="/profile.html" class="sidebar-user" id="sidebar-user-area" title="View Profile">
+            <div class="user-avatar">${initials}</div>
+            <div class="user-info">
+              <div class="user-name">${escapeHtml(me.name || 'User')}</div>
+              <div class="user-role">${me.role}</div>
+            </div>
+          </a>
+          <button class="nav-item" id="logout-btn" style="width:100%; border:none; background:none; text-align:left; color: var(--color-ink-muted);">
+            ${icon('log-out')} Sign Out
+          </button>
+        </div>
+      `;
+
+      // Logout
+      document.getElementById('logout-btn')?.addEventListener('click', async () => {
+        const ok = await Modal.confirm('Sign Out', 'Are you sure you want to sign out?', { confirmText: 'Sign Out', danger: true });
+        if (!ok) return;
+        try { await API.post('/api/v1/auth/logout', {}, { silent: true }); } catch (_) {}
+        window.location.href = '/index.html';
+      });
+    }
+
+    // Render topbar
+    const topbarEl = document.getElementById('topbar-title');
+    if (topbarEl) topbarEl.textContent = pageTitle;
+
+    // Mobile hamburger
+    const hamburger = document.getElementById('hamburger-btn');
+    const overlay   = document.getElementById('sidebar-overlay');
+    const sidebar   = document.getElementById('sidebar');
+    if (hamburger && sidebar) {
+      hamburger.addEventListener('click', () => {
+        sidebar.classList.toggle('open');
+        overlay?.classList.toggle('open');
+      });
+      overlay?.addEventListener('click', () => {
+        sidebar.classList.remove('open');
+        overlay.classList.remove('open');
+      });
+    }
+
+    // Re-bind theme toggle buttons now that topbar HTML has been injected by this shell
+    if (typeof Theme !== 'undefined') Theme.bindButtons();
+
+    // Auto-setup flatpickr on date fields dynamically
+    try {
+      const dateInputs = document.querySelectorAll('input[type="date"]');
+      if (dateInputs.length > 0) {
+        // 1. Inject CSS
+        if (!document.querySelector('link[href*="flatpickr"]')) {
+          const link = document.createElement('link');
+          link.rel = 'stylesheet';
+          link.href = 'https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css';
+          document.head.appendChild(link);
+        }
+        
+        // 2. Inject Custom Theme overrides style block
+        if (!document.getElementById('flatpickr-custom-style')) {
+          const style = document.createElement('style');
+          style.id = 'flatpickr-custom-style';
+          style.innerHTML = `
+            .flatpickr-calendar {
+              background: var(--color-surface) !important;
+              border: 1.5px solid var(--color-border) !important;
+              box-shadow: var(--shadow-md) !important;
+              font-family: var(--font-body) !important;
+              border-radius: var(--radius-md) !important;
+            }
+            .flatpickr-calendar .flatpickr-months {
+              background: transparent !important;
+            }
+            .flatpickr-current-month {
+              color: var(--color-ink) !important;
+            }
+            .flatpickr-current-month input.cur-year {
+              color: var(--color-ink) !important;
+            }
+            .flatpickr-calendar .flatpickr-weekday {
+              color: var(--color-ink-muted) !important;
+              font-weight: 600 !important;
+            }
+            .flatpickr-day {
+              color: var(--color-ink) !important;
+              border-radius: var(--radius-sm) !important;
+            }
+            .flatpickr-day.today {
+              border-color: var(--color-ink-muted) !important;
+            }
+            .flatpickr-day.today:hover {
+              background: var(--color-border) !important;
+              color: var(--color-ink) !important;
+            }
+            .flatpickr-day.selected, .flatpickr-day.selected:focus, .flatpickr-day.selected:hover {
+              background: var(--color-cherry-cola) !important;
+              border-color: var(--color-cherry-cola) !important;
+              color: #fff !important;
+            }
+            .flatpickr-day:hover {
+              background: var(--color-border) !important;
+            }
+            .flatpickr-months .flatpickr-prev-month, .flatpickr-months .flatpickr-next-month {
+              fill: var(--color-ink) !important;
+              color: var(--color-ink) !important;
+            }
+            .flatpickr-months .flatpickr-prev-month:hover svg, .flatpickr-months .flatpickr-next-month:hover svg {
+              fill: var(--color-cherry-cola) !important;
+            }
+          `;
+          document.head.appendChild(style);
+        }
+        
+        // 3. Inject JS and initialize
+        if (typeof flatpickr === 'undefined') {
+          await new Promise((resolve) => {
+            const script = document.createElement('script');
+            script.src = 'https://cdn.jsdelivr.net/npm/flatpickr';
+            script.onload = resolve;
+            document.head.appendChild(script);
+          });
+        }
+        
+        // Convert input type to text and initialize flatpickr
+        document.querySelectorAll('input[type="date"]').forEach(input => {
+          input.type = 'text';
+          flatpickr(input, {
+            dateFormat: 'Y-m-d',
+            maxDate: input.id === 'staff-dob' || input.id === 'patient-dob' ? 'today' : undefined,
+            allowInput: true
+          });
+        });
+      }
+    } catch (e) {
+      console.warn("Flatpickr auto initialization failed:", e);
+    }
+
+    // Store me globally
+    window._me = me;
+    return me;
+  }
+
+  return { init, icon };
+})();
+
+// Global auto uppercase for all inputs except password, file, checkbox, radio, date/time inputs
+document.addEventListener('input', (e) => {
+  if (e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA')) {
+    if (['password', 'file', 'checkbox', 'radio', 'date', 'time', 'datetime-local'].includes(e.target.type)) {
+      return;
+    }
+    const val = e.target.value;
+    const upper = val.toUpperCase();
+    if (val !== upper) {
+      const start = e.target.selectionStart;
+      const end = e.target.selectionEnd;
+      e.target.value = upper;
+      if (start !== null && end !== null) {
+        e.target.setSelectionRange(start, end);
+      }
+    }
+  }
+});
+
+// Global password visibility toggle handler via event delegation
+document.addEventListener('click', (e) => {
+  const btn = e.target.closest('.password-toggle-btn');
+  if (btn) {
+    const input = document.getElementById(btn.getAttribute('data-target'));
+    if (input) {
+      const isPass = input.type === 'password';
+      input.type = isPass ? 'text' : 'password';
+      btn.setAttribute('aria-label', isPass ? 'Hide password' : 'Show password');
+      btn.innerHTML = isPass
+        ? `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19m-6.72-1.07a3 3 0 11-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>`
+        : `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>`;
+    }
+  }
+});
+
+window.Shell = Shell;

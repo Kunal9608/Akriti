@@ -1,0 +1,401 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>My Patients — Akriti Diagnostics Center</title>
+  <link rel="stylesheet" href="/assets/css/tokens.css">
+  <link rel="stylesheet" href="/assets/css/components.css">
+  <link rel="stylesheet" href="/assets/css/skeleton.css">
+  <link rel="stylesheet" href="/assets/css/layout.css">
+  <script src="/assets/js/theme.js"></script>
+  <style>
+    .slide-panel { position: fixed; right: 0; top: 0; bottom: 0; width: 440px; background: var(--color-surface); border-left: 1px solid var(--color-border); box-shadow: var(--shadow-lg); z-index: 500; transform: translateX(100%); transition: transform var(--transition-base); display: flex; flex-direction: column; }
+    .slide-panel.open { transform: none; }
+    .panel-header { display: flex; align-items: center; justify-content: space-between; padding: 20px 24px; border-bottom: 1px solid var(--color-border); flex-shrink: 0; }
+    .panel-title { font-family: var(--font-display); font-size: var(--text-xl); font-weight: 600; }
+    .panel-body { flex: 1; overflow-y: auto; padding: 24px; }
+    .panel-overlay { display: none; position: fixed; inset: 0; background: rgba(30,20,18,0.4); z-index: 490; }
+    .panel-overlay.open { display: block; }
+    .patient-detail-row { display: flex; gap: 8px; margin-bottom: 12px; font-size: var(--text-sm); }
+    .patient-detail-row strong { min-width: 110px; color: var(--color-ink-muted); font-weight: 500; }
+    .timeline { margin-top: 8px; }
+  </style>
+</head>
+<body>
+<div class="app-shell">
+  <div class="sidebar-overlay" id="sidebar-overlay"></div>
+  <nav class="sidebar" id="sidebar"></nav>
+
+  <div class="main-area">
+    <header class="topbar">
+      <div class="topbar-left">
+        <button class="hamburger" id="hamburger-btn" aria-label="Open menu">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+        </button>
+        <h1 class="page-heading" id="topbar-title">My Patients</h1>
+      </div>
+      <div class="topbar-right">
+        <button class="topbar-btn" data-theme-toggle aria-label="Toggle theme">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></svg>
+        </button>
+      </div>
+    </header>
+    <div class="offline-banner" role="status"></div>
+
+    <main class="page-content">
+      <div class="page-header">
+        <div>
+          <h2 class="page-title">Patient List</h2>
+          <p class="page-subtitle" id="scope-notice">Loading your patient scope…</p>
+        </div>
+        <div class="page-actions">
+          <a href="/staff/add-patient.html" class="btn btn-primary">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            Add Patient
+          </a>
+        </div>
+      </div>
+
+      <div class="filters-bar">
+        <div class="topbar-search" style="width:260px">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          <input type="text" id="search-q" placeholder="Name, mobile, patient ID…">
+        </div>
+        <select class="form-select" id="filter-status" style="height:36px;min-width:140px;font-size:13px">
+          <option value="">All Statuses</option>
+          <option value="sample_collected">Collected</option>
+          <option value="under_process">Processing</option>
+          <option value="report_ready">Report Ready</option>
+        </select>
+        <input type="date" class="form-input" id="filter-from" style="height:36px;font-size:13px;width:150px">
+        <input type="date" class="form-input" id="filter-to"   style="height:36px;font-size:13px;width:150px">
+      </div>
+
+      <div id="patients-table-container"></div>
+    </main>
+  </div>
+</div>
+
+<!-- Patient Detail Panel -->
+<div class="panel-overlay" id="panel-overlay"></div>
+<aside class="slide-panel" id="patient-panel">
+  <div class="panel-header">
+    <h2 class="panel-title" id="panel-patient-name">Patient Details</h2>
+    <button class="btn btn-icon btn-ghost" id="panel-close-btn" aria-label="Close">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+    </button>
+  </div>
+  <div class="panel-body" id="panel-body"></div>
+</aside>
+
+<!-- Report Upload Modal -->
+<div class="modal-backdrop" id="report-modal">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="report-modal-title">
+    <div class="modal-header">
+      <h2 class="modal-title" id="report-modal-title">Upload Report</h2>
+      <button class="modal-close" id="report-modal-close" aria-label="Close">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <div class="modal-body">
+      <div class="form-field mb-4">
+        <label class="form-label" for="report-patient-id">Patient</label>
+        <input class="form-input" id="report-patient-id" disabled>
+      </div>
+      <div id="report-modal-payment-section"></div>
+      <div class="form-field">
+        <label class="form-label" for="report-file">Report File <span class="required">*</span> <span style="font-weight:400;color:var(--color-ink-faint);font-size:11px">(PDF, JPG, PNG, WEBP, BMP, TIFF)</span></label>
+        <input class="form-input" type="file" id="report-file" accept=".pdf,.jpg,.jpeg,.png,.webp,.bmp,.tiff,.tif,.heic,.heif" style="padding:8px">
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="Modal.close('report-modal')">Cancel</button>
+      <button class="btn btn-primary" id="report-upload-btn">Upload Report</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast-container"></div>
+<script src="/assets/js/toast.js"></script>
+<script src="/assets/js/modal.js"></script>
+<script src="/assets/js/api-client.js"></script>
+<script src="/assets/js/table.js"></script>
+<script src="/assets/js/offline-queue.js"></script>
+<script src="/assets/js/shell.js"></script>
+<script>
+(async function() {
+  const me = await Shell.init({ pageTitle: 'My Patients' });
+
+  let currentPatientId = null;
+
+  // Update scope subtitle
+  if (me) {
+    const scopeText = me.view_scope === 'all' ? 'Showing all patients (full scope)' : 'Showing only your registered patients';
+    document.getElementById('scope-notice').textContent = scopeText;
+  }
+
+  const table = new DataTable({
+    containerId: 'patients-table-container',
+    columns: [
+      { key: 'patient_code', label: 'Patient ID', width: '110px', render: v => `<span class="tabular fw-600 text-primary">${escapeHtml(v)}</span>` },
+      { key: 'name',         label: 'Name',       render: (v, row) => `<div class="fw-600">${escapeHtml(v)}</div><div class="text-xs text-muted">${escapeHtml(row.mobile||'')}</div>` },
+      { key: 'status',       label: 'Status',     width: '130px', render: v => statusBadge(v) },
+      { key: 'amount_paid',  label: 'Paid / Total', width:'140px', render: (v, row) => `<span class="tabular">${formatCurrency(v)} / ${formatCurrency(row.total_amount)}</span>` },
+      { key: 'created_at',   label: 'Date',       width: '110px', render: v => formatDate(v) },
+      { key: null,           label: 'Actions',    width: '180px', render: (_, row) => `
+        <div style="display:flex;gap:5px">
+          <button class="btn btn-sm btn-ghost" onclick="openPanel('${row.id}','${escapeHtml(row.name)}')">View</button>
+          <a href="/staff/add-patient.html?id=${row.id}" class="btn btn-sm btn-secondary">Edit</a>
+          <button class="btn btn-sm btn-secondary" onclick="openReportModal('${row.id}','${escapeHtml(row.patient_code)}')">Report</button>
+        </div>
+      ` },
+    ],
+    fetchFn: async (params) => {
+      const qs = new URLSearchParams({ page: params.page, page_size: params.page_size, ...(params.q && {q:params.q}), ...(params.status && {status:params.status}), ...(params.date_from && {date_from:params.date_from}), ...(params.date_to && {date_to:params.date_to}) });
+      return await API.get(`/api/v1/patients?${qs}`);
+    },
+    pageSize: 25,
+    emptyMessage: 'No patients registered yet',
+  });
+  table.load();
+
+  let searchTimer;
+  document.getElementById('search-q').addEventListener('input', e => {
+    clearTimeout(searchTimer);
+    searchTimer = setTimeout(() => { table.setFilter('q', e.target.value); table.load(); }, 400);
+  });
+  document.getElementById('filter-status').addEventListener('change', e => { table.setFilter('status', e.target.value); table.load(); });
+  document.getElementById('filter-from').addEventListener('change', e => { table.setFilter('date_from', e.target.value); table.load(); });
+  document.getElementById('filter-to').addEventListener('change', e => { table.setFilter('date_to', e.target.value); table.load(); });
+
+  window.openPanel = async function(id, name) {
+    document.getElementById('panel-patient-name').textContent = name;
+    document.getElementById('panel-body').innerHTML = `<div style="padding:20px"><span class="skel skel-text skel-w-full mb-3"></span><span class="skel skel-text skel-w-20"></span></div>`;
+    document.getElementById('patient-panel').classList.add('open');
+    document.getElementById('panel-overlay').classList.add('open');
+    try {
+      const p = await API.get(`/api/v1/patients/${id}`);
+      const tests = (p.tests||[]).map(t => `<span class="badge badge-neutral" style="margin:2px">${escapeHtml(t.name)}</span>`).join('');
+      
+      let reportSectionHtml = '';
+      let latestReportUrl = null;  // used by clickable timeline step
+      if (p.status === 'report_ready') {
+        try {
+          const reports = await API.get(`/api/v1/reports/${id}`, { silent: true });
+          if (reports && reports.length > 0) {
+            reports.sort((a, b) => b.version - a.version);
+            latestReportUrl = `/api/v1/reports/download/${reports[0].id}`;
+            reportSectionHtml = `
+              <div class="divider"></div>
+              <div class="section-title" style="font-size:var(--text-base);margin-bottom:12px">Available Reports</div>
+              <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:16px">
+                ${reports.map(r => `
+                  <div style="display:flex;align-items:center;justify-content:space-between;background:var(--color-bg);padding:8px 12px;border:1px solid var(--color-border);border-radius:var(--radius-md)">
+                    <div>
+                      <div class="fw-600" style="font-size:12px;word-break:break-all">${escapeHtml(r.filename)}</div>
+                      <div class="text-xs text-muted">Version ${r.version} · ${formatDateTime(r.uploaded_at)}</div>
+                    </div>
+                    <a href="/api/v1/reports/download/${r.id}" target="_blank" class="btn btn-sm btn-secondary" style="height:32px;display:inline-flex;align-items:center;gap:6px;flex-shrink:0">
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                      View PDF
+                    </a>
+                  </div>
+                `).join('')}
+              </div>
+            `;
+          }
+        } catch (_) {}
+      }
+
+      document.getElementById('panel-body').innerHTML = `
+        <div class="patient-detail-row"><strong>Patient ID</strong><span class="tabular fw-600 text-primary">${escapeHtml(p.patient_code)}</span></div>
+        <div class="patient-detail-row"><strong>Name</strong>${escapeHtml(p.name)}</div>
+        <div class="patient-detail-row"><strong>Age / Gender</strong>${p.age} yrs · ${p.gender}</div>
+        <div class="patient-detail-row"><strong>Mobile</strong>${escapeHtml(p.mobile)}</div>
+        <div class="patient-detail-row"><strong>Doctor</strong>${escapeHtml(p.doctor_name||'Self')}</div>
+        <div class="patient-detail-row"><strong>Tests</strong><div style="display:flex;flex-wrap:wrap;gap:4px">${tests}</div></div>
+        <div class="patient-detail-row"><strong>Total Bill</strong><span class="tabular">${formatCurrency(p.total_amount)}</span></div>
+        ${parseFloat(p.discount_amount||0) > 0 ? `<div class="patient-detail-row"><strong>Discount</strong><span class="tabular" style="color:#3D6B7D;font-weight:600">- ${formatCurrency(p.discount_amount)}</span></div>` : ''}
+        <div class="patient-detail-row"><strong>Paid</strong><span class="tabular">${formatCurrency(p.amount_paid)}</span></div>
+        <div class="patient-detail-row"><strong>Due</strong><span class="tabular" style="color:${parseFloat(p.amount_due||0) > 0 ? 'var(--color-error)' : 'var(--color-success)'};font-weight:600">${parseFloat(p.amount_due||0) > 0 ? formatCurrency(p.amount_due) : '✓ Fully Paid'}</span></div>
+        <div class="patient-detail-row"><strong>Status</strong>${statusBadge(p.status)}</div>
+        ${reportSectionHtml}
+        <div class="divider"></div>
+        <div class="section-title" style="font-size:var(--text-base);margin-bottom:16px">Timeline</div>
+        <div class="timeline">
+          <div class="timeline-item">
+            <div class="timeline-dot done"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg></div>
+            <div class="timeline-body"><div class="timeline-title">Patient Registered</div><div class="timeline-time">${formatDateTime(p.created_at)}</div></div>
+          </div>
+          <div class="timeline-item">
+            <div class="timeline-dot ${['under_process','report_ready'].includes(p.status) ? 'done' : ''}">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/></svg>
+            </div>
+            <div class="timeline-body"><div class="timeline-title">Sample Collected</div><div class="timeline-time">${formatDate(p.sample_date)}</div></div>
+          </div>
+          <div class="timeline-item">
+            <div class="timeline-dot ${p.status === 'report_ready' ? 'done' : ''}">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+            </div>
+            <div class="timeline-body">
+              <div class="timeline-title">
+                ${latestReportUrl
+                  ? `<a href="${latestReportUrl}" target="_blank" style="color:var(--color-primary);text-decoration:underline;cursor:pointer;display:inline-flex;align-items:center;gap:5px">Report Ready <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg></a>`
+                  : 'Report Ready'
+                }
+              </div>
+              <div class="timeline-time">${p.status === 'report_ready' ? 'Completed' : 'Pending'}</div>
+            </div>
+          </div>
+        </div>
+        <div style="display:flex;gap:8px;margin-top:20px">
+          <a href="/staff/add-patient.html?id=${p.id}" class="btn btn-secondary" style="flex:1">Edit Patient</a>
+          <button class="btn btn-primary" style="flex:1" onclick="openReportModal('${p.id}','${escapeHtml(p.patient_code)}')">Upload Report</button>
+        </div>
+      `;
+    } catch (err) { document.getElementById('panel-body').innerHTML = `<p class="text-muted">Failed to load details.</p>`; }
+  };
+
+  const closePanel = () => {
+    document.getElementById('patient-panel').classList.remove('open');
+    document.getElementById('panel-overlay').classList.remove('open');
+  };
+  document.getElementById('panel-close-btn').addEventListener('click', closePanel);
+  document.getElementById('panel-overlay').addEventListener('click', closePanel);
+
+  // ── Report Upload ─────────────────────────────────────────────────────────
+  window.openReportModal = async function(id, code) {
+    currentPatientId = id;
+    document.getElementById('report-patient-id').value = code;
+    document.getElementById('report-file').value = '';
+    
+    const paySec = document.getElementById('report-modal-payment-section');
+    paySec.innerHTML = `<p class="text-xs text-muted" style="padding:10px 0">Loading billing info...</p>`;
+    
+    Modal.open('report-modal');
+
+    try {
+      const p = await API.get(`/api/v1/patients/${id}`, { silent: true });
+      const netPayable = Math.max(0, parseFloat(p.total_amount || 0) - parseFloat(p.discount_amount || 0));
+      paySec.dataset.netPayable = netPayable;  // net after discount
+      const due = Number(p.amount_due);
+      
+      if (due > 0) {
+        paySec.innerHTML = `
+          <div class="mb-4" style="background:var(--color-cherry-cola-tint-10);border:1px solid var(--color-cherry-cola);border-radius:var(--radius-md);padding:14px">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+              <span style="font-size:13px;color:var(--color-ink);font-weight:600">Remaining Due Amount:</span>
+              <span class="fw-700" style="color:var(--color-cherry-cola);font-size:16px">${formatCurrency(due)}</span>
+            </div>
+            <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer;user-select:none;margin-bottom:8px">
+              <input type="checkbox" id="complete-payment-chk">
+              <strong>Record payment completion now</strong>
+            </label>
+            <div id="modal-payment-inputs" style="display:none;margin-top:12px;border-top:1px dashed var(--color-border);padding-top:12px">
+              <div class="form-field mb-3">
+                <label class="form-label" for="modal-payment-mode">Payment Mode</label>
+                <select class="form-select" id="modal-payment-mode">
+                  <option value="cash">Cash</option>
+                  <option value="qr">QR / UPI</option>
+                </select>
+              </div>
+              <div id="modal-qr-container" style="display:none;text-align:center;padding:12px;background:var(--color-bg);border:1px solid var(--color-border);border-radius:var(--radius-md)">
+                <div id="modal-qr-canvas" style="display:inline-block"></div>
+                <p class="text-xs text-faint mt-2" style="margin-bottom:0">Scan to pay remaining ₹${due}</p>
+              </div>
+            </div>
+          </div>
+        `;
+
+        const chk = document.getElementById('complete-payment-chk');
+        const inputs = document.getElementById('modal-payment-inputs');
+        const mode = document.getElementById('modal-payment-mode');
+        const qrCont = document.getElementById('modal-qr-container');
+        const qrCanvas = document.getElementById('modal-qr-canvas');
+
+        chk.addEventListener('change', () => {
+          inputs.style.display = chk.checked ? '' : 'none';
+          if (chk.checked) triggerModalQR();
+        });
+
+        mode.addEventListener('change', triggerModalQR);
+
+        let labSettings = null;
+        async function triggerModalQR() {
+          if (mode.value === 'qr' && chk.checked) {
+            qrCont.style.display = '';
+            qrCanvas.innerHTML = '';
+            if (!labSettings) {
+              try { labSettings = await API.get('/api/v1/settings/lab', { silent: true }); } catch {}
+            }
+            const vpa = labSettings?.lab_upi_vpa || 'akriti@upi';
+            const name = labSettings?.lab_name || 'Akriti Diagnostics';
+            const upiString = `upi://pay?pa=${encodeURIComponent(vpa)}&pn=${encodeURIComponent(name)}&am=${due.toFixed(2)}&cu=INR`;
+            qrCanvas.innerHTML = `<img src="https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(upiString)}" width="150" height="150">`;
+          } else {
+            qrCont.style.display = 'none';
+          }
+        }
+      } else {
+        paySec.innerHTML = `<p class="text-xs text-muted mb-4" style="color:var(--color-success)">✓ Payment completed in full.</p>`;
+      }
+    } catch {
+      paySec.innerHTML = `<p class="text-xs text-muted mb-4">Could not load patient payment status.</p>`;
+    }
+  };
+
+  document.getElementById('report-modal-close').addEventListener('click', () => Modal.close('report-modal'));
+
+  document.getElementById('report-upload-btn').addEventListener('click', async () => {
+    const file = document.getElementById('report-file').files[0];
+    if (!file) { Toast.show('Please select a PDF or Image file', 'warning'); return; }
+    
+    const btn = document.getElementById('report-upload-btn');
+    btn.setAttribute('aria-busy','true'); btn.innerHTML = `<span class="btn-loading-spinner"></span> Saving...`;
+
+    // Process payment if checked
+    const chk = document.getElementById('complete-payment-chk');
+    if (chk && chk.checked) {
+      const mode       = document.getElementById('modal-payment-mode').value;
+      const netPayable = parseFloat(document.getElementById('report-modal-payment-section').dataset.netPayable || 0);
+      try {
+        await API.patch(`/api/v1/patients/${currentPatientId}`, {
+          amount_paid: netPayable,
+          payment_mode: mode
+        });
+        Toast.show('Payment marked as completed', 'success');
+      } catch (err) {
+        Toast.show(err.message || 'Failed to complete payment', 'error');
+        btn.removeAttribute('aria-busy'); btn.innerHTML = 'Upload Report';
+        return;
+      }
+    }
+
+    try {
+      const fd = new FormData();
+      fd.append('file', file);
+      const res = await fetch(`/api/v1/reports/${currentPatientId}`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Idempotency-Key': API.uuidv4() },
+        body: fd,
+      });
+      if (!res.ok) throw new Error('Upload failed');
+      Modal.close('report-modal');
+      Toast.show('Report uploaded successfully', 'success');
+      table.refresh();
+      // Also reload current open panel if open
+      if (document.getElementById('patient-panel').classList.contains('open')) {
+        openPanel(currentPatientId, document.getElementById('panel-patient-name').textContent);
+      }
+    } catch {
+      Toast.show('Failed to upload report', 'error');
+    } finally {
+      btn.removeAttribute('aria-busy'); btn.innerHTML = 'Upload Report';
+    }
+  });
+})();
+</script>
+</body>
+</html>

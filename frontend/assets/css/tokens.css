@@ -1,0 +1,167 @@
+/**
+ * AKRITI DIAGNOSTICS CENTER — DESIGN TOKENS
+ * Brand palette per SRS §6.1.2 — mandatory exact hex values.
+ * Import this file first in every HTML page.
+ */
+
+@import url('https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap');
+
+:root {
+  /* ── Template Colors from AKRITI_UI_Template_Example.html ────────────────── */
+  --bg: #FAFAF8;
+  --surface: #FFFFFF;
+  --ink: #16201C;
+  --ink-muted: #7A8880;
+  --ink-faint: #A7B2AC;
+  --border: #E7E7E3;
+  --accent: #0E5C4E;
+  --accent-hover: #0A4A3F;
+  --accent-tint: #E4EEEB;
+  --success: #2F8F5B;
+  --warning: #B8792D;
+  --danger: #B23A2E;
+  --font: 'Manrope', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --r: 12px;
+  --ease: cubic-bezier(.3,.7,.4,1);
+
+  /* ── Mappings to align with existing components.css classes ───────────────── */
+  --color-bg:                  var(--bg);
+  --color-surface:             var(--surface);
+  --color-ink:                 var(--ink);
+  --color-ink-muted:           var(--ink-muted);
+  --color-ink-faint:           var(--ink-faint);
+  --color-border:              var(--border);
+  
+  --color-cherry-cola:         var(--accent);
+  --color-cherry-cola-hover:   var(--accent-hover);
+  --color-cherry-cola-tint-10: var(--accent-tint);
+  
+  --color-success:             var(--success);
+  --color-warning:             var(--warning);
+  --color-error:               var(--danger);
+  --color-info:                #3D6B7D;
+
+  /* Semantic backgrounds (tints) */
+  --color-success-tint:        rgba(47, 143, 91, 0.12);
+  --color-warning-tint:        rgba(184, 121, 45, 0.12);
+  --color-error-tint:          rgba(178, 58, 46, 0.10);
+  --color-info-tint:           rgba(61, 107, 125, 0.12);
+
+  /* Typography */
+  --font-display:              var(--font);
+  --font-body:                 var(--font);
+
+  /* ── Type Scale ──────────────────────────────────────────────────────────── */
+  --text-xs:   12px;
+  --text-sm:   13px;
+  --text-base: 14px;
+  --text-md:   15px;
+  --text-lg:   16px;
+  --text-xl:   18px;
+  --text-2xl:  22px;
+  --text-3xl:  28px;
+  --text-4xl:  32px;
+  --text-kpi:  27px;
+
+  /* ── Spacing ─────────────────────────────────────────────────────────────── */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-10: 40px;
+
+  /* ── Radius ──────────────────────────────────────────────────────────────── */
+  --radius-sm:  6px;
+  --radius-md:  9px;
+  --radius-lg:  var(--r);
+  --radius-xl:  16px;
+  --radius-pill: 999px;
+
+  /* ── Shadows ─────────────────────────────────────────────────────────────── */
+  --shadow-xs:  0 1px 3px rgba(22, 32, 28, 0.04);
+  --shadow-sm:  0 2px 8px rgba(22, 32, 28, 0.06);
+  --shadow-md:  0 6px 20px rgba(22, 32, 28, 0.08);
+  --shadow-lg:  0 20px 50px rgba(22, 32, 28, 0.16);
+
+  /* ── Transitions ─────────────────────────────────────────────────────────── */
+  --ease-out:   var(--ease);
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --transition-fast: 120ms var(--ease);
+  --transition-base: 200ms var(--ease);
+
+  /* ── Sidebar ─────────────────────────────────────────────────────────────── */
+  --sidebar-width: 220px;
+  --topbar-height: 64px;
+}
+
+/* ── Dark Theme ───────────────────────────────────────────────────────────── */
+[data-theme="dark"] {
+  --bg: #14201C;
+  --surface: #1A2925;
+  --ink: #EDF3F0;
+  --ink-muted: #8CA098;
+  --ink-faint: #5E7168;
+  --border: #26362F;
+  --accent: #4CAF94;
+  --accent-hover: #63C0A6;
+  --accent-tint: #1E332C;
+
+  --color-info: #5CA0B8;
+  --color-success-tint: rgba(47, 143, 91, 0.15);
+  --color-error-tint: rgba(178, 58, 46, 0.15);
+  --color-cherry-cola:         var(--accent);
+  --color-cherry-cola-hover:   var(--accent-hover);
+  --color-cherry-cola-tint-10: var(--accent-tint);
+  --color-cream-vanilla: #EFE6DD;
+  --shadow-xs:  0 1px 3px rgba(0, 0, 0, 0.20);
+  --shadow-sm:  0 2px 8px rgba(0, 0, 0, 0.25);
+  --shadow-md:  0 4px 16px rgba(0, 0, 0, 0.30);
+}
+
+/* ── Reset & Base ────────────────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html {
+  font-size: 16px;
+  scroll-behavior: smooth;
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  font-family: var(--font-body);
+  font-size: var(--text-base);
+  color: var(--color-ink);
+  background: var(--color-bg);
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  transition: background var(--transition-base), color var(--transition-base);
+}
+
+a { color: inherit; text-decoration: none; }
+button { font-family: var(--font-body); cursor: pointer; }
+input, select, textarea { font-family: var(--font-body); }
+img, svg { display: block; }
+
+/* ── Tabular numerals for amounts/IDs ────────────────────────────────────── */
+.tabular { font-variant-numeric: tabular-nums; }
+
+/* ── Display font usage ───────────────────────────────────────────────────── */
+.font-display { font-family: var(--font-display); }
+.font-body    { font-family: var(--font-body); }
+
+/* Accessibility */
+:focus-visible {
+  outline: 2px solid var(--color-cherry-cola);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
+}
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--color-border); border-radius: var(--radius-pill); }
+::-webkit-scrollbar-thumb:hover { background: var(--color-ink-faint); }

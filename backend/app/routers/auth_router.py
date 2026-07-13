@@ -1,0 +1,165 @@
+"""Auth router."""
+from fastapi import APIRouter, Depends, Response, Request
+from sqlalchemy.orm import Session
+
+from backend.app.core.db import get_db
+from backend.app.dependencies import get_current_user, get_client_ip
+from backend.app.schemas.auth import (
+    LoginRequest, OtpRequestSchema, OtpVerifyRequest,
+    PasswordResetRequest, MessageResponse
+)
+from backend.app.services import auth_service
+from backend.app.config import settings
+
+router = APIRouter(prefix="/auth", tags=["auth"])
+
+
+@router.post("/login")
+def login(payload: LoginRequest, request: Request, response: Response,
+          db: Session = Depends(get_db)):
+    ip = get_client_ip(request)
+    ua = request.headers.get("User-Agent", "")
+    result = auth_service.login(db, payload.email, payload.password, ip, ua)
+
+    if not result.get("requires_password_reset"):
+        # Set httpOnly cookies
+        secure = settings.cookie_secure
+        response.set_cookie("access_token", result["access_token"],
+                            httponly=True, secure=secure, samesite="strict",
+                            max_age=settings.JWT_ACCESS_EXPIRE_MINUTES * 60)
+        response.set_cookie("refresh_token", result["refresh_token"],
+                            httponly=True, secure=secure, samesite="strict",
+                            max_age=settings.JWT_REFRESH_EXPIRE_DAYS * 86400)
+
+    return result
+
+
+@router.post("/logout")
+def logout(response: Response):
+    response.delete_cookie("access_token")
+    response.delete_cookie("refresh_token")
+    return {"message": "Logged out successfully"}
+
+
+@router.post("/otp/request")
+def request_otp(payload: OtpRequestSchema, request: Request, db: Session = Depends(get_db)):
+    ip = get_client_ip(request)
+    auth_service.request_otp(db, payload.email, payload.purpose, ip)
+    return {"message": "OTP sent if email is registered"}
+
+
+@router.post("/otp/verify")
+def verify_otp(payload: OtpVerifyRequest, request: Request, response: Response,
+               db: Session = Depends(get_db)):
+    otp_val = payload.otp or payload.otp_code
+    if not otp_val:
+        from fastapi import HTTPException
+        raise HTTPException(status_code=400, detail="OTP code is required")
+
+    ip = get_client_ip(request)
+    ua = request.headers.get("User-Agent", "")
+
+    result = auth_service.verify_otp_code(db, payload.email, otp_val, payload.purpose, ip, ua)
+
+    if result.get("requires_password_reset"):
+        return result
+
+    if payload.purpose == "login":
+        secure = settings.cookie_secure
+        response.set_cookie("access_token", result["access_token"],
+                            httponly=True, secure=secure, samesite="strict",
+                            max_age=settings.JWT_ACCESS_EXPIRE_MINUTES * 60)
+        response.set_cookie("refresh_token", result["refresh_token"],
+                            httponly=True, secure=secure, samesite="strict",
+                            max_age=settings.JWT_REFRESH_EXPIRE_DAYS * 86400)
+
+    return result
+
+
+@router.post("/password/reset")
+def reset_password(payload: PasswordResetRequest, response: Response,
+                   db: Session = Depends(get_db)):
+    auth_service.reset_password(db, payload.reset_token, payload.new_password)
+    response.delete_cookie("access_token")
+    response.delete_cookie("refresh_token")
+    return {"message": "Password reset successfully. Please log in again."}
+
+
+@router.post("/refresh")
+def refresh_token(request: Request, response: Response, db: Session = Depends(get_db)):
+    refresh = request.cookies.get("refresh_token")
+    if not refresh:
+        from fastapi import HTTPException
+        raise HTTPException(status_code=401, detail="No refresh token")
+    access = auth_service.refresh_access_token(db, refresh)
+    if not access:
+        raise HTTPException(status_code=401, detail="Invalid or expired refresh token")
+    response.set_cookie("access_token", access, httponly=True,
+                        secure=settings.cookie_secure, samesite="strict",
+                        max_age=settings.JWT_ACCESS_EXPIRE_MINUTES * 60)
+    return {"message": "Token refreshed"}
+
+
+@router.get("/me")
+def get_me(current_user=Depends(get_current_user)):
+    return {
+        "id": str(current_user.id),
+        "name": current_user.name,
+        "email": current_user.email,
+        "mobile": getattr(current_user, 'mobile', None),
+        "role": current_user.role,
+        "view_scope": current_user.view_scope,
+        "face_registered": current_user.face_registered,
+        "is_active": current_user.is_active,
+        "created_at": current_user.created_at.isoformat() if current_user.created_at else None,
+    }
+
+
+from pydantic import BaseModel as PydanticModel
+from typing import Optional as Opt
+
+class ProfileUpdate(PydanticModel):
+    name: Opt[str] = None
+    mobile: Opt[str] = None
+
+
+@router.patch("/me/profile")
+def update_my_profile(payload: ProfileUpdate, current_user=Depends(get_current_user),
+                      db: Session = Depends(get_db)):
+    from backend.app.repositories import user_repo
+    updates = payload.model_dump(exclude_none=True)
+    if updates:
+        user_repo.update_user(db, current_user.id, **updates)
+        db.commit()
+    updated = user_repo.get_by_id(db, current_user.id)
+    return {
+        "id": str(updated.id),
+        "name": updated.name,
+        "email": updated.email,
+        "mobile": getattr(updated, 'mobile', None),
+        "role": updated.role,
+        "view_scope": updated.view_scope,
+    }
+
+
+from backend.app.schemas.auth import PasswordResetRequest as _PwReset
+
+class ChangePasswordPayload(PydanticModel):
+    current_password: str
+    new_password: str
+
+
+@router.post("/me/change-password")
+def change_my_password(payload: ChangePasswordPayload,
+                       current_user=Depends(get_current_user),
+                       db: Session = Depends(get_db)):
+    from backend.app.core.security import verify_password, hash_password, validate_password_policy
+    from backend.app.repositories import user_repo, session_repo as srepo
+    if not verify_password(payload.current_password, current_user.password_hash):
+        raise ValueError("Current password is incorrect")
+    if not validate_password_policy(payload.new_password):
+        raise ValueError("Password must be at least 6 characters with at least one letter and one digit")
+    new_hash = hash_password(payload.new_password)
+    user_repo.update_user(db, current_user.id, password_hash=new_hash, must_reset_password=False)
+    db.commit()
+    return {"message": "Password changed successfully"}

@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Attendance Report — Akriti Diagnostics Center</title>
+  <link rel="stylesheet" href="/assets/css/tokens.css">
+  <link rel="stylesheet" href="/assets/css/components.css">
+  <link rel="stylesheet" href="/assets/css/skeleton.css">
+  <link rel="stylesheet" href="/assets/css/layout.css">
+  <script src="/assets/js/theme.js"></script>
+</head>
+<body>
+<div class="app-shell">
+  <div class="sidebar-overlay" id="sidebar-overlay"></div>
+  <nav class="sidebar" id="sidebar"></nav>
+
+  <div class="main-area">
+    <header class="topbar">
+      <div class="topbar-left">
+        <button class="hamburger" id="hamburger-btn" aria-label="Open menu">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+        </button>
+        <h1 class="page-heading" id="topbar-title">Attendance</h1>
+      </div>
+      <div class="topbar-right">
+        <button class="topbar-btn" data-theme-toggle aria-label="Toggle theme">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></svg>
+        </button>
+      </div>
+    </header>
+    <div class="offline-banner" role="status"></div>
+
+    <main class="page-content">
+      <div class="page-header">
+        <div>
+          <h2 class="page-title">Attendance Report</h2>
+          <p class="page-subtitle">Staff check-in/out times, hours worked, and late arrivals</p>
+        </div>
+        <div class="page-actions">
+          <button class="btn btn-ghost btn-sm" id="export-att-btn">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            Export CSV
+          </button>
+        </div>
+      </div>
+
+      <div class="filters-bar">
+        <input type="date" class="form-input" id="att-from" style="height:36px;font-size:13px;width:150px">
+        <input type="date" class="form-input" id="att-to"   style="height:36px;font-size:13px;width:150px">
+        <select class="form-select" id="att-staff" style="height:36px;min-width:160px;font-size:13px">
+          <option value="">All Staff</option>
+        </select>
+        <button class="btn btn-secondary btn-sm" id="att-refresh-btn">Refresh</button>
+      </div>
+
+      <div id="attendance-table-container"></div>
+    </main>
+  </div>
+</div>
+
+<div id="toast-container"></div>
+<script src="/assets/js/toast.js"></script>
+<script src="/assets/js/modal.js"></script>
+<script src="/assets/js/api-client.js"></script>
+<script src="/assets/js/table.js"></script>
+<script src="/assets/js/shell.js"></script>
+<script>
+(async function() {
+  await Shell.init({ role: 'admin', pageTitle: 'Attendance' });
+
+  const today    = new Date();
+  const fmtDate  = d => d.toISOString().split('T')[0];
+  const firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
+  document.getElementById('att-from').value = fmtDate(firstDay);
+  document.getElementById('att-to').value   = fmtDate(today);
+
+  // Load staff for filter dropdown
+  try {
+    const staffRes = await API.get('/api/v1/staff?page_size=200');
+    const sel = document.getElementById('att-staff');
+    (staffRes.items || []).forEach(s => {
+      const opt = document.createElement('option');
+      opt.value = s.id; opt.textContent = s.name;
+      sel.appendChild(opt);
+    });
+  } catch {}
+
+  const table = new DataTable({
+    containerId: 'attendance-table-container',
+    columns: [
+      { key: 'staff_name',       label: 'Staff Name',   width: '160px', render: v => `<span class="fw-600">${escapeHtml(v)}</span>` },
+      { key: 'date',             label: 'Date',         width: '110px', render: v => formatDate(v) },
+      { key: 'check_in_time',    label: 'Check In',     width: '100px', render: v => v ? new Date(v).toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'}) : '—' },
+      { key: 'check_out_time',   label: 'Check Out',    width: '100px', render: v => v ? new Date(v).toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'}) : 'Active' },
+      { key: 'hours_present',    label: 'Hours',        width: '80px',  render: v => v ? `${v.toFixed(1)}h` : '—' },
+      { key: 'matched_confidence', label: 'Confidence', width: '100px', render: v => v ? `${(v*100).toFixed(0)}%` : '—' },
+      { key: 'is_late',          label: 'Flags',        width: '100px', render: v => v ? `<span class="badge badge-warning">Late</span>` : '' },
+    ],
+    fetchFn: async (params) => {
+      const qs = new URLSearchParams({ page: params.page, page_size: params.page_size,
+        ...(params.date_from && { date_from: params.date_from }),
+        ...(params.date_to   && { date_to:   params.date_to }),
+        ...(params.user_id   && { user_id:   params.user_id }),
+      });
+      return await API.get(`/api/v1/attendance/report?${qs}`);
+    },
+    pageSize: 30,
+    emptyMessage: 'No attendance records in this period',
+  });
+
+  function loadAtt() {
+    table.setFilter('date_from', document.getElementById('att-from').value);
+    table.setFilter('date_to',   document.getElementById('att-to').value);
+    table.setFilter('user_id',   document.getElementById('att-staff').value);
+    table.load();
+  }
+
+  loadAtt();
+  document.getElementById('att-refresh-btn').addEventListener('click', loadAtt);
+  document.getElementById('att-staff').addEventListener('change', loadAtt);
+
+  // Export CSV
+  document.getElementById('export-att-btn').addEventListener('click', async () => {
+    try {
+      const from = document.getElementById('att-from').value;
+      const to   = document.getElementById('att-to').value;
+      const uid  = document.getElementById('att-staff').value;
+      const qs   = new URLSearchParams({ page: 1, page_size: 500, date_from: from, date_to: to, ...(uid && {user_id:uid}) });
+      const res  = await API.get(`/api/v1/attendance/report?${qs}`);
+      const rows = [['Staff Name','Date','Check In','Check Out','Hours','Late'],
+        ...(res.items||[]).map(r => [r.staff_name, r.date, r.check_in_time||'', r.check_out_time||'', r.hours_present||'', r.is_late?'Yes':'No'])];
+      const csv = rows.map(r => r.join(',')).join('\n');
+      const a = document.createElement('a'); a.href = 'data:text/csv;charset=utf-8,' + encodeURIComponent(csv);
+      a.download = `attendance_${from}_to_${to}.csv`; a.click();
+    } catch { Toast.show('Failed to export', 'error'); }
+  });
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Login — Akriti Diagnostics Center</title>
+  <meta name="description" content="Sign in to Akriti Diagnostics Center Lab Management System">
+  <link rel="manifest" href="/manifest.json">
+  <link rel="stylesheet" href="/assets/css/tokens.css">
+  <link rel="stylesheet" href="/assets/css/components.css">
+  <link rel="stylesheet" href="/assets/css/skeleton.css">
+  <link rel="stylesheet" href="/assets/css/layout.css">
+  <script src="/assets/js/theme.js"></script>
+  <style>
+    .login-tabs { display: flex; border-bottom: 1px solid var(--color-border); margin-bottom: 28px; gap: 4px; }
+    .login-tab { flex: 1; padding: 10px; text-align: center; font-size: var(--text-sm); font-weight: 600; color: var(--color-ink-muted); cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -1px; transition: all var(--transition-fast); background: none; border-top: none; border-left: none; border-right: none; }
+    .login-tab.active { color: var(--color-cherry-cola); border-bottom-color: var(--color-cherry-cola); }
+    .tab-panel { display: none; }
+    .tab-panel.active { display: block; }
+    .brand-hero { text-align: center; margin-bottom: 32px; }
+    .brand-hero-mark { width: 54px; height: 54px; border-radius: var(--radius-lg); background: var(--color-cherry-cola); color: #fff; display: flex; align-items: center; justify-content: center; font-family: var(--font-display); font-weight: 700; font-size: 22px; margin: 0 auto 14px; }
+    .otp-sent-hint { background: var(--color-success-tint); border-radius: var(--radius-md); padding: 10px 14px; font-size: var(--text-sm); color: var(--color-success); margin-bottom: 16px; display: none; }
+    .forgot-link { font-size: var(--text-sm); color: var(--color-cherry-cola); cursor: pointer; background: none; border: none; font-family: inherit; padding: 0; }
+    .forgot-link:hover { text-decoration: underline; }
+  </style>
+</head>
+<body>
+<div class="login-shell">
+  <div class="login-card card">
+    <div class="card-body">
+      <!-- Brand -->
+      <div class="brand-hero">
+        <div class="brand-hero-mark">A</div>
+        <h1 class="font-display" style="font-size: var(--text-2xl); font-weight:700; color: var(--color-ink);">Akriti Diagnostics</h1>
+        <p class="text-muted text-sm" style="margin-top: 4px;">Lab Management System</p>
+      </div>
+
+      <!-- Tabs -->
+      <div class="login-tabs" role="tablist">
+        <button class="login-tab active" id="tab-password" role="tab" aria-selected="true" aria-controls="panel-password">Password</button>
+        <button class="login-tab" id="tab-otp" role="tab" aria-selected="false" aria-controls="panel-otp">OTP</button>
+      </div>
+
+      <!-- Password panel -->
+      <div class="tab-panel active" id="panel-password" role="tabpanel">
+        <form id="login-form" novalidate>
+          <div class="form-field mb-4" id="ff-email">
+            <label class="form-label" for="login-email">Email <span class="required">*</span></label>
+            <input class="form-input" type="email" id="login-email" autocomplete="email" placeholder="your@email.com" required>
+            <span class="form-error" id="err-email">Please enter a valid email</span>
+          </div>
+          <div class="form-field mb-6" id="ff-password">
+            <label class="form-label" for="login-password">Password <span class="required">*</span></label>
+            <div style="position: relative;">
+              <input class="form-input" type="password" id="login-password" autocomplete="current-password" placeholder="Enter password" style="padding-right: 40px;" required>
+              <button type="button" class="password-toggle-btn" data-target="login-password" style="position: absolute; right: 12px; top: 50%; transform: translateY(-50%); background: none; border: none; padding: 0; cursor: pointer; color: var(--color-ink-muted); display: flex; align-items: center;" aria-label="Show password">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+              </button>
+            </div>
+            <span class="form-error" id="err-password">Password is required</span>
+          </div>
+          <button type="submit" class="btn btn-primary btn-lg" style="width:100%" id="login-btn">
+            Sign In
+          </button>
+          <div style="text-align:center; margin-top: 16px;">
+            <button type="button" class="forgot-link" id="forgot-btn">Forgot password?</button>
+          </div>
+        </form>
+      </div>
+
+      <!-- OTP panel -->
+      <div class="tab-panel" id="panel-otp" role="tabpanel">
+        <div class="otp-sent-hint" id="otp-hint">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" style="display:inline;vertical-align:middle;margin-right:6px"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07A19.5 19.5 0 013.07 9.81 19.79 19.79 0 01.15 1.18 2 2 0 012.12 0h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L6.09 7.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 14.92v2z"/></svg>
+          OTP sent to your email. Valid for 5 minutes.
+        </div>
+        <form id="otp-form" novalidate>
+          <div class="form-field mb-4" id="ff-otp-email">
+            <label class="form-label" for="otp-email">Email <span class="required">*</span></label>
+            <input class="form-input" type="email" id="otp-email" autocomplete="email" placeholder="your@email.com">
+          </div>
+          <div class="form-field mb-4" id="ff-otp-code" style="display:none">
+            <label class="form-label" for="otp-code">6-digit OTP <span class="required">*</span></label>
+            <input class="form-input" type="text" id="otp-code" maxlength="6" inputmode="numeric" placeholder="123456" autocomplete="one-time-code">
+          </div>
+          <!-- Resend OTP timer and button -->
+          <div id="resend-otp-container" style="display:none; text-align:right; margin-bottom:16px;">
+            <span id="resend-otp-timer" style="font-size:12px;color:var(--color-ink-muted);">Resend OTP in 60s</span>
+            <button type="button" id="resend-otp-btn" class="btn btn-sm btn-ghost" style="display:none; font-size:12px; padding:4px 8px; color:var(--color-cherry-cola); border-color:transparent; background:transparent;">Resend OTP</button>
+          </div>
+          <button type="submit" class="btn btn-primary btn-lg" style="width:100%" id="otp-btn">Send OTP</button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Password Reset Modal -->
+<div class="modal-backdrop" id="reset-modal">
+  <div class="modal modal-sm" role="dialog" aria-modal="true" aria-labelledby="reset-modal-title">
+    <div class="modal-header">
+      <h2 class="modal-title" id="reset-modal-title">Set New Password</h2>
+    </div>
+    <div class="modal-body">
+      <p class="text-muted text-sm mb-4">This is your first login. Please set a new password before continuing.</p>
+      <form id="reset-form" novalidate>
+        <div class="form-field mb-4">
+          <label class="form-label" for="new-password">New Password <span class="required">*</span></label>
+          <div style="position: relative;">
+            <input class="form-input" type="password" id="new-password" placeholder="Min 6 chars, letters and digits" style="padding-right: 40px;">
+            <button type="button" class="password-toggle-btn" data-target="new-password" style="position: absolute; right: 12px; top: 50%; transform: translateY(-50%); background: none; border: none; padding: 0; cursor: pointer; color: var(--color-ink-muted); display: flex; align-items: center;" aria-label="Show password">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+            </button>
+          </div>
+          <span class="form-hint">Must contain at least one letter and one digit. No special characters.</span>
+        </div>
+        <div class="form-field">
+          <label class="form-label" for="confirm-password">Confirm Password <span class="required">*</span></label>
+          <div style="position: relative;">
+            <input class="form-input" type="password" id="confirm-password" placeholder="Repeat password" style="padding-right: 40px;">
+            <button type="button" class="password-toggle-btn" data-target="confirm-password" style="position: absolute; right: 12px; top: 50%; transform: translateY(-50%); background: none; border: none; padding: 0; cursor: pointer; color: var(--color-ink-muted); display: flex; align-items: center;" aria-label="Show password">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+            </button>
+          </div>
+        </div>
+      </form>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-primary" id="reset-submit-btn">Set Password &amp; Continue</button>
+    </div>
+  </div>
+</div>
+
+<!-- Toast container -->
+<div id="toast-container"></div>
+
+<script src="/assets/js/toast.js"></script>
+<script src="/assets/js/modal.js"></script>
+<script src="/assets/js/api-client.js"></script>
+<script>
+(async function() {
+  // ── Password Visibility Toggle ─────────────────────────────────────────────
+  document.querySelectorAll('.password-toggle-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const input = document.getElementById(btn.getAttribute('data-target'));
+      if (!input) return;
+      const isPass = input.type === 'password';
+      input.type = isPass ? 'text' : 'password';
+      btn.setAttribute('aria-label', isPass ? 'Hide password' : 'Show password');
+      btn.innerHTML = isPass
+        ? `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19m-6.72-1.07a3 3 0 11-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>`
+        : `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>`;
+    });
+  });
+  // ── Tab switching ─────────────────────────────────────────────────────────
+  document.querySelectorAll('.login-tab').forEach(tab => {
+    tab.addEventListener('click', () => {
+      document.querySelectorAll('.login-tab').forEach(t => { t.classList.remove('active'); t.setAttribute('aria-selected','false'); });
+      document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+      tab.classList.add('active');
+      tab.setAttribute('aria-selected','true');
+      document.getElementById(tab.getAttribute('aria-controls')).classList.add('active');
+    });
+  });
+
+  let resetToken = null;
+
+  // ── Password Login ────────────────────────────────────────────────────────
+  document.getElementById('login-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const email    = document.getElementById('login-email').value.trim();
+    const password = document.getElementById('login-password').value;
+    if (!email || !password) { Toast.show('Please enter email and password', 'warning'); return; }
+
+    const btn = document.getElementById('login-btn');
+    btn.setAttribute('aria-busy','true');
+    btn.innerHTML = `<span class="btn-loading-spinner"></span> Signing in...`;
+
+    try {
+      const res = await API.post('/api/v1/auth/login', { email, password }, { silent: true });
+      if (res.requires_password_reset) {
+        resetToken = res.reset_token;
+        Modal.open('reset-modal');
+      } else {
+        redirect(res.role || res.user?.role);
+      }
+    } catch (err) {
+      Toast.show(err.message || 'Invalid credentials', 'error');
+    } finally {
+      btn.removeAttribute('aria-busy');
+      btn.innerHTML = 'Sign In';
+    }
+  });
+
+  // ── OTP Login ─────────────────────────────────────────────────────────────
+  let otpStep = 'request'; // 'request' | 'verify'
+  let resendTimerInterval = null;
+
+  function startResendTimer(email) {
+    const container = document.getElementById('resend-otp-container');
+    const timerText = document.getElementById('resend-otp-timer');
+    const resendBtn = document.getElementById('resend-otp-btn');
+    
+    container.style.display = 'block';
+    resendBtn.style.display = 'none';
+    timerText.style.display = 'inline';
+    
+    let secondsLeft = 60;
+    timerText.textContent = `Resend OTP in ${secondsLeft}s`;
+    
+    if (resendTimerInterval) clearInterval(resendTimerInterval);
+    
+    resendTimerInterval = setInterval(() => {
+      secondsLeft--;
+      if (secondsLeft <= 0) {
+        clearInterval(resendTimerInterval);
+        timerText.style.display = 'none';
+        resendBtn.style.display = 'inline-block';
+      } else {
+        timerText.textContent = `Resend OTP in ${secondsLeft}s`;
+      }
+    }, 1000);
+  }
+
+  // Bind click listener to resend-otp-btn
+  document.getElementById('resend-otp-btn').addEventListener('click', async () => {
+    const email = document.getElementById('otp-email').value.trim();
+    if (!email) return;
+    const resendBtn = document.getElementById('resend-otp-btn');
+    resendBtn.disabled = true;
+    resendBtn.textContent = 'Sending...';
+    try {
+      await API.post('/api/v1/auth/otp/request', { email, purpose: 'login' }, { silent: true });
+      Toast.show('OTP resent successfully', 'success');
+      startResendTimer(email);
+    } catch (err) {
+      Toast.show(err.message || 'Failed to resend OTP', 'error');
+    } finally {
+      resendBtn.disabled = false;
+      resendBtn.textContent = 'Resend OTP';
+    }
+  });
+
+  document.getElementById('otp-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const email = document.getElementById('otp-email').value.trim();
+    const btn   = document.getElementById('otp-btn');
+
+    if (otpStep === 'request') {
+      if (!email) { Toast.show('Enter your email', 'warning'); return; }
+      btn.setAttribute('aria-busy','true');
+      btn.innerHTML = `<span class="btn-loading-spinner"></span>`;
+      try {
+        await API.post('/api/v1/auth/otp/request', { email, purpose: 'login' }, { silent: true });
+        otpStep = 'verify';
+        document.getElementById('otp-hint').style.display = 'block';
+        document.getElementById('ff-otp-code').style.display = '';
+        document.getElementById('otp-email').disabled = true;
+        btn.innerHTML = 'Verify OTP';
+        startResendTimer(email);
+      } catch (err) {
+        Toast.show(err.message || 'Failed to send OTP', 'error');
+      } finally {
+        btn.removeAttribute('aria-busy');
+        if (otpStep === 'request') btn.innerHTML = 'Send OTP';
+      }
+    } else {
+      const code = document.getElementById('otp-code').value.trim();
+      if (!code || code.length !== 6) { Toast.show('Enter the 6-digit OTP', 'warning'); return; }
+      btn.setAttribute('aria-busy','true');
+      btn.innerHTML = `<span class="btn-loading-spinner"></span> Verifying...`;
+      try {
+        const res = await API.post('/api/v1/auth/otp/verify', { email, otp_code: code, purpose: 'login' }, { silent: true });
+        if (res.requires_password_reset) {
+          resetToken = res.reset_token;
+          Modal.open('reset-modal');
+        } else {
+          redirect(res.role || res.user?.role);
+        }
+      } catch (err) {
+        Toast.show(err.message || 'Invalid or expired OTP', 'error');
+        btn.removeAttribute('aria-busy');
+        btn.innerHTML = 'Verify OTP';
+      }
+    }
+  });
+
+  // ── Forgot password ───────────────────────────────────────────────────────
+  document.getElementById('forgot-btn').addEventListener('click', () => {
+    document.getElementById('tab-otp').click();
+    Toast.show('Use OTP login to reset your password', 'info', 4000);
+  });
+
+  // ── Password Reset ────────────────────────────────────────────────────────
+  document.getElementById('reset-submit-btn').addEventListener('click', async () => {
+    const pw  = document.getElementById('new-password').value;
+    const pw2 = document.getElementById('confirm-password').value;
+    const policy = /^(?=.*[A-Za-z])(?=.*\d)[A-Za-z0-9]{6,}$/;
+
+    if (!policy.test(pw)) {
+      Toast.show('Password must be at least 6 chars with letters and digits (no special chars)', 'error');
+      return;
+    }
+    if (pw !== pw2) { Toast.show('Passwords do not match', 'error'); return; }
+
+    try {
+      const res = await API.post('/api/v1/auth/password/reset', {
+        reset_token: resetToken, new_password: pw,
+      }, { silent: true });
+      Modal.close('reset-modal');
+      Toast.show('Password set. Redirecting...', 'success');
+      setTimeout(() => redirect(res.role || res.user?.role), 1000);
+    } catch (err) {
+      Toast.show(err.message || 'Failed to reset password', 'error');
+    }
+  });
+
+  function redirect(role) {
+    if (role === 'admin') window.location.href = '/admin/dashboard.html';
+    else window.location.href = '/staff/patients.html';
+  }
+
+  // Force unregister service worker to clear cache and resolve refresh loops
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.getRegistrations().then(registrations => {
+      for (let r of registrations) {
+        r.unregister();
+      }
+    });
+  }
+
+  // ── If already logged in, redirect ───────────────────────────────────────
+  try {
+    const me = await API.get('/api/v1/auth/me', { silent: true });
+    if (me && me.role) redirect(me.role);
+  } catch (_) {}
+})();
+</script>
+</body>
+</html>

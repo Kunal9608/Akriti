@@ -1,0 +1,380 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Add Patient — Akriti Diagnostics Center</title>
+  <link rel="stylesheet" href="/assets/css/tokens.css">
+  <link rel="stylesheet" href="/assets/css/components.css">
+  <link rel="stylesheet" href="/assets/css/skeleton.css">
+  <link rel="stylesheet" href="/assets/css/layout.css">
+  <script src="/assets/js/theme.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+  <style>
+    .form-card { background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-lg); padding: 28px; margin-bottom: 24px; }
+    .form-card-title { font-family: var(--font-display); font-size: var(--text-xl); font-weight: 600; color: var(--color-ink); margin-bottom: 20px; }
+    .billing-total-bar { background: var(--color-cherry-cola-tint-10); border: 1.5px solid var(--color-cherry-cola); border-radius: var(--radius-lg); padding: 16px 24px; display: flex; align-items: center; justify-content: space-between; margin-bottom: 24px; }
+    .billing-total-label { font-size: var(--text-sm); font-weight: 600; color: var(--color-cherry-cola); }
+    .billing-total-value { font-family: var(--font-display); font-size: 28px; font-weight: 700; color: var(--color-cherry-cola); font-variant-numeric: tabular-nums; }
+    #qr-code-canvas img, #qr-code-canvas canvas { display: block; margin: 0 auto; }
+    /* Test picker improvements */
+    .test-picker { max-height: 320px; overflow-y: auto; border: 1px solid var(--color-border); border-radius: var(--radius-md); background: var(--color-bg); }
+    .test-group-label { position: sticky; top: 0; background: var(--color-surface); z-index: 1; }
+    .test-option { display: flex; align-items: center; justify-content: space-between; padding: 10px 14px; cursor: pointer; transition: background .15s; border-bottom: 1px solid var(--color-border-faint, rgba(0,0,0,.04)); }
+    .test-option:hover { background: var(--color-cherry-cola-tint-10); }
+    .test-option.selected { background: var(--color-cherry-cola-tint-10); font-weight: 600; }
+    .test-option.selected .test-name::before { content: '✓ '; color: var(--color-cherry-cola); font-weight: 700; }
+    .test-name { font-size: var(--text-sm); color: var(--color-ink); }
+    .test-price { font-size: var(--text-sm); color: var(--color-cherry-cola); font-weight: 600; white-space: nowrap; margin-left: 12px; }
+    /* QR section */
+    #qr-code-section { background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-lg); padding: 24px; text-align: center; }
+    /* ── Force search bar visible inside the form (overrides global display:none on mobile) ── */
+    .form-search.topbar-search { display: flex !important; width: 100% !important; }
+    @media (max-width: 640px) {
+      .form-card { padding: 18px 14px; }
+      .billing-total-bar { flex-direction: column; align-items: flex-start; gap: 4px; padding: 12px 16px; }
+      .billing-total-value { font-size: 22px; }
+    }
+  </style>
+</head>
+<body>
+<div class="app-shell">
+  <div class="sidebar-overlay" id="sidebar-overlay"></div>
+  <nav class="sidebar" id="sidebar"></nav>
+
+  <div class="main-area">
+    <header class="topbar">
+      <div class="topbar-left">
+        <button class="hamburger" id="hamburger-btn" aria-label="Open menu">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+        </button>
+        <h1 class="page-heading" id="topbar-title">Add Patient</h1>
+      </div>
+      <div class="topbar-right">
+        <button class="topbar-btn" data-theme-toggle aria-label="Toggle theme">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></svg>
+        </button>
+      </div>
+    </header>
+    <div class="offline-banner" role="status"></div>
+
+    <main class="page-content">
+      <div class="page-header">
+        <div>
+          <h2 class="page-title" id="page-main-title">Add New Patient</h2>
+          <p class="page-subtitle">Register a patient and select tests</p>
+        </div>
+      </div>
+
+      <form id="patient-main-form" novalidate>
+        <!-- Returning patient suggestion -->
+        <div id="returning-patient-suggestion" style="display:none;margin-bottom:16px"></div>
+
+        <!-- Patient Details -->
+        <div class="form-card">
+          <div class="form-card-title">Patient Information</div>
+          <div class="form-row mb-4">
+            <div class="form-field">
+              <label class="form-label" for="patient-name">Full Name <span class="required">*</span></label>
+              <input class="form-input" type="text" id="patient-name" placeholder="Patient's full name" required>
+            </div>
+            <div class="form-field">
+              <label class="form-label" for="patient-mobile">Mobile <span class="required">*</span></label>
+              <input class="form-input" type="tel" id="patient-mobile" placeholder="10-digit mobile" maxlength="10" inputmode="numeric" required>
+            </div>
+          </div>
+          <div class="form-row mb-4">
+            <div class="form-field">
+              <label class="form-label" for="patient-age">Age <span class="required">*</span></label>
+              <input class="form-input" type="number" id="patient-age" min="0" max="130" placeholder="Years" required>
+            </div>
+            <div class="form-field">
+              <label class="form-label" for="patient-gender">Gender <span class="required">*</span></label>
+              <select class="form-select" id="patient-gender" required>
+                <option value="">Select gender</option>
+                <option value="male">Male</option>
+                <option value="female">Female</option>
+                <option value="other">Other</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-field">
+              <label class="form-label" for="patient-doctor">Referring Doctor</label>
+              <input class="form-input" type="text" id="patient-doctor" placeholder="Doctor name or clinic (optional)">
+            </div>
+            <div class="form-field">
+              <label class="form-label" for="patient-sample-date">Sample Collection Date <span class="required">*</span></label>
+              <input class="form-input" type="date" id="patient-sample-date" required>
+            </div>
+          </div>
+        </div>
+
+        <!-- Test Selection -->
+        <div class="form-card">
+          <div class="form-card-title">Select Tests</div>
+          <div class="form-field mb-4">
+            <label class="form-label" for="test-search-input">Search Tests</label>
+            <div class="topbar-search form-search" style="width:100%;margin-bottom:8px">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+              <input type="text" id="test-search-input" placeholder="Type to filter tests…">
+            </div>
+            <div class="test-picker" id="test-picker-container">
+              <div style="padding:12px;text-align:center"><span class="skel skel-text" style="width:60%"></span></div>
+            </div>
+          </div>
+          <div class="form-field">
+            <label class="form-label">Selected Tests</label>
+            <div class="selected-chips-bar" id="selected-tests-chips" style="display:flex;flex-wrap:wrap;gap:6px;min-height:28px">
+              <span class="text-faint text-xs">No tests selected</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Billing -->
+        <div class="form-card">
+          <div class="form-card-title">Billing</div>
+
+          <!-- Live total -->
+          <div class="billing-total-bar mb-6">
+            <div class="billing-total-label">Total Bill Amount</div>
+            <div class="billing-total-value" id="total-amount-display">₹0</div>
+            <input type="hidden" id="total-amount-hidden" value="0">
+          </div>
+
+          <!-- Discount (optional) -->
+          <div class="form-row mb-4">
+            <div class="form-field">
+              <label class="form-label" for="discount-amount">
+                Discount Amount (INR)
+                <span style="font-weight:400;color:var(--color-ink-faint);font-size:11px;margin-left:4px">— Optional</span>
+              </label>
+              <input class="form-input" type="number" id="discount-amount" min="0" step="0.01" value="" placeholder="0 (leave blank if no discount)">
+            </div>
+            <div class="form-field" style="align-self:flex-end">
+              <div style="background:var(--color-cherry-cola-tint-10);border:1px solid var(--color-border);border-radius:var(--radius-md);padding:10px 14px;">
+                <div style="font-size:var(--text-xs);color:var(--color-ink-muted);font-weight:600;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:2px">Net Payable</div>
+                <div id="net-payable-display" style="font-size:var(--text-xl);font-weight:700;color:var(--color-cherry-cola);font-variant-numeric:tabular-nums">₹0</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="form-row mb-4">
+            <div class="form-field">
+              <label class="form-label" for="amount-paid">Amount Paid Now (INR)</label>
+              <input class="form-input" type="number" id="amount-paid" min="0" step="0.01" value="0" placeholder="0">
+            </div>
+            <div class="form-field" id="payment-mode-section" style="display:none">
+              <label class="form-label" for="payment-mode">Payment Mode <span class="required">*</span></label>
+              <select class="form-select" id="payment-mode">
+                <option value="cash">Cash</option>
+                <option value="qr">QR / UPI</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- QR Code section -->
+          <div id="qr-code-section" style="display:none;margin-top:16px">
+            <div class="divider mb-4"></div>
+            <p class="text-sm text-muted mb-3">Scan to collect payment:</p>
+            <div id="qr-code-canvas" style="text-align:center;padding:20px;background:var(--color-bg);border-radius:var(--radius-md);border:1px solid var(--color-border)"></div>
+            <p class="text-xs text-faint text-center mt-2">After payment, click "Save Patient"</p>
+          </div>
+        </div>
+
+        <!-- Submit -->
+        <div style="display:flex;gap:12px;justify-content:flex-end;margin-bottom:40px">
+          <a href="/staff/patients.html" class="btn btn-ghost">Cancel</a>
+          <button type="submit" class="btn btn-primary btn-lg" id="submit-btn">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+            Save Patient
+          </button>
+        </div>
+      </form>
+    </main>
+  </div>
+</div>
+
+<div id="toast-container"></div>
+
+<script src="/assets/js/toast.js"></script>
+<script src="/assets/js/modal.js"></script>
+<script src="/assets/js/api-client.js"></script>
+<script src="/assets/js/offline-queue.js"></script>
+<script src="/assets/js/patient-form.js"></script>
+<script src="/assets/js/shell.js"></script>
+<script>
+(async function() {
+  await Shell.init({ pageTitle: 'Add Patient' });
+
+  // Set today as default sample date
+  const today = new Date().toISOString().split('T')[0];
+  document.getElementById('patient-sample-date').value = today;
+
+  // Check if editing existing patient
+  const params = new URLSearchParams(window.location.search);
+  const editId = params.get('id');
+  if (editId) {
+    document.getElementById('page-main-title').textContent = 'Edit Patient';
+    document.getElementById('topbar-title').textContent    = 'Edit Patient';
+    document.querySelector('.page-subtitle').textContent   = 'Update patient details and billing';
+  }
+
+  // Load tests and init form logic
+  await PatientForm.loadTests();
+  PatientForm.renderTestPicker('test-picker-container', 'test-search-input');
+  PatientForm.initPaymentMode();
+  PatientForm.initReturningPatientLookup();
+
+  // ── Live Net Payable Calculation ──────────────────────────────────────────
+  function updateNetPayable() {
+    const total    = parseFloat(document.getElementById('total-amount-hidden').value) || 0;
+    const discount = parseFloat(document.getElementById('discount-amount').value) || 0;
+    const net      = Math.max(0, total - discount);
+    const el = document.getElementById('net-payable-display');
+    if (el) el.textContent = '₹' + net.toLocaleString('en-IN', { minimumFractionDigits: 0 });
+  }
+
+  // Hook into total-amount-hidden changes via MutationObserver
+  const totalHiddenEl = document.getElementById('total-amount-hidden');
+  if (totalHiddenEl) {
+    new MutationObserver(updateNetPayable).observe(totalHiddenEl, { attributes: true, attributeFilter: ['value'] });
+    // Also patch PatientForm.updateTotal to call our function
+    const origUpdateTotal = PatientForm.updateTotal?.bind(PatientForm);
+    if (origUpdateTotal) {
+      PatientForm.updateTotal = function() {
+        origUpdateTotal();
+        setTimeout(updateNetPayable, 10);
+      };
+    }
+  }
+  document.getElementById('discount-amount')?.addEventListener('input', updateNetPayable);
+
+  // ── Auto-cap Amount Paid at Net Payable ───────────────────────────────────
+  function capAmountPaid() {
+    const total    = parseFloat(document.getElementById('total-amount-hidden').value) || 0;
+    const discount = parseFloat(document.getElementById('discount-amount').value) || 0;
+    const net      = Math.max(0, total - discount);
+    const field    = document.getElementById('amount-paid');
+    const entered  = parseFloat(field.value) || 0;
+    if (net > 0 && entered > net) {
+      field.value = net.toFixed(2);
+    }
+  }
+  document.getElementById('amount-paid')?.addEventListener('input', capAmountPaid);
+  document.getElementById('amount-paid')?.addEventListener('blur', capAmountPaid);
+  // Also cap when discount changes (net payable drops)
+  document.getElementById('discount-amount')?.addEventListener('input', capAmountPaid);
+
+  // Prefill if editing
+  if (editId) {
+    try {
+      const p = await API.get(`/api/v1/patients/${editId}`);
+      document.getElementById('patient-name').value        = p.name || '';
+      document.getElementById('patient-mobile').value      = p.mobile || '';
+      document.getElementById('patient-age').value         = p.age || '';
+      document.getElementById('patient-gender').value      = p.gender || '';
+      document.getElementById('patient-doctor').value      = p.doctor_name || '';
+      document.getElementById('patient-sample-date').value = p.sample_date ? p.sample_date.substring(0,10) : today;
+      document.getElementById('amount-paid').value         = p.amount_paid || 0;
+      document.getElementById('payment-mode').value        = p.payment_mode || 'cash';
+      if (p.discount_amount) {
+        document.getElementById('discount-amount').value = p.discount_amount;
+      }
+      if (p.tests) {
+        PatientForm.setSelectedTests(p.tests);
+        PatientForm.updateTotal();
+        PatientForm.renderSelectedChips();
+        PatientForm.renderTestPicker('test-picker-container', 'test-search-input');
+      }
+      updateNetPayable();
+    } catch { Toast.show('Failed to load patient data', 'error'); }
+  }
+
+  // ── Form Submit ───────────────────────────────────────────────────────────
+  document.getElementById('patient-main-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+
+    const name           = document.getElementById('patient-name').value.trim();
+    const mobile         = document.getElementById('patient-mobile').value.trim();
+    const age            = parseInt(document.getElementById('patient-age').value);
+    const gender         = document.getElementById('patient-gender').value;
+    const doctor         = document.getElementById('patient-doctor').value.trim();
+    const sampleDate     = document.getElementById('patient-sample-date').value;
+    let   amountPaid     = parseFloat(document.getElementById('amount-paid').value) || 0;
+    const mode           = document.getElementById('payment-mode')?.value || 'cash';
+    const testIds        = PatientForm.getSelectedTestIds();
+    const total          = parseFloat(document.getElementById('total-amount-hidden').value) || 0;
+    const discountAmount = parseFloat(document.getElementById('discount-amount').value) || 0;
+    const netPayable     = Math.max(0, total - discountAmount);
+
+    if (!name)        { Toast.show('Patient name is required', 'error'); return; }
+    if (!/^[6-9]\d{9}$/.test(mobile)) { Toast.show('Enter a valid 10-digit mobile number', 'error'); return; }
+    if (isNaN(age) || age < 0 || age > 130) { Toast.show('Enter a valid age', 'error'); return; }
+    if (!gender)      { Toast.show('Please select a gender', 'error'); return; }
+    if (!sampleDate)  { Toast.show('Sample date is required', 'error'); return; }
+    if (!testIds.length) { Toast.show('Please select at least one test', 'error'); return; }
+    if (discountAmount < 0) { Toast.show('Discount cannot be negative', 'error'); return; }
+    if (discountAmount > total) { Toast.show('Discount cannot exceed total bill amount', 'error'); return; }
+
+    // Enforce 20% - 100% billing validation rule (on net payable)
+    if (amountPaid > netPayable) {
+      amountPaid = netPayable;
+      document.getElementById('amount-paid').value = netPayable;
+    }
+    const minRequired = 0.20 * netPayable;
+    if (netPayable > 0 && amountPaid < minRequired) {
+      Toast.show(`Amount Paid must be at least 20% of net payable (min: ₹${minRequired.toFixed(2)})`, 'error');
+      return;
+    }
+
+    const btn = document.getElementById('submit-btn');
+    btn.setAttribute('aria-busy','true');
+    btn.innerHTML = `<span class="btn-loading-spinner"></span> Saving...`;
+
+    const idempotencyKey = API.uuidv4();
+    const payload = {
+      name, mobile, age, gender,
+      doctor_name: doctor,
+      sample_date: sampleDate,
+      test_ids: testIds,
+      total_amount: total,
+      discount_amount: discountAmount,
+      amount_paid: amountPaid,
+      payment_mode: amountPaid > 0 ? mode : null,
+    };
+
+    try {
+      if (!navigator.onLine) {
+        await OfflineQueue.enqueue(
+          editId ? `/api/v1/patients/${editId}` : '/api/v1/patients',
+          editId ? 'PATCH' : 'POST',
+          payload,
+          idempotencyKey,
+        );
+        Toast.show('Offline: patient saved locally and will sync when online.', 'warning', 6000);
+        PatientForm.clearForm();
+        document.getElementById('patient-main-form').reset();
+        return;
+      }
+
+      if (editId) {
+        await API.patch(`/api/v1/patients/${editId}`, payload, { idempotencyKey });
+        Toast.show('Patient updated successfully', 'success');
+      } else {
+        const res = await API.post('/api/v1/patients', payload, { idempotencyKey });
+        Toast.show(`Patient registered — ${res.patient_code}`, 'success');
+      }
+      PatientForm.clearForm();
+      setTimeout(() => window.location.href = '/staff/patients.html', 1500);
+    } catch (err) {
+      Toast.show(err.message || 'Failed to save patient', 'error');
+    } finally {
+      btn.removeAttribute('aria-busy');
+      btn.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg> Save Patient`;
+    }
+  });
+})();
+</script>
+</body>
+</html>

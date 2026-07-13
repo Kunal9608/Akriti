@@ -1,0 +1,124 @@
+"""Test catalog router."""
+from fastapi import APIRouter, Depends, Query
+from sqlalchemy.orm import Session
+from typing import Optional
+import uuid
+
+from backend.app.core.db import get_db
+from backend.app.dependencies import get_current_user, require_admin
+from backend.app.schemas.test import TestCreate, TestUpdate, DoctorCreate
+from backend.app.services import test_service
+from backend.app.repositories import test_repo
+
+router = APIRouter(tags=["tests"])
+
+
+# --- Tests ---
+test_router = APIRouter(prefix="/tests")
+
+@test_router.get("")
+def list_tests(
+    active_only: bool = True,
+    q: Optional[str] = None,
+    page: int = Query(1, ge=1),
+    page_size: int = Query(30, ge=1, le=1000),
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user),
+):
+    """Paginated + searchable test catalog."""
+    return test_service.get_tests_paginated(db, active_only, q, page, page_size)
+
+
+@test_router.get("/{test_id}/price-history")
+def get_price_history(
+    test_id: uuid.UUID,
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user),
+):
+    """Return price change history for a test."""
+    from backend.app.models.test_price_history import TestPriceHistory
+    from backend.app.models.user import User
+    from sqlalchemy.orm import joinedload
+    rows = (
+        db.query(TestPriceHistory)
+        .options(joinedload(TestPriceHistory.changed_by_user))
+        .filter(TestPriceHistory.test_id == test_id)
+        .order_by(TestPriceHistory.changed_at.desc())
+        .all()
+    )
+    return [
+        {
+            "changed_at": r.changed_at.isoformat() if r.changed_at else None,
+            "old_price": float(r.old_price),
+            "new_price": float(r.new_price),
+            "changed_by_name": r.changed_by_user.name if r.changed_by_user else None,
+        }
+        for r in rows
+    ]
+
+
+@test_router.get("/{test_id}")
+def get_test(
+    test_id: uuid.UUID,
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user),
+):
+    t = test_repo.get_test_by_id(db, test_id)
+    if not t:
+        from fastapi import HTTPException
+        raise HTTPException(status_code=404, detail="Test not found")
+    return test_service._test_to_dict(t)
+
+
+@test_router.post("", status_code=201)
+def create_test(
+    payload: TestCreate,
+    admin=Depends(require_admin),
+    db: Session = Depends(get_db),
+):
+    # map description -> category if provided
+    category = getattr(payload, 'description', None) or payload.category
+    return test_service.create_test(db, payload.name, payload.price, category, admin.id)
+
+
+@test_router.patch("/{test_id}")
+def update_test(
+    test_id: uuid.UUID,
+    payload: TestUpdate,
+    admin=Depends(require_admin),
+    db: Session = Depends(get_db),
+):
+    # If description provided, treat as category update
+    if payload.description is not None and payload.category is None:
+        payload.category = payload.description
+    return test_service.update_test(db, test_id, payload, admin.id)
+
+
+@test_router.delete("/{test_id}")
+def soft_delete_test(
+    test_id: uuid.UUID,
+    admin=Depends(require_admin),
+    db: Session = Depends(get_db),
+):
+    """Soft-delete — sets is_active=False."""
+    from backend.app.schemas.test import TestUpdate
+    payload = TestUpdate(is_active=False)
+    return test_service.update_test(db, test_id, payload, admin.id)
+
+
+# --- Doctors ---
+doctor_router = APIRouter(prefix="/doctors")
+
+@doctor_router.get("")
+def list_doctors(db: Session = Depends(get_db), current_user=Depends(get_current_user)):
+    return test_service.get_all_doctors(db)
+
+
+@doctor_router.post("", status_code=201)
+def create_doctor(payload: DoctorCreate, db: Session = Depends(get_db),
+                  current_user=Depends(get_current_user)):
+    return test_service.create_doctor(db, payload.name, payload.clinic_name, current_user.id)
+
+
+router.include_router(test_router)
+router.include_router(doctor_router)

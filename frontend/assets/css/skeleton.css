@@ -1,0 +1,127 @@
+/**
+ * AKRITI — SKELETON LOADING (SRS §6.1.5)
+ * Shape-matching shimmer placeholders — pure CSS, no external library.
+ * No page may show a blank white page or bare spinner while data loads.
+ */
+
+@keyframes pulse {
+  0%, 100% { opacity: .38; }
+  50% { opacity: .72; }
+}
+
+.skel {
+  display: inline-block;
+  border-radius: 6px;
+  background: var(--color-border);
+  animation: pulse 1.5s ease-in-out infinite;
+  min-height: 12px;
+}
+
+/* Prevent skeletons flashing for < 150ms — give a min visible time */
+.skel-deferred { opacity: 0; animation: skelFadeIn 0.15s 0.15s forwards, shimmer 1.6s 0.15s ease-in-out infinite; }
+@keyframes skelFadeIn { to { opacity: 1; } }
+
+/* ── Common skeleton shapes ────────────────────────────────────────────────── */
+.skel-text-xs  { height: 12px; }
+.skel-text-sm  { height: 13px; }
+.skel-text     { height: 14px; }
+.skel-text-lg  { height: 18px; }
+.skel-heading  { height: 24px; border-radius: var(--radius-sm); }
+.skel-kpi      { height: 32px; width: 90px; }
+
+.skel-badge    { height: 22px; width: 80px; border-radius: var(--radius-pill); }
+.skel-btn      { height: 36px; width: 100px; border-radius: var(--radius-md); }
+.skel-avatar   { width: 32px; height: 32px; border-radius: var(--radius-md); flex-shrink: 0; }
+.skel-icon     { width: 20px; height: 20px; border-radius: var(--radius-sm); flex-shrink: 0; }
+
+/* Width helpers */
+.skel-w-3  { width: 32px;  }
+.skel-w-4  { width: 48px;  }
+.skel-w-6  { width: 60px;  }
+.skel-w-8  { width: 80px;  }
+.skel-w-10 { width: 100px; }
+.skel-w-12 { width: 120px; }
+.skel-w-16 { width: 160px; }
+.skel-w-20 { width: 200px; }
+.skel-w-full { width: 100%; }
+
+/* ── Dashboard KPI card skeleton ───────────────────────────────────────────── */
+.skel-kpi-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-5) var(--space-6);
+}
+.skel-kpi-card .skel-label  { height: 12px; width: 80px; }
+.skel-kpi-card .skel-value  { height: 32px; width: 100px; }
+.skel-kpi-card .skel-sub    { height: 12px; width: 60px; }
+
+/* ── Table skeleton ─────────────────────────────────────────────────────────── */
+.skel-table-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  padding: 14px 22px;
+  border-top: 1px solid var(--color-border);
+}
+.skel-table-row .skel-cell-a { flex: 1; max-width: 80px; height: 14px; }
+.skel-table-row .skel-cell-b { flex: 2; height: 14px; }
+.skel-table-row .skel-cell-c { flex: 1; height: 14px; }
+.skel-table-row .skel-cell-d { flex: 1; max-width: 70px; height: 14px; }
+.skel-table-row .skel-cell-e { flex: 1; max-width: 90px; height: 22px; border-radius: var(--radius-pill); }
+
+/* ── Form field skeleton ───────────────────────────────────────────────────── */
+.skel-field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+.skel-field .skel-label { height: 12px; width: 80px; }
+.skel-field .skel-input { height: 40px; border-radius: var(--radius-md); }
+
+/* ── Timeline skeleton (patient timeline / report history) ─────────────────── */
+.skel-timeline { display: flex; flex-direction: column; gap: 0; }
+.skel-timeline-item {
+  display: flex;
+  gap: var(--space-4);
+  padding: var(--space-4) 0;
+  position: relative;
+}
+.skel-timeline-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  margin-top: 5px;
+}
+.skel-timeline-content { flex: 1; display: flex; flex-direction: column; gap: var(--space-2); }
+.skel-timeline-connector {
+  position: absolute;
+  left: 4px;
+  top: 26px;
+  bottom: -4px;
+  width: 2px;
+  background: var(--color-border);
+  animation: shimmer 1.6s ease-in-out infinite;
+  background-size: 100% 200%;
+}
+
+/* ── Chart skeleton ─────────────────────────────────────────────────────────── */
+.skel-chart {
+  width: 100%;
+  height: 200px;
+  border-radius: var(--radius-md);
+  position: relative;
+  overflow: hidden;
+}
+
+/* Camera/kiosk pulse ring — distinct from data shimmer */
+@keyframes kiosk-pulse {
+  0%, 100% { opacity: 0.3; transform: scale(1); }
+  50%       { opacity: 0.7; transform: scale(1.04); }
+}
+.kiosk-scanning-ring {
+  border: 2px solid var(--color-cherry-cola);
+  border-radius: 50%;
+  animation: kiosk-pulse 1.5s ease-in-out infinite;
+}

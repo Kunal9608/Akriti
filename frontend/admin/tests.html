@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Tests — Akriti Diagnostics Center</title>
+  <link rel="stylesheet" href="/assets/css/tokens.css">
+  <link rel="stylesheet" href="/assets/css/components.css">
+  <link rel="stylesheet" href="/assets/css/skeleton.css">
+  <link rel="stylesheet" href="/assets/css/layout.css">
+  <script src="/assets/js/theme.js"></script>
+</head>
+<body>
+<div class="app-shell">
+  <div class="sidebar-overlay" id="sidebar-overlay"></div>
+  <nav class="sidebar" id="sidebar"></nav>
+
+  <div class="main-area">
+    <header class="topbar">
+      <div class="topbar-left">
+        <button class="hamburger" id="hamburger-btn" aria-label="Open menu">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+        </button>
+        <h1 class="page-heading" id="topbar-title">Tests</h1>
+      </div>
+      <div class="topbar-right">
+        <button class="topbar-btn" data-theme-toggle aria-label="Toggle theme">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></svg>
+        </button>
+      </div>
+    </header>
+    <div class="offline-banner" role="status"></div>
+
+    <main class="page-content">
+      <div class="page-header">
+        <div>
+          <h2 class="page-title">Test Catalog</h2>
+          <p class="page-subtitle">Manage tests, prices, and availability</p>
+        </div>
+        <div class="page-actions">
+          <button class="btn btn-primary" id="add-test-btn">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            Add Test
+          </button>
+        </div>
+      </div>
+
+      <div class="filters-bar">
+        <div class="topbar-search" style="width:260px">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          <input type="text" id="search-test" placeholder="Search tests…" autocomplete="off">
+        </div>
+      </div>
+
+      <div id="tests-table-container"></div>
+    </main>
+  </div>
+</div>
+
+<!-- Add/Edit Test Modal -->
+<div class="modal-backdrop" id="test-modal">
+  <div class="modal modal-sm" role="dialog" aria-modal="true" aria-labelledby="test-modal-title">
+    <div class="modal-header">
+      <h2 class="modal-title" id="test-modal-title">Add Test</h2>
+      <button class="modal-close" id="test-modal-close" aria-label="Close">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <div class="modal-body">
+      <form id="test-form" novalidate>
+        <input type="hidden" id="test-id">
+        <div class="form-field mb-4" id="test-code-row" style="display:none">
+          <label class="form-label" for="test-code-val">Test ID</label>
+          <input class="form-input" type="text" id="test-code-val" disabled>
+        </div>
+        <div class="form-field mb-4">
+          <label class="form-label" for="test-name">Test Name <span class="required">*</span></label>
+          <input class="form-input" type="text" id="test-name" placeholder="e.g. CBC 5 Part">
+        </div>
+        <div class="form-field mb-4">
+          <label class="form-label" for="test-price">Price (INR) <span class="required">*</span></label>
+          <input class="form-input" type="number" id="test-price" min="1" step="1" placeholder="e.g. 230">
+        </div>
+        <div class="form-field">
+          <label class="form-label" for="test-desc">Description</label>
+          <input class="form-input" type="text" id="test-desc" placeholder="Optional notes">
+        </div>
+      </form>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" id="test-cancel-btn">Cancel</button>
+      <button class="btn btn-primary" id="test-save-btn">Save Test</button>
+    </div>
+  </div>
+</div>
+
+<!-- Price History Modal -->
+<div class="modal-backdrop" id="price-history-modal">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="ph-title">
+    <div class="modal-header">
+      <h2 class="modal-title" id="ph-title">Price History</h2>
+      <button class="modal-close" id="ph-close" aria-label="Close">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <div class="modal-body" id="ph-body"></div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="Modal.close('price-history-modal')">Close</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast-container"></div>
+
+<script src="/assets/js/toast.js"></script>
+<script src="/assets/js/modal.js"></script>
+<script src="/assets/js/api-client.js"></script>
+<script src="/assets/js/table.js"></script>
+<script src="/assets/js/shell.js"></script>
+<script>
+(async function() {
+  await Shell.init({ role: 'admin', pageTitle: 'Tests' });
+
+  let editingId = null;
+
+  const table = new DataTable({
+    containerId: 'tests-table-container',
+    columns: [
+      { key: null,           label: 'S.No.',        width: '60px',  render: (_, __, idx) => `<span class="tabular">${idx}</span>` },
+      { key: 'test_code',    label: 'Test ID',      width: '110px', render: v => v ? `<span class="tabular fw-600 text-primary">${escapeHtml(v)}</span>` : '—' },
+      { key: 'name',         label: 'Test Name',    render: v => `<span class="fw-600">${escapeHtml(v)}</span>` },
+      { key: 'description',  label: 'Description',  render: v => escapeHtml(v || '—') },
+      { key: 'price',        label: 'Price',        width: '100px', render: v => `<span class="tabular fw-600">${formatCurrency(v)}</span>` },
+      { key: 'is_active',    label: 'Status',       width: '90px',  render: v => v ? `<span class="badge badge-success">Active</span>` : `<span class="badge badge-neutral">Inactive</span>` },
+      { key: null,           label: 'Actions',      width: '220px', render: (_, row) => `
+        <div style="display:flex;gap:5px">
+          <button class="btn btn-sm btn-ghost" onclick="openEdit('${row.id}')">Edit Price</button>
+          <button class="btn btn-sm btn-ghost" onclick="showPriceHistory('${row.id}','${escapeHtml(row.name)}')">History</button>
+          ${row.is_active ? `<button class="btn btn-sm btn-danger" onclick="softDelete('${row.id}','${escapeHtml(row.name)}')">Remove</button>` : ''}
+        </div>
+      ` },
+    ],
+    fetchFn: async (params) => {
+      const qs = new URLSearchParams({ page: params.page, page_size: params.page_size, ...(params.q && {q:params.q}) });
+      return await API.get(`/api/v1/tests?${qs}`);
+    },
+    pageSize: 30,
+    emptyMessage: 'No tests in catalog',
+  });
+  table.load();
+
+  let searchTimer;
+  document.getElementById('search-test').addEventListener('input', e => {
+    clearTimeout(searchTimer);
+    searchTimer = setTimeout(() => { table.setFilter('q', e.target.value); table.load(); }, 400);
+  });
+
+  document.getElementById('add-test-btn').addEventListener('click', () => {
+    editingId = null;
+    document.getElementById('test-modal-title').textContent = 'Add Test';
+    document.getElementById('test-form').reset();
+    document.getElementById('test-id').value = '';
+    document.getElementById('test-code-row').style.display = 'none';
+    Modal.open('test-modal');
+  });
+
+  window.openEdit = async function(id) {
+    editingId = id;
+    document.getElementById('test-modal-title').textContent = 'Edit Test Price';
+    document.getElementById('test-code-row').style.display = '';
+    Modal.open('test-modal');
+    try {
+      const t = await API.get(`/api/v1/tests/${id}`);
+      document.getElementById('test-name').value  = t.name || '';
+      document.getElementById('test-price').value = t.price || '';
+      document.getElementById('test-desc').value  = t.description || '';
+      document.getElementById('test-code-val').value = t.test_code || '—';
+    } catch { Toast.show('Failed to load test', 'error'); Modal.close('test-modal'); }
+  };
+
+  document.getElementById('test-save-btn').addEventListener('click', async () => {
+    const name  = document.getElementById('test-name').value.trim();
+    const price = parseFloat(document.getElementById('test-price').value);
+    const desc  = document.getElementById('test-desc').value.trim();
+    if (!name || isNaN(price) || price < 1) { Toast.show('Enter a valid name and price', 'warning'); return; }
+
+    const btn = document.getElementById('test-save-btn');
+    btn.setAttribute('aria-busy','true'); btn.innerHTML = `<span class="btn-loading-spinner"></span> Saving...`;
+    try {
+      if (editingId) {
+        await API.patch(`/api/v1/tests/${editingId}`, { name, price, description: desc });
+        Toast.show('Test updated. Price history recorded.', 'success');
+      } else {
+        await API.post('/api/v1/tests', { name, price, description: desc });
+        Toast.show('Test added to catalog', 'success');
+      }
+      Modal.close('test-modal');
+      table.refresh();
+    } catch (err) { Toast.show(err.message || 'Failed to save', 'error'); }
+    finally { btn.removeAttribute('aria-busy'); btn.innerHTML = 'Save Test'; }
+  });
+
+  document.getElementById('test-cancel-btn').addEventListener('click', () => Modal.close('test-modal'));
+  document.getElementById('test-modal-close').addEventListener('click', () => Modal.close('test-modal'));
+
+  window.softDelete = async function(id, name) {
+    const ok = await Modal.confirm('Remove Test', `Remove "${name}" from the catalog? Existing patient bills are not affected.`, { confirmText: 'Remove', danger: true });
+    if (!ok) return;
+    try {
+      await API.delete(`/api/v1/tests/${id}`);
+      Toast.show('Test removed', 'success');
+      table.refresh();
+    } catch { Toast.show('Failed to remove test', 'error'); }
+  };
+
+  window.showPriceHistory = async function(id, name) {
+    document.getElementById('ph-title').textContent = `Price History — ${name}`;
+    document.getElementById('ph-body').innerHTML = `<div class="skel skel-chart"></div>`;
+    Modal.open('price-history-modal');
+    try {
+      const hist = await API.get(`/api/v1/tests/${id}/price-history`);
+      if (!hist || !hist.length) {
+        document.getElementById('ph-body').innerHTML = `<p class="text-muted text-sm">No price changes recorded.</p>`;
+        return;
+      }
+      document.getElementById('ph-body').innerHTML = `
+        <table class="data-table">
+          <thead><tr><th>Date</th><th>Old Price</th><th>New Price</th><th>Changed By</th></tr></thead>
+          <tbody>${hist.map(h => `<tr>
+            <td>${formatDateTime(h.changed_at)}</td>
+            <td class="tabular">${formatCurrency(h.old_price)}</td>
+            <td class="tabular fw-600">${formatCurrency(h.new_price)}</td>
+            <td>${escapeHtml(h.changed_by_name || '—')}</td>
+          </tr>`).join('')}</tbody>
+        </table>
+      `;
+    } catch { document.getElementById('ph-body').innerHTML = `<p class="text-muted text-sm">Failed to load history.</p>`; }
+  };
+
+  document.getElementById('ph-close').addEventListener('click', () => Modal.close('price-history-modal'));
+})();
+</script>
+</body>
+</html>

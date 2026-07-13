@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>My Settings — Akriti Diagnostics Center</title>
+  <link rel="stylesheet" href="/assets/css/tokens.css">
+  <link rel="stylesheet" href="/assets/css/components.css">
+  <link rel="stylesheet" href="/assets/css/skeleton.css">
+  <link rel="stylesheet" href="/assets/css/layout.css">
+  <script src="/assets/js/theme.js"></script>
+  <style>
+    .settings-section { background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-lg); padding: 24px; margin-bottom: 24px; }
+    .settings-section-title { font-family: var(--font-display); font-size: var(--text-lg); font-weight: 600; color: var(--color-ink); margin-bottom: 20px; }
+  </style>
+</head>
+<body>
+<div class="app-shell">
+  <div class="sidebar-overlay" id="sidebar-overlay"></div>
+  <nav class="sidebar" id="sidebar"></nav>
+
+  <div class="main-area">
+    <header class="topbar">
+      <div class="topbar-left">
+        <button class="hamburger" id="hamburger-btn" aria-label="Open menu">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+        </button>
+        <h1 class="page-heading" id="topbar-title">Settings</h1>
+      </div>
+      <div class="topbar-right">
+        <button class="topbar-btn" data-theme-toggle aria-label="Toggle theme">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></svg>
+        </button>
+      </div>
+    </header>
+    <div class="offline-banner" role="status"></div>
+
+    <main class="page-content">
+      <div class="page-header">
+        <div>
+          <h2 class="page-title">My Account Settings</h2>
+          <p class="page-subtitle">Change password, manage sessions, view login history</p>
+        </div>
+      </div>
+
+      <!-- Change Password -->
+      <div class="settings-section">
+        <div class="settings-section-title">Change Password</div>
+        <form id="pw-form" novalidate style="max-width:400px">
+          <div class="form-field mb-4">
+            <label class="form-label" for="current-pw">Current Password <span class="required">*</span></label>
+            <div style="position: relative;">
+              <input class="form-input" type="password" id="current-pw" autocomplete="current-password" style="padding-right: 40px;">
+              <button type="button" class="password-toggle-btn" data-target="current-pw" style="position: absolute; right: 12px; top: 50%; transform: translateY(-50%); background: none; border: none; padding: 0; cursor: pointer; color: var(--color-ink-muted); display: flex; align-items: center;" aria-label="Show password">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+              </button>
+            </div>
+          </div>
+          <div class="form-field mb-4">
+            <label class="form-label" for="new-pw">New Password <span class="required">*</span></label>
+            <div style="position: relative;">
+              <input class="form-input" type="password" id="new-pw" autocomplete="new-password" style="padding-right: 40px;">
+              <button type="button" class="password-toggle-btn" data-target="new-pw" style="position: absolute; right: 12px; top: 50%; transform: translateY(-50%); background: none; border: none; padding: 0; cursor: pointer; color: var(--color-ink-muted); display: flex; align-items: center;" aria-label="Show password">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+              </button>
+            </div>
+            <span class="form-hint">Min 6 chars, at least one letter and one digit. No special characters.</span>
+          </div>
+          <div class="form-field mb-6">
+            <label class="form-label" for="confirm-pw">Confirm New Password <span class="required">*</span></label>
+            <div style="position: relative;">
+              <input class="form-input" type="password" id="confirm-pw" autocomplete="new-password" style="padding-right: 40px;">
+              <button type="button" class="password-toggle-btn" data-target="confirm-pw" style="position: absolute; right: 12px; top: 50%; transform: translateY(-50%); background: none; border: none; padding: 0; cursor: pointer; color: var(--color-ink-muted); display: flex; align-items: center;" aria-label="Show password">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+              </button>
+            </div>
+          </div>
+          <button type="submit" class="btn btn-primary" id="change-pw-btn">Change Password</button>
+        </form>
+      </div>
+
+      <!-- Active Sessions -->
+      <div class="settings-section">
+        <div class="settings-section-title">My Active Sessions</div>
+        <div id="my-sessions-list">
+          <span class="skel skel-text skel-w-full mb-3"></span>
+          <span class="skel skel-text skel-w-20"></span>
+        </div>
+      </div>
+
+      <!-- My Login History -->
+      <div class="settings-section">
+        <div class="settings-section-title">My Login History</div>
+        <div id="my-login-history-container"></div>
+      </div>
+    </main>
+  </div>
+</div>
+
+<div id="toast-container"></div>
+<script src="/assets/js/toast.js"></script>
+<script src="/assets/js/modal.js"></script>
+<script src="/assets/js/api-client.js"></script>
+<script src="/assets/js/table.js"></script>
+<script src="/assets/js/shell.js"></script>
+<script>
+(async function() {
+  await Shell.init({ pageTitle: 'Settings' });
+
+  // ── Change Password ───────────────────────────────────────────────────────
+  document.getElementById('pw-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const current = document.getElementById('current-pw').value;
+    const pw      = document.getElementById('new-pw').value;
+    const confirm = document.getElementById('confirm-pw').value;
+    const policy  = /^(?=.*[A-Za-z])(?=.*\d)[A-Za-z0-9]{6,}$/;
+
+    if (!current) { Toast.show('Enter your current password', 'error'); return; }
+    if (!policy.test(pw)) { Toast.show('New password must be 6+ chars with letters and digits, no special chars', 'error'); return; }
+    if (pw !== confirm)   { Toast.show('Passwords do not match', 'error'); return; }
+
+    const btn = document.getElementById('change-pw-btn');
+    btn.setAttribute('aria-busy','true'); btn.innerHTML = `<span class="btn-loading-spinner"></span> Updating...`;
+    try {
+      await API.post('/api/v1/auth/password/change', { current_password: current, new_password: pw });
+      Toast.show('Password changed successfully', 'success');
+      document.getElementById('pw-form').reset();
+    } catch (err) { Toast.show(err.message || 'Failed to change password', 'error'); }
+    finally { btn.removeAttribute('aria-busy'); btn.innerHTML = 'Change Password'; }
+  });
+
+  // ── My Sessions ───────────────────────────────────────────────────────────
+  async function loadMySessions() {
+    try {
+      const sessions = await API.get('/api/v1/sessions');
+      if (!sessions || !sessions.length) {
+        document.getElementById('my-sessions-list').innerHTML = `<p class="text-muted text-sm">No other active sessions.</p>`;
+        return;
+      }
+      document.getElementById('my-sessions-list').innerHTML = sessions.map(s => `
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--color-border)">
+          <div>
+            <div class="fw-600 text-sm">${escapeHtml(s.device_label || 'Unknown device')}</div>
+            <div class="text-xs text-muted">${escapeHtml(s.ip_address || '—')} · ${formatDateTime(s.issued_at)} ${s.is_current ? '<strong style="color:var(--color-success)">(Current)</strong>' : ''}</div>
+          </div>
+          ${!s.is_current ? `<button class="btn btn-sm btn-danger" onclick="revokeMySession('${s.id}')">Revoke</button>` : ''}
+        </div>
+      `).join('');
+    } catch { document.getElementById('my-sessions-list').innerHTML = `<p class="text-muted text-sm">Could not load sessions.</p>`; }
+  }
+  loadMySessions();
+
+  window.revokeMySession = async function(id) {
+    const ok = await Modal.confirm('Revoke Session', 'This will sign out that device. Continue?', { confirmText: 'Revoke', danger: true });
+    if (!ok) return;
+    try {
+      await API.post(`/api/v1/sessions/${id}/revoke`, {});
+      Toast.show('Session revoked', 'success');
+      loadMySessions();
+    } catch { Toast.show('Failed to revoke', 'error'); }
+  };
+
+  // ── My Login History ──────────────────────────────────────────────────────
+  const lhTable = new DataTable({
+    containerId: 'my-login-history-container',
+    columns: [
+      { key: 'outcome',      label: 'Outcome',   width: '120px', render: v => statusBadge(v) },
+      { key: 'ip_address',   label: 'IP',        width: '130px', render: v => escapeHtml(v || '—') },
+      { key: 'attempted_at', label: 'Time',      width: '160px', render: v => formatDateTime(v) },
+    ],
+    fetchFn: async (params) => {
+      const qs = new URLSearchParams({ page: params.page, page_size: params.page_size });
+      return await API.get(`/api/v1/login-history?${qs}`);
+    },
+    pageSize: 15,
+    emptyMessage: 'No login history',
+  });
+  lhTable.load();
+})();
+</script>
+</body>
+</html>

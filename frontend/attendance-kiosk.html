@@ -1,0 +1,451 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Attendance Kiosk — Akriti Diagnostics Center</title>
+  <link rel="stylesheet" href="/assets/css/tokens.css">
+  <link rel="stylesheet" href="/assets/css/components.css">
+  <link rel="stylesheet" href="/assets/css/skeleton.css">
+  <link rel="stylesheet" href="/assets/css/layout.css">
+  <style>
+    * { box-sizing: border-box; }
+    html, body { height: 100%; margin: 0; }
+
+    body {
+      background: #0D1A17;
+      color: #E8F4F0;
+      font-family: 'Inter', sans-serif;
+    }
+
+    .kiosk-shell {
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 32px;
+      gap: 32px;
+    }
+
+    .kiosk-header {
+      text-align: center;
+    }
+
+    .kiosk-brand {
+      font-family: 'Fraunces', serif;
+      font-size: 22px;
+      font-weight: 700;
+      color: rgba(232, 244, 240, 0.6);
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      margin-bottom: 4px;
+    }
+
+    .kiosk-subtitle {
+      font-size: 13px;
+      color: rgba(232, 244, 240, 0.35);
+      letter-spacing: 0.06em;
+    }
+
+    .kiosk-camera-area {
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    /* Scanning ring */
+    .scanning-ring-outer {
+      position: absolute;
+      width: 380px;
+      height: 380px;
+      border-radius: 50%;
+      border: 2px solid rgba(154, 0, 2, 0.25);
+      animation: ring-pulse 2s ease-in-out infinite;
+      pointer-events: none;
+    }
+
+    .scanning-ring-inner {
+      position: absolute;
+      width: 320px;
+      height: 320px;
+      border-radius: 50%;
+      border: 2.5px solid rgba(154, 0, 2, 0.4);
+      animation: ring-pulse 2s ease-in-out infinite reverse;
+      pointer-events: none;
+    }
+
+    .scanning-arc {
+      position: absolute;
+      width: 354px;
+      height: 354px;
+      border-radius: 50%;
+      border: 3px solid transparent;
+      border-top-color: #9A0002;
+      border-right-color: rgba(154, 0, 2, 0.4);
+      animation: arc-spin 1.8s linear infinite;
+      pointer-events: none;
+    }
+
+    @keyframes ring-pulse {
+      0%, 100% { transform: scale(1); opacity: 1; }
+      50%       { transform: scale(1.04); opacity: 0.6; }
+    }
+
+    @keyframes arc-spin {
+      from { transform: rotate(0deg); }
+      to   { transform: rotate(360deg); }
+    }
+
+    .kiosk-video-wrap {
+      position: relative;
+      width: 310px;
+      height: 310px;
+      border-radius: 50%;
+      overflow: hidden;
+      border: 3px solid rgba(154, 0, 2, 0.5);
+      box-shadow: 0 0 80px rgba(154, 0, 2, 0.15), 0 0 40px rgba(0,0,0,0.6);
+      background: #0a1210;
+    }
+
+    .kiosk-video-wrap video {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+
+    .kiosk-video-wrap canvas {
+      display: none;
+    }
+
+    /* Status display */
+    .kiosk-status {
+      text-align: center;
+      min-height: 80px;
+    }
+
+    .status-main {
+      font-family: 'Fraunces', serif;
+      font-size: 28px;
+      font-weight: 600;
+      color: rgba(232, 244, 240, 0.9);
+      margin-bottom: 6px;
+    }
+
+    .status-main.recognized {
+      color: #4CAF7D;
+    }
+
+    .status-main.failed {
+      color: #E05B5B;
+    }
+
+    .status-sub {
+      font-size: 13px;
+      color: rgba(232, 244, 240, 0.4);
+    }
+
+    /* Recent log */
+    .kiosk-log-card {
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 16px;
+      padding: 20px 24px;
+      width: 360px;
+      max-width: 100%;
+    }
+
+    .kiosk-log-title {
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: rgba(232,244,240,0.3);
+      margin-bottom: 14px;
+    }
+
+    .kiosk-log-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 8px 0;
+      border-bottom: 1px solid rgba(255,255,255,0.05);
+    }
+
+    .kiosk-log-item:last-child { border-bottom: none; }
+
+    .kiosk-log-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #4CAF7D;
+      flex-shrink: 0;
+    }
+
+    .kiosk-log-name { font-weight: 600; font-size: 14px; color: rgba(232,244,240,0.85); }
+    .kiosk-log-time { font-size: 12px; color: rgba(232,244,240,0.3); margin-top: 1px; }
+
+    /* Offline banner (kiosk variant) */
+    .kiosk-offline {
+      position: fixed;
+      top: 16px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(220, 80, 80, 0.9);
+      color: #fff;
+      padding: 8px 20px;
+      border-radius: 40px;
+      font-size: 13px;
+      font-weight: 600;
+      display: none;
+      z-index: 100;
+    }
+
+    .kiosk-offline.show { display: block; }
+
+    /* Buttons */
+    .kiosk-actions {
+      display: flex;
+      gap: 12px;
+    }
+
+    .kiosk-btn {
+      padding: 12px 24px;
+      border-radius: 12px;
+      font-family: 'Inter', sans-serif;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      border: none;
+      transition: all 0.2s;
+    }
+
+    .kiosk-btn-primary {
+      background: #9A0002;
+      color: #fff;
+    }
+
+    .kiosk-btn-primary:hover { background: #b50003; }
+    .kiosk-btn-primary:disabled { background: rgba(154,0,2,0.3); cursor: not-allowed; }
+
+    .kiosk-btn-ghost {
+      background: rgba(255,255,255,0.06);
+      color: rgba(232,244,240,0.6);
+      border: 1px solid rgba(255,255,255,0.1);
+    }
+
+    .kiosk-btn-ghost:hover { background: rgba(255,255,255,0.1); }
+
+    /* Success flash */
+    @keyframes flash-success {
+      0%   { box-shadow: 0 0 80px rgba(154,0,2,0.15), 0 0 40px rgba(0,0,0,0.6); }
+      50%  { box-shadow: 0 0 100px rgba(76,175,125,0.4), 0 0 40px rgba(0,0,0,0.4); }
+      100% { box-shadow: 0 0 80px rgba(154,0,2,0.15), 0 0 40px rgba(0,0,0,0.6); }
+    }
+
+    .video-flash { animation: flash-success 0.8s ease; }
+
+    @media(max-width: 480px) {
+      .kiosk-video-wrap { width: 240px; height: 240px; }
+      .scanning-ring-outer { width: 300px; height: 300px; }
+      .scanning-ring-inner { width: 250px; height: 250px; }
+      .scanning-arc { width: 275px; height: 275px; }
+    }
+  </style>
+</head>
+<body>
+<div class="kiosk-offline" id="kiosk-offline-banner">Offline — Attendance queued locally</div>
+
+<div class="kiosk-shell">
+  <!-- Brand -->
+  <div class="kiosk-header">
+    <div class="kiosk-brand">Akriti Diagnostics</div>
+    <div class="kiosk-subtitle">Attendance Kiosk — Face Recognition</div>
+  </div>
+
+  <!-- Camera area -->
+  <div class="kiosk-camera-area">
+    <div class="scanning-ring-outer"></div>
+    <div class="scanning-arc"></div>
+    <div class="scanning-ring-inner"></div>
+    <div class="kiosk-video-wrap" id="kiosk-video-wrap">
+      <video id="kiosk-video" autoplay muted playsinline></video>
+      <canvas id="kiosk-canvas"></canvas>
+    </div>
+  </div>
+
+  <!-- Status -->
+  <div class="kiosk-status">
+    <div class="status-main" id="status-main">Initializing camera…</div>
+    <div class="status-sub" id="status-sub">Please wait</div>
+  </div>
+
+  <!-- Actions -->
+  <div class="kiosk-actions">
+    <button class="kiosk-btn kiosk-btn-primary" id="capture-btn" disabled>Capture</button>
+    <button class="kiosk-btn kiosk-btn-ghost" id="back-btn">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" style="display:inline;vertical-align:middle;margin-right:4px"><polyline points="15 18 9 12 15 6"/></svg>
+      Back
+    </button>
+  </div>
+
+  <!-- Recent log -->
+  <div class="kiosk-log-card">
+    <div class="kiosk-log-title">Recent Check-ins</div>
+    <div id="kiosk-log-list">
+      <div class="kiosk-log-item" style="color:rgba(232,244,240,0.25);font-size:13px">No check-ins yet</div>
+    </div>
+  </div>
+</div>
+
+<div id="toast-container"></div>
+
+<script src="/assets/js/toast.js"></script>
+<script src="/assets/js/api-client.js"></script>
+<script src="/assets/js/face-capture.js"></script>
+<script src="/assets/js/offline-queue.js"></script>
+<script>
+(async function() {
+  const statusMain = document.getElementById('status-main');
+  const statusSub  = document.getElementById('status-sub');
+  const captureBtn = document.getElementById('capture-btn');
+  const offlineBanner = document.getElementById('kiosk-offline-banner');
+  const logList = document.getElementById('kiosk-log-list');
+  const recentLog = [];
+
+  let fc = null;
+  let isCapturing = false;
+  let autoScanInterval = null;
+
+  // ── Init camera ────────────────────────────────────────────────────────────
+  fc = new FaceCapture({
+    videoEl: 'kiosk-video',
+    canvasEl: 'kiosk-canvas',
+    mirror: true,
+    onError: (msg) => {
+      statusMain.textContent = 'Camera Error';
+      statusSub.textContent = msg;
+    },
+  });
+
+  const started = await fc.start();
+  if (started) {
+    statusMain.textContent = 'Ready';
+    statusSub.textContent = 'Position face within the circle';
+    captureBtn.disabled = false;
+
+    // Auto-scan every 3s
+    autoScanInterval = setInterval(doCapture, 3000);
+  }
+
+  // ── Connectivity ──────────────────────────────────────────────────────────
+  async function checkConnectivity() {
+    try {
+      const res = await fetch('/health', { method: 'GET', cache: 'no-store' });
+      const online = res.ok;
+      offlineBanner.classList.toggle('show', !online);
+    } catch {
+      offlineBanner.classList.add('show');
+    }
+  }
+  checkConnectivity();
+  setInterval(checkConnectivity, 30000);
+
+  // ── Capture & recognize ───────────────────────────────────────────────────
+  async function doCapture() {
+    if (isCapturing || !fc) return;
+    isCapturing = true;
+
+    const frame = fc.captureFrame(true);
+    if (!frame) {
+      isCapturing = false;
+      return; // blank frame, skip silently
+    }
+
+    const idempotencyKey = API.uuidv4();
+
+    try {
+      let res;
+      if (!navigator.onLine) {
+        // Queue offline
+        await OfflineQueue.enqueue('/api/v1/attendance/recognize', 'POST', { image_data: frame }, idempotencyKey);
+        setStatus('Offline', 'Check-in queued locally', false);
+        isCapturing = false;
+        return;
+      }
+
+      res = await API.post('/api/v1/attendance/recognize', { image_data: frame }, { idempotencyKey, silent: true });
+
+      if (res.recognized && res.staff_name) {
+        // Flash green
+        document.getElementById('kiosk-video-wrap').classList.add('video-flash');
+        setTimeout(() => document.getElementById('kiosk-video-wrap').classList.remove('video-flash'), 900);
+
+        const action = res.action || 'Checked In';
+        const timeStr = new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
+
+        setStatus(`${res.staff_name}`, `${action} at ${timeStr}`, true);
+        addToLog(res.staff_name, action, timeStr);
+      } else if (res.low_confidence) {
+        setStatus('Face not recognized', `Confidence: ${(res.confidence * 100).toFixed(0)}% — try again`, false);
+      }
+      // If no face detected at all, remain silent (auto-scan)
+    } catch (err) {
+      // Silently ignore failed auto-scan attempts
+    } finally {
+      isCapturing = false;
+    }
+  }
+
+  function setStatus(main, sub, success = false) {
+    statusMain.textContent = main;
+    statusMain.className   = 'status-main' + (success ? ' recognized' : '');
+    statusSub.textContent  = sub;
+    // Reset after 4s
+    setTimeout(() => {
+      statusMain.textContent = 'Ready';
+      statusMain.className   = 'status-main';
+      statusSub.textContent  = 'Position face within the circle';
+    }, 4000);
+  }
+
+  function addToLog(name, action, time) {
+    recentLog.unshift({ name, action, time });
+    if (recentLog.length > 5) recentLog.pop();
+    logList.innerHTML = recentLog.map(e => `
+      <div class="kiosk-log-item">
+        <div class="kiosk-log-dot"></div>
+        <div>
+          <div class="kiosk-log-name">${escapeHtml(e.name)}</div>
+          <div class="kiosk-log-time">${escapeHtml(e.action)} · ${escapeHtml(e.time)}</div>
+        </div>
+      </div>
+    `).join('');
+  }
+
+  // Manual capture button
+  captureBtn.addEventListener('click', doCapture);
+
+  // Back button
+  document.getElementById('back-btn').addEventListener('click', () => {
+    if (autoScanInterval) clearInterval(autoScanInterval);
+    fc?.stop();
+    history.back();
+  });
+
+  // Cleanup on unload
+  window.addEventListener('beforeunload', () => {
+    if (autoScanInterval) clearInterval(autoScanInterval);
+    fc?.stop();
+  });
+
+  // Helper (inline since shell.js not loaded here)
+  function escapeHtml(str) {
+    return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+})();
+</script>
+</body>
+</html>

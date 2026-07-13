@@ -1,0 +1,69 @@
+"""Audit service — hash-chained immutable log writer."""
+import json
+from datetime import datetime, timezone
+from typing import Optional, Any
+import uuid
+
+from backend.app.core.security import sha256_hex, canonical_json
+from backend.app.repositories import audit_repo
+
+
+def log(db, action: str, actor_user_id: Optional[uuid.UUID] = None,
+        entity_type: Optional[str] = None, entity_id: Optional[uuid.UUID] = None,
+        before: Optional[Any] = None, after: Optional[Any] = None,
+        ip_address: Optional[str] = None):
+    """
+    Write a hash-chained audit log entry.
+    The record_hash links to the previous row — any tampering breaks the chain.
+    """
+    try:
+        last_row = audit_repo.get_last_row(db)
+        prev_hash = last_row.record_hash if last_row else "GENESIS"
+
+        canonical = canonical_json({
+            "action": action,
+            "entity_type": entity_type,
+            "entity_id": str(entity_id) if entity_id else None,
+            "before": before,
+            "after": after,
+            "occurred_at": datetime.now(timezone.utc).isoformat(),
+        })
+        record_hash = sha256_hex(canonical + prev_hash)
+
+        audit_repo.insert_log(
+            db,
+            actor_user_id=actor_user_id,
+            action=action,
+            entity_type=entity_type,
+            entity_id=entity_id,
+            before_value=before,
+            after_value=after,
+            ip_address=ip_address,
+            record_hash=record_hash,
+            prev_hash=prev_hash,
+        )
+    except Exception:
+        # Audit log must never crash the main operation
+        pass
+
+
+def verify_chain(db) -> tuple[bool, Optional[int]]:
+    """Verify hash chain integrity. Returns (is_valid, first_bad_id)."""
+    rows = audit_repo.get_all_ordered(db)
+    expected_prev = "GENESIS"
+
+    for row in rows:
+        canonical = canonical_json({
+            "action": row.action,
+            "entity_type": row.entity_type,
+            "entity_id": str(row.entity_id) if row.entity_id else None,
+            "before": row.before_value,
+            "after": row.after_value,
+            "occurred_at": row.occurred_at.isoformat() if row.occurred_at else None,
+        })
+        expected_hash = sha256_hex(canonical + expected_prev)
+        if expected_hash != row.record_hash:
+            return False, row.id
+        expected_prev = row.record_hash
+
+    return True, None

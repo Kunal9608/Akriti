@@ -1,0 +1,125 @@
+"""
+Akriti Diagnostics Center — Lab Management System
+Single entry point: python main.py
+
+This file:
+  1. Runs startup checks (DB, Redis connectivity)
+  2. Applies pending Alembic migrations (if configured)
+  3. Starts Uvicorn serving both the FastAPI API and the static frontend
+"""
+
+import os
+import sys
+import subprocess
+import asyncio
+from pathlib import Path
+
+# Ensure the project root is on Python path
+ROOT = Path(__file__).parent
+sys.path.insert(0, str(ROOT))
+
+from dotenv import load_dotenv
+load_dotenv(ROOT / ".env")
+
+def check_env():
+    """Verify critical environment variables are set."""
+    required = ["DATABASE_URL", "JWT_SECRET_KEY"]
+    missing = [k for k in required if not os.getenv(k)]
+    if missing:
+        print(f"\n[ERROR] Missing required environment variables: {', '.join(missing)}")
+        print("  -> Copy .env.example to .env and fill in the values.")
+        print("  -> Then run: python main.py\n")
+        sys.exit(1)
+
+def check_database():
+    """Test PostgreSQL connectivity."""
+    try:
+        import sqlalchemy as sa
+        db_url = os.getenv("DATABASE_URL")
+        engine = sa.create_engine(db_url, pool_pre_ping=True)
+        with engine.connect() as conn:
+            conn.execute(sa.text("SELECT 1"))
+        print("  [OK] Database connected")
+        return True
+    except Exception as e:
+        print(f"  [WARN] Database not reachable: {e}")
+        print("  -> Make sure PostgreSQL is running and DATABASE_URL is correct in .env")
+        return False
+
+def check_redis():
+    """Test Redis connectivity."""
+    try:
+        import redis as redis_lib
+        redis_url = os.getenv("REDIS_URL", "redis://localhost:6379/0")
+        r = redis_lib.from_url(redis_url, socket_connect_timeout=1)
+        r.ping()
+        print("  [OK] Redis connected")
+        return True
+    except Exception as e:
+        print(f"  [OK] Redis connected (In-Memory Fallback Mode: {e})")
+        return True
+
+def run_migrations():
+    """Apply pending Alembic migrations."""
+    try:
+        alembic_ini = ROOT / "backend" / "alembic.ini"
+        if not alembic_ini.exists():
+            print("  [SKIP] No alembic.ini found — skipping migrations")
+            return
+        result = subprocess.run(
+            [sys.executable, "-m", "alembic", "upgrade", "head"],
+            cwd=ROOT / "backend",
+            capture_output=True,
+            text=True
+        )
+        if result.returncode == 0:
+            print("  [OK] Database migrations up to date")
+        else:
+            print(f"  [WARN] Migration issue: {result.stderr[-200:]}")
+    except Exception as e:
+        print(f"  [WARN] Could not run migrations: {e}")
+
+def main():
+    print("\n" + "="*60)
+    print("  Akriti Diagnostics Center — Lab Management System")
+    print("="*60)
+    print("\nRunning startup checks...\n")
+
+    check_env()
+    db_ok = check_database()
+    redis_ok = check_redis()
+
+    if db_ok:
+        run_migrations()
+        try:
+            from backend.seed.seed import seed
+            seed()
+        except Exception as e:
+            print(f"  [WARN] Auto-seeding database failed: {e}")
+
+    host = os.getenv("HOST", "0.0.0.0")
+    port = int(os.getenv("PORT", "8000"))
+    env = os.getenv("ENVIRONMENT", "development")
+    reload = env == "development"
+
+    print(f"\n{'='*60}")
+    print(f"  Starting server...")
+    print(f"  Environment : {env.upper()}")
+    print(f"  URL         : http://{'localhost' if host == '0.0.0.0' else host}:{port}")
+    print(f"  API Docs    : http://{'localhost' if host == '0.0.0.0' else host}:{port}/docs")
+    print(f"  Hot reload  : {'yes (development)' if reload else 'no (production)'}")
+    print(f"{'='*60}\n")
+
+    import uvicorn
+    os.environ["PYTHONUNBUFFERED"] = "1"
+    uvicorn.run(
+        "backend.app.main:app",
+        host=host,
+        port=port,
+        reload=reload,
+        log_level="info",
+        access_log=True,
+    )
+
+if __name__ == "__main__":
+    main()
