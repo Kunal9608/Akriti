@@ -1,0 +1,133 @@
+===============================================================================
+       AKRITI DIAGNOSTICS CENTER — STEP-BY-STEP LIVE DEPLOYMENT GUIDE
+===============================================================================
+
+This guide explains how to deploy your FastAPI Backend + HTML Frontend + PostgreSQL
+database live on the web for FREE using Koyeb and Supabase.
+
+-------------------------------------------------------------------------------
+PREREQUISITES:
+-------------------------------------------------------------------------------
+1. A GitHub Account (https://github.com)
+2. Git installed on your computer.
+3. The project code pushed to a repository on your GitHub account.
+   (If you haven't pushed yet, see the "PUSHING TO GITHUB" section at the end).
+
+-------------------------------------------------------------------------------
+STEP 1: DATABASE SETUP (SUPABASE)
+-------------------------------------------------------------------------------
+Supabase provides a persistent, free PostgreSQL database. It does not expire
+and includes support for SQL vector operations.
+
+1. Go to https://supabase.com and click "Sign Up" or "Start your project".
+2. Log in using your GitHub account (this is the easiest method).
+3. Click "New Project" and choose an organization (create one if prompted).
+4. Fill in the project details:
+   - **Name**: Akriti Diagnostics
+   - **Database Password**: Click "Generate a password" or type a secure password.
+     *IMPORTANT*: Copy and save this password somewhere safe!
+   - **Region**: Choose a region closest to your users (e.g., "South Asia (Mumbai)" or "Singapore").
+   - **Pricing Plan**: Select "Free".
+5. Click "Create new project". Wait 2-3 minutes for the database to provision.
+6. Once the database is ready, find the connection string:
+   - Go to the **Project Settings** (gear icon on the bottom left sidebar).
+   - Click on **Database**.
+   - Under the "Connection string" section, click on **URI**.
+   - Copy the string. It looks like this:
+     postgresql://postgres.[YOUR_PROJECT_ID]:[YOUR_PASSWORD]@aws-0-[REGION].pooler.supabase.com:6543/postgres
+7. Replace `[YOUR_PASSWORD]` in that string with the database password you saved in step 4.
+   *IMPORTANT*: Keep this connection string ready; you will need it for Koyeb.
+
+-------------------------------------------------------------------------------
+STEP 2: BACKEND AND FRONTEND SETUP (KOYEB)
+-------------------------------------------------------------------------------
+Koyeb runs your FastAPI application (which hosts the backend and serves the
+frontend HTML pages) continuously on a persistent container.
+
+1. Go to https://www.koyeb.com and click "Sign Up".
+2. Log in using your GitHub account.
+3. Once logged in, click the **Create Service** button.
+4. Choose **GitHub** as the deployment source.
+5. Search for and select your repository (e.g., `username/anti-pathlab`).
+   - If Koyeb asks for permissions to access your repositories, grant access
+     to your project repository.
+6. Configure the Service Settings:
+   - **Deployment Method**: Web Service.
+   - **Builder**: Select **Buildpack** (this detects Python automatically).
+   - **Build Command**: Set this to:
+     pip install -r requirements.txt
+   - **Run Command**: Set this to:
+     python main.py
+   - **Port**:
+     - Change the default port number to `8000`.
+     - Protocol: `HTTP`.
+     - Path: `/health` (used by Koyeb to check if your app is alive).
+   - **Regions**: Choose the free region (usually `Frankfurt` or `Washington, D.C.`).
+
+-------------------------------------------------------------------------------
+STEP 3: CONFIGURING ENVIRONMENT VARIABLES (IN KOYEB)
+-------------------------------------------------------------------------------
+While still on the Koyeb deployment configuration page, scroll down to the
+**Environment Variables** section. Add the following variables:
+
+1. Add Variable:
+   - **Key**: `DATABASE_URL`
+   - **Value**: (Paste the connection string URI you copied from Supabase in Step 1)
+     *Example*: postgresql://postgres.abc123xyz:MyPassword123@aws-0-ap-south-1.pooler.supabase.com:6543/postgres
+
+2. Add Variable:
+   - **Key**: `JWT_SECRET_KEY`
+   - **Value**: (Type a long, random secure string)
+     *Example*: `AkritiSuperSecureKeySecret2026!#$`
+
+3. Add Variable:
+   - **Key**: `ENVIRONMENT`
+   - **Value**: `production`
+
+4. Add Variable:
+   - **Key**: `PORT`
+   - **Value**: `8000`
+
+5. Add Variable:
+   - **Key**: `HOST`
+   - **Value**: `0.0.0.0`
+
+-------------------------------------------------------------------------------
+STEP 4: DEPLOY AND MIGRATE
+-------------------------------------------------------------------------------
+1. Once all configurations and environment variables are set in Koyeb, click
+   **Deploy**.
+2. Koyeb will download your code, install dependencies, run the server check,
+   and launch your application.
+3. The server starts by running connection tests automatically. During startup:
+   - It will run database check connections.
+   - It automatically builds/syncs the database tables on Supabase.
+   - It runs the database seeder to insert the initial admin/staff accounts if not seeded.
+4. When deployment completes, Koyeb will display a green "Healthy" status.
+5. Next to the status, Koyeb provides a public URL (e.g., `https://akriti-lab-yourname.koyeb.app`).
+   - Click it to access your live frontend dashboard!
+   - To access the API docs directly: `https://akriti-lab-yourname.koyeb.app/docs`
+
+-------------------------------------------------------------------------------
+APPENDIX: PUSHING YOUR LOCAL CODE TO GITHUB
+-------------------------------------------------------------------------------
+If you haven't uploaded your local code to GitHub yet, run these commands in
+your project folder terminal:
+
+1. Initialize git (if not already done):
+   git init
+2. Stage your files:
+   git add .
+3. Commit your changes:
+   git commit -m "Configure production deployment ready"
+4. Create a new repository on GitHub:
+   - Go to https://github.com/new
+   - Name it (e.g., `anti-pathlab`), set it to Public/Private, and click "Create Repository".
+   - Copy the repository remote URL.
+5. Link your local project to GitHub and push:
+   git branch -M main
+   git remote add origin [PASTE_YOUR_GITHUB_REPO_URL]
+   git push -u origin main
+
+Your project is now fully live, secured, and ready for operations!
+===============================================================================
