@@ -128,7 +128,7 @@ class EmailProvider(NotificationProvider):
             msg["From"] = f"{settings.MAIL_FROM_NAME} <{settings.MAIL_FROM}>"
             msg["To"] = recipient_email
 
-            with smtplib.SMTP(settings.MAIL_SERVER, settings.MAIL_PORT) as server:
+            with smtplib.SMTP(settings.MAIL_SERVER, settings.MAIL_PORT, timeout=10.0) as server:
                 server.ehlo()
                 if settings.MAIL_TLS:
                     server.starttls()
@@ -169,6 +169,7 @@ PROVIDER_REGISTRY: Dict[str, list] = {
 
 
 def notify(event_type: str, recipient_email: str, context: Dict[str, Any]):
+    print(f"  [MAIL START] notify() called: {event_type} -> {recipient_email}")
     """
     Single call point for all notifications throughout the system.
     Never call provider.send() directly — always go through this function.
