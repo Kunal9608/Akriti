@@ -150,6 +150,8 @@ def seed():
 
     except Exception as e:
         db.rollback()
+        import traceback
+        traceback.print_exc()
         print(f"  [ERROR] Seed failed: {e}")
         raise
     finally:
