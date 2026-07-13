@@ -59,5 +59,18 @@ async def face_enroll(staff_id: str, image: UploadFile = File(...),
                       current_user=Depends(get_current_user),
                       db: Session = Depends(get_db)):
     import uuid
+    from fastapi import HTTPException
+    
+    # Enforce file size limit of 10MB
+    max_size = 10 * 1024 * 1024  # 10MB
+    image.file.seek(0, 2)
+    file_size = image.file.tell()
+    image.file.seek(0)
+    if file_size > max_size:
+        raise HTTPException(
+            status_code=413,
+            detail="File size exceeds the maximum limit of 10MB"
+        )
+        
     image_bytes = await image.read()
     return face_service.enroll_sample(db, uuid.UUID(staff_id), image_bytes)

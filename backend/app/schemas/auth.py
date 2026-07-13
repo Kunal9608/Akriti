@@ -6,11 +6,13 @@ from typing import Optional
 class LoginRequest(BaseModel):
     email: EmailStr
     password: str
+    recaptcha_token: Optional[str] = None
 
 
 class OtpRequestSchema(BaseModel):
     email: EmailStr
     purpose: str = "login"  # login | password_reset
+    recaptcha_token: Optional[str] = None
 
 
 class OtpVerifyRequest(BaseModel):

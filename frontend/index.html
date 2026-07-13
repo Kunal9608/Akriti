@@ -139,6 +139,41 @@
 <script src="/assets/js/api-client.js"></script>
 <script>
 (async function() {
+  // ── Google reCAPTCHA v3 Setup ──────────────────────────────────────────────
+  let recaptchaKey = null;
+  let recaptchaEnabled = false;
+
+  async function getRecaptchaToken(actionName) {
+    if (!recaptchaEnabled || !recaptchaKey) return null;
+    return new Promise((resolve) => {
+      grecaptcha.ready(function() {
+        grecaptcha.execute(recaptchaKey, {action: actionName}).then(function(token) {
+          resolve(token);
+        }).catch(err => {
+          console.error("reCAPTCHA execution error:", err);
+          resolve(null);
+        });
+      });
+    });
+  }
+
+  // Load Settings and optionally load reCAPTCHA script
+  try {
+    const settings = await API.get('/api/v1/settings/lab', { silent: true });
+    recaptchaKey = settings.recaptcha_site_key;
+    recaptchaEnabled = settings.recaptcha_enabled;
+    
+    if (recaptchaEnabled && recaptchaKey) {
+      const script = document.createElement('script');
+      script.src = `https://www.google.com/recaptcha/api.js?render=${recaptchaKey}`;
+      script.async = true;
+      script.defer = true;
+      document.head.appendChild(script);
+    }
+  } catch (err) {
+    console.error("Failed to load settings/recaptcha:", err);
+  }
+
   // ── Password Visibility Toggle ─────────────────────────────────────────────
   document.querySelectorAll('.password-toggle-btn').forEach(btn => {
     btn.addEventListener('click', () => {
@@ -177,7 +212,8 @@
     btn.innerHTML = `<span class="btn-loading-spinner"></span> Signing in...`;
 
     try {
-      const res = await API.post('/api/v1/auth/login', { email, password }, { silent: true });
+      const recaptcha_token = await getRecaptchaToken('login');
+      const res = await API.post('/api/v1/auth/login', { email, password, recaptcha_token }, { silent: true });
       if (res.requires_password_reset) {
         resetToken = res.reset_token;
         Modal.open('reset-modal');
@@ -230,7 +266,8 @@
     resendBtn.disabled = true;
     resendBtn.textContent = 'Sending...';
     try {
-      await API.post('/api/v1/auth/otp/request', { email, purpose: 'login' }, { silent: true });
+      const recaptcha_token = await getRecaptchaToken('otp_resend');
+      await API.post('/api/v1/auth/otp/request', { email, purpose: 'login', recaptcha_token }, { silent: true });
       Toast.show('OTP resent successfully', 'success');
       startResendTimer(email);
     } catch (err) {
@@ -251,7 +288,8 @@
       btn.setAttribute('aria-busy','true');
       btn.innerHTML = `<span class="btn-loading-spinner"></span>`;
       try {
-        await API.post('/api/v1/auth/otp/request', { email, purpose: 'login' }, { silent: true });
+        const recaptcha_token = await getRecaptchaToken('otp_request');
+        await API.post('/api/v1/auth/otp/request', { email, purpose: 'login', recaptcha_token }, { silent: true });
         otpStep = 'verify';
         document.getElementById('otp-hint').style.display = 'block';
         document.getElementById('ff-otp-code').style.display = '';
@@ -295,10 +333,10 @@
   document.getElementById('reset-submit-btn').addEventListener('click', async () => {
     const pw  = document.getElementById('new-password').value;
     const pw2 = document.getElementById('confirm-password').value;
-    const policy = /^(?=.*[A-Za-z])(?=.*\d)[A-Za-z0-9]{6,}$/;
+    const policy = /^(?=.*[A-Za-z])(?=.*\d)[A-Za-z0-9]{6,13}$/;
 
     if (!policy.test(pw)) {
-      Toast.show('Password must be at least 6 chars with letters and digits (no special chars)', 'error');
+      Toast.show('Password must be between 6 and 13 characters with letters and digits (no special chars)', 'error');
       return;
     }
     if (pw !== pw2) { Toast.show('Passwords do not match', 'error'); return; }
@@ -328,6 +366,11 @@
       }
     });
   }
+
+  // ── Disable mouse right-click on the login page ───────────────────────────
+  document.addEventListener('contextmenu', (e) => {
+    e.preventDefault();
+  });
 
   // ── If already logged in, redirect ───────────────────────────────────────
   try {

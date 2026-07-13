@@ -1,5 +1,5 @@
 """Auth router."""
-from fastapi import APIRouter, Depends, Response, Request
+from fastapi import APIRouter, Depends, Response, Request, HTTPException
 from sqlalchemy.orm import Session
 
 from backend.app.core.db import get_db
@@ -10,13 +10,20 @@ from backend.app.schemas.auth import (
 )
 from backend.app.services import auth_service
 from backend.app.config import settings
+from backend.app.core.limiter import limiter
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
 
 @router.post("/login")
+@limiter.limit("3/minute")
 def login(payload: LoginRequest, request: Request, response: Response,
           db: Session = Depends(get_db)):
+    from backend.app.services.recaptcha_service import verify_recaptcha_token
+    from fastapi import HTTPException
+    if not verify_recaptcha_token(payload.recaptcha_token):
+        raise HTTPException(status_code=400, detail="reCAPTCHA verification failed. Please try again.")
+
     ip = get_client_ip(request)
     ua = request.headers.get("User-Agent", "")
     result = auth_service.login(db, payload.email, payload.password, ip, ua)
@@ -29,20 +36,33 @@ def login(payload: LoginRequest, request: Request, response: Response,
                             max_age=settings.JWT_ACCESS_EXPIRE_MINUTES * 60)
         response.set_cookie("refresh_token", result["refresh_token"],
                             httponly=True, secure=secure, samesite="strict",
-                            max_age=settings.JWT_REFRESH_EXPIRE_DAYS * 86400)
+                            max_age=settings.JWT_REFRESH_EXPIRE_HOURS * 3600)
 
     return result
 
 
 @router.post("/logout")
-def logout(response: Response):
+def logout(request: Request, response: Response, db: Session = Depends(get_db)):
+    refresh = request.cookies.get("refresh_token")
+    if refresh:
+        from backend.app.core.security import hash_token
+        from backend.app.repositories import session_repo as srepo
+        token_hash = hash_token(refresh)
+        srepo.revoke_session_by_token_hash(db, token_hash)
+        db.commit()
     response.delete_cookie("access_token")
     response.delete_cookie("refresh_token")
     return {"message": "Logged out successfully"}
 
 
 @router.post("/otp/request")
+@limiter.limit("3/5minute")
 def request_otp(payload: OtpRequestSchema, request: Request, db: Session = Depends(get_db)):
+    from backend.app.services.recaptcha_service import verify_recaptcha_token
+    from fastapi import HTTPException
+    if not verify_recaptcha_token(payload.recaptcha_token):
+        raise HTTPException(status_code=400, detail="reCAPTCHA verification failed. Please try again.")
+
     ip = get_client_ip(request)
     auth_service.request_otp(db, payload.email, payload.purpose, ip)
     return {"message": "OTP sent if email is registered"}
@@ -158,8 +178,9 @@ def change_my_password(payload: ChangePasswordPayload,
     if not verify_password(payload.current_password, current_user.password_hash):
         raise ValueError("Current password is incorrect")
     if not validate_password_policy(payload.new_password):
-        raise ValueError("Password must be at least 6 characters with at least one letter and one digit")
+        raise ValueError("Password must be between 6 and 13 characters with at least one letter and one digit")
     new_hash = hash_password(payload.new_password)
     user_repo.update_user(db, current_user.id, password_hash=new_hash, must_reset_password=False)
+    srepo.revoke_all_user_sessions(db, current_user.id)
     db.commit()
     return {"message": "Password changed successfully"}

@@ -7,10 +7,13 @@ from pathlib import Path
 from contextlib import asynccontextmanager
 from typing import Optional
 
-from fastapi import FastAPI, Depends
+from fastapi import FastAPI, Depends, Request
+from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.exceptions import RequestValidationError
+from slowapi.errors import RateLimitExceeded
+from backend.app.core.limiter import limiter
 
 from backend.app.config import settings
 from backend.app.dependencies import require_admin
@@ -50,6 +53,15 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
+app.state.limiter = limiter
+
+@app.exception_handler(RateLimitExceeded)
+async def rate_limit_exceeded_handler(request: Request, exc: RateLimitExceeded):
+    return JSONResponse(
+        status_code=429,
+        content={"detail": "Too many requests. Please try again later.", "message": "Rate limit exceeded"}
+    )
+
 # ── CORS ─────────────────────────────────────────────────────────────────────
 app.add_middleware(
     CORSMiddleware,
@@ -58,6 +70,45 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+# ── Web Security Headers Middleware ──────────────────────────────────────────
+@app.middleware("http")
+async def add_security_headers(request: Request, call_next):
+    response = await call_next(request)
+    
+    # 1. Content Security Policy (CSP)
+    # Allows self, Google Fonts, flatpickr, ChartJS, cloudflare QRcode.js, and Google reCAPTCHA
+    csp_directives = (
+        "default-src 'self'; "
+        "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://www.google.com/recaptcha/ https://www.gstatic.com/recaptcha/; "
+        "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdn.jsdelivr.net; "
+        "font-src 'self' https://fonts.gstatic.com; "
+        "img-src 'self' data: blob:; "
+        "connect-src 'self' https://www.google.com/recaptcha/; "
+        "frame-src 'self' https://www.google.com/recaptcha/ https://recaptcha.google.com/recaptcha/; "
+        "frame-ancestors 'none';"
+    )
+    response.headers["Content-Security-Policy"] = csp_directives
+    
+    # 2. Prevent clickjacking
+    response.headers["X-Frame-Options"] = "DENY"
+    
+    # 3. Prevent MIME type sniffing
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    
+    # 4. Cross-Site Scripting protection
+    response.headers["X-XSS-Protection"] = "1; mode=block"
+    
+    # 5. Referrer Policy
+    response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+    
+    # 6. HTTP Strict Transport Security (HSTS) - only in production
+    if settings.is_production:
+        response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains; preload"
+        
+    return response
+
 
 # ── Exception handlers ────────────────────────────────────────────────────────
 app.add_exception_handler(RequestValidationError, validation_exception_handler)
@@ -99,6 +150,8 @@ def get_lab_settings():
         "lab_gstin":    _lab_settings_overlay.get("lab_gstin",    settings.LAB_GSTIN),
         "report_footer": _lab_settings_overlay.get("report_footer", ""),
         "email_notifications_enabled": notification_service.EMAIL_NOTIFICATIONS_ENABLED,
+        "recaptcha_site_key": settings.RECAPTCHA_SITE_KEY,
+        "recaptcha_enabled": settings.ENABLE_RECAPTCHA,
     }
 
 

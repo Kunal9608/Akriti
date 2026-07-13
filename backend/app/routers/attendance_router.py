@@ -8,11 +8,13 @@ import uuid
 from backend.app.core.db import get_db
 from backend.app.dependencies import get_current_user, require_admin, get_client_ip, get_idempotency_key
 from backend.app.services import attendance_service
+from backend.app.core.limiter import limiter
 
 router = APIRouter(prefix="/attendance", tags=["attendance"])
 
 
 @router.post("/recognize")
+@limiter.limit("10/minute")
 async def recognize_and_checkin(
     request: Request,
     image: UploadFile = File(...),
@@ -21,6 +23,19 @@ async def recognize_and_checkin(
     idempotency_key: Optional[str] = Depends(get_idempotency_key),
 ):
     """FR-3.1 — Submit camera frame for face recognition + auto check-in/out."""
+    from fastapi import HTTPException
+    
+    # Enforce file size limit of 10MB
+    max_size = 10 * 1024 * 1024  # 10MB
+    image.file.seek(0, 2)
+    file_size = image.file.tell()
+    image.file.seek(0)
+    if file_size > max_size:
+        raise HTTPException(
+            status_code=413,
+            detail="File size exceeds the maximum limit of 10MB"
+        )
+
     from backend.app.services import idempotency_service
     if idempotency_key:
         cached = idempotency_service.check_key_exists(idempotency_key, "kiosk")

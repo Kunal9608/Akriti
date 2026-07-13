@@ -79,6 +79,12 @@ def login(db: Session, email: str, password: str, ip: str,
         db.commit()
         raise ValueError("Invalid credentials")
 
+    # Lockout check
+    if getattr(user, "is_locked", False):
+        session_repo.record_login(db, email, "locked_out", ip, user_agent, user.id)
+        db.commit()
+        raise PermissionError("Account is locked due to multiple failed password attempts. Please login via OTP to unlock.")
+
     if _redis_check_lockout(email):
         session_repo.record_login(db, email, "locked_out", ip, user_agent, user.id)
         db.commit()
@@ -90,12 +96,19 @@ def login(db: Session, email: str, password: str, ip: str,
     if not verify_password(password, user.password_hash):
         count = _redis_incr_fail(email)
         if count >= 5:
-            _redis_set_lockout(email)
+            user.is_locked = True
+            session_repo.record_login(db, email, "locked_out", ip, user_agent, user.id)
+            db.commit()
+            raise PermissionError("Account locked due to 5 failed attempts. Please login via OTP to unlock.")
         session_repo.record_login(db, email, "bad_password", ip, user_agent, user.id)
         db.commit()
         raise ValueError("Invalid credentials")
 
     _redis_clear_fail(email)
+    
+    # Duplicate login block: auto-logout older sessions on other devices
+    session_repo.revoke_all_user_sessions(db, user.id)
+    
     session_repo.record_login(db, email, "success", ip, user_agent, user.id)
 
     if user.must_reset_password:
@@ -202,6 +215,15 @@ def verify_otp_code(db: Session, email: str, otp_code: str, purpose: str,
         db.commit()
         raise ValueError("User inactive or not found")
 
+    # Unlock user account on successful OTP verification
+    if getattr(user, "is_locked", False):
+        user.is_locked = False
+        _redis_clear_fail(email)
+        logger.info(f"User {email} unlocked via successful OTP verification")
+
+    # Duplicate login block: auto-logout older sessions on other devices
+    session_repo.revoke_all_user_sessions(db, user.id)
+
     if purpose == "password_reset":
         reset_token = create_short_lived_token(str(user.id), "password_reset")
         db.commit()
@@ -253,7 +275,7 @@ def reset_password(db: Session, reset_token: str, new_password: str) -> bool:
         raise ValueError("Invalid or expired reset token")
 
     if not validate_password_policy(new_password):
-        raise ValueError("Password must be at least 6 characters with at least one letter and one digit")
+        raise ValueError("Password must be between 6 and 13 characters with at least one letter and one digit")
 
     user = user_repo.get_by_id(db, uuid.UUID(user_id))
     if not user:

@@ -40,6 +40,7 @@ class User(Base):
     face_registered = Column(Boolean, default=False)
     is_active = Column(Boolean, default=False)
     must_reset_password = Column(Boolean, default=True)
+    is_locked = Column(Boolean, default=False, server_default=text("false"))
     branch_id = Column(UUID(as_uuid=True), nullable=True)
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
     deactivated_at = Column(DateTime(timezone=True), nullable=True)

@@ -18,7 +18,7 @@ class Settings(BaseSettings):
     # JWT
     JWT_SECRET_KEY: str = "change-this-secret"
     JWT_ACCESS_EXPIRE_MINUTES: int = 15
-    JWT_REFRESH_EXPIRE_DAYS: int = 7
+    JWT_REFRESH_EXPIRE_HOURS: int = 4
     JWT_ALGORITHM: str = "HS256"
 
     # Email
@@ -45,6 +45,11 @@ class Settings(BaseSettings):
     # Seed
     ADMIN_SEED_EMAIL: str = "kunaldixit.2995@gmail.com"
     ADMIN_SEED_TEMP_PASSWORD: str = "Akriti@2024"
+
+    # Google reCAPTCHA
+    RECAPTCHA_SITE_KEY: str = "6LeIxAcTAAAAAJcZVRqyHh71UMIEGNQ_MXjiZKhI"
+    RECAPTCHA_SECRET_KEY: str = "6LeIxAcTAAAAAGG-vFI1TnFTxWGRtAUMuO_FnD4Q"
+    ENABLE_RECAPTCHA: bool = False
 
     # Environment
     ENVIRONMENT: str = "development"

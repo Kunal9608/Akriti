@@ -47,6 +47,15 @@ def revoke_session(db: Session, session_id: uuid.UUID) -> bool:
     return True
 
 
+def revoke_session_by_token_hash(db: Session, token_hash: str) -> bool:
+    session = db.query(ActiveSession).filter(ActiveSession.refresh_token_hash == token_hash).first()
+    if not session:
+        return False
+    session.revoked_at = datetime.now(timezone.utc)
+    db.flush()
+    return True
+
+
 def revoke_all_user_sessions(db: Session, user_id: uuid.UUID):
     db.query(ActiveSession).filter(
         ActiveSession.user_id == user_id,

@@ -33,6 +33,17 @@ async def upload_report(
             detail="Only PDF or image files (JPG, PNG, WEBP, BMP, TIFF, HEIC) are accepted"
         )
 
+    # Enforce file size limit of 10MB
+    max_size = 10 * 1024 * 1024  # 10MB
+    file.file.seek(0, 2)
+    file_size = file.file.tell()
+    file.file.seek(0)
+    if file_size > max_size:
+        raise HTTPException(
+            status_code=413,
+            detail="File size exceeds the maximum limit of 10MB"
+        )
+
     file_bytes = await file.read()
 
     # Convert any image format to PDF

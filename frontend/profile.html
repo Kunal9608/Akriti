@@ -3,6 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="robots" content="noindex, nofollow">
+
   <title>My Profile — Akriti Diagnostics Center</title>
   <meta name="description" content="View and update your profile, change password">
   <link rel="stylesheet" href="/assets/css/tokens.css">
@@ -438,7 +440,7 @@
 
     if (!currentPw || !newPw || !confirmPw) { Toast.show('All password fields are required', 'warning'); return; }
     if (newPw !== confirmPw)                { Toast.show('New passwords do not match', 'error'); return; }
-    if (newPw.length < 6)                  { Toast.show('Password must be at least 6 characters', 'error'); return; }
+    if (newPw.length < 6 || newPw.length > 13) { Toast.show('Password must be between 6 and 13 characters', 'error'); return; }
     if (!/[A-Za-z]/.test(newPw) || !/\d/.test(newPw)) {
       Toast.show('Password must contain at least one letter and one digit', 'error'); return;
     }

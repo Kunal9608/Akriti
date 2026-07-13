@@ -59,4 +59,5 @@ def init_db():
     with engine.connect() as conn:
         conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS staff_code VARCHAR(16) UNIQUE;"))
         conn.execute(text("ALTER TABLE tests ADD COLUMN IF NOT EXISTS test_code VARCHAR(16) UNIQUE;"))
+        conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS is_locked BOOLEAN DEFAULT FALSE;"))
         conn.commit()

@@ -51,7 +51,7 @@ def create_access_token(user_id: str, role: str) -> str:
 
 def create_refresh_token(user_id: str) -> str:
     import uuid
-    expire = datetime.now(timezone.utc) + timedelta(days=settings.JWT_REFRESH_EXPIRE_DAYS)
+    expire = datetime.now(timezone.utc) + timedelta(hours=settings.JWT_REFRESH_EXPIRE_HOURS)
     payload = {
         "sub": str(user_id),
         "exp": expire,
@@ -104,7 +104,7 @@ def canonical_json(data: dict) -> str:
 
 
 def validate_password_policy(password: str) -> bool:
-    """FR-1.4: min 6 chars, at least one letter and one digit, alphanumeric only."""
+    """FR-1.4: min 6 chars, max 13 chars, at least one letter and one digit, alphanumeric only."""
     import re
-    pattern = r"^(?=.*[A-Za-z])(?=.*\d)[A-Za-z0-9]{6,}$"
+    pattern = r"^(?=.*[A-Za-z])(?=.*\d)[A-Za-z0-9]{6,13}$"
     return bool(re.match(pattern, password))
