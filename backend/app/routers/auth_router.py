@@ -91,7 +91,7 @@ def verify_otp(payload: OtpVerifyRequest, request: Request, response: Response,
                             max_age=settings.JWT_ACCESS_EXPIRE_MINUTES * 60)
         response.set_cookie("refresh_token", result["refresh_token"],
                             httponly=True, secure=secure, samesite="strict",
-                            max_age=settings.JWT_REFRESH_EXPIRE_DAYS * 86400)
+                            max_age=settings.JWT_REFRESH_EXPIRE_HOURS * 3600)
 
     return result
 
