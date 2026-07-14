@@ -462,8 +462,8 @@
             <div class="detail-item-value">${formatDate(p.sample_date)}</div>
           </div>
           <div class="detail-item">
-            <div class="detail-item-label">Report Due</div>
-            <div class="detail-item-value">${formatDate(p.estimated_report_date)}</div>
+            <div class="detail-item-label">${p.report_released_at ? 'Report Released' : 'Report Due'}</div>
+            <div class="detail-item-value">${p.report_released_at ? formatDate(p.report_released_at) : formatDate(p.estimated_report_date)}</div>
           </div>
           <div class="detail-item">
             <div class="detail-item-label">Payment Mode</div>

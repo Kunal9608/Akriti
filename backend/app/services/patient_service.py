@@ -266,6 +266,13 @@ def _patient_to_dict(db: Session, patient) -> dict:
             "price_at_booking": price,       # kept for schema compatibility
         })
 
+    status_str = patient.status.value if hasattr(patient.status, 'value') else str(patient.status)
+    report_released_at = None
+    if status_str == "report_ready" and patient.reports:
+        latest_report = max(patient.reports, key=lambda r: r.uploaded_at)
+        if latest_report.uploaded_at:
+            report_released_at = latest_report.uploaded_at.isoformat()
+
     return {
         "id": str(patient.id),
         "patient_code": patient.patient_code,
@@ -278,6 +285,7 @@ def _patient_to_dict(db: Session, patient) -> dict:
         "collection_type": patient.collection_type,
         "sample_date": str(patient.sample_date) if patient.sample_date else None,
         "estimated_report_date": str(patient.estimated_report_date),
+        "report_released_at": report_released_at,
         "total_amount": float(patient.total_amount or 0),
         "discount_amount": float(patient.discount_amount or 0),
         "amount_paid": float(patient.amount_paid or 0),
