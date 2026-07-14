@@ -175,12 +175,20 @@ def request_otp(db: Session, email: str, purpose: str, ip: str) -> bool:
     db.add(otp_obj)
     db.commit()
 
+    # Map OTP purpose to appropriate notification template
+    event_type_map = {
+        "login": "otp",
+        "password_reset": "password_reset",
+        "password_change": "password_change",
+        "delete_verify": "delete_verify",
+    }
+    event_type = event_type_map.get(purpose, "otp")
+
     # Send notification in background thread
     import threading
     t = threading.Thread(
         target=notification_service.notify,
-        args=(purpose if purpose in ("otp", "password_reset") else "otp",
-              email, {"otp": otp, "name": user.name}),
+        args=(event_type, email, {"otp": otp, "name": user.name}),
         daemon=True
     )
     t.start()
