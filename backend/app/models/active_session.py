@@ -13,8 +13,8 @@ class ActiveSession(Base):
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4,
                 server_default=text("gen_random_uuid()"))
-    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
-    refresh_token_hash = Column(String(255), nullable=False)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    refresh_token_hash = Column(String(255), nullable=False, index=True)
     device_label = Column(String(100), nullable=True)
     ip_address = Column(String(45), nullable=True)
     issued_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))

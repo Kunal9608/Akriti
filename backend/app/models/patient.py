@@ -40,8 +40,8 @@ class Patient(Base):
     age = Column(SmallInteger, nullable=False)
     gender = Column(Enum(GenderEnum, name="gender_enum"), nullable=False)
     mobile = Column(String(10), nullable=False, index=True)
-    doctor_id = Column(UUID(as_uuid=True), ForeignKey("doctors.id"), nullable=True)
-    collected_by = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
+    doctor_id = Column(UUID(as_uuid=True), ForeignKey("doctors.id"), nullable=True, index=True)
+    collected_by = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False, index=True)
     collection_type = Column(Enum(CollectionTypeEnum, name="collection_type_enum"), nullable=False,
                              default="self_center")
     sample_date = Column(Date, default=lambda: date.today())

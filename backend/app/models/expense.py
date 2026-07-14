@@ -36,8 +36,8 @@ class Expense(Base):
     paid_to = Column(String(150), nullable=True)
     payment_mode = Column(Enum(ExpensePaymentModeEnum, name="expense_payment_mode_enum"), nullable=False)
     attachment_path = Column(String(255), nullable=True)
-    expense_date = Column(Date, nullable=False, default=lambda: date.today())
-    recorded_by = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
+    expense_date = Column(Date, nullable=False, default=lambda: date.today(), index=True)
+    recorded_by = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True, index=True)
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
 
     recorder = relationship("User", back_populates="expenses_recorded")

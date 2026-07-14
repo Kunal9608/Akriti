@@ -23,7 +23,7 @@ class FaceEmbedding(Base):
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4,
                 server_default=text("gen_random_uuid()"))
-    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
     # 128-dim vector — pgvector if available, else stored as JSON text
     embedding = Column(Vector(128) if VECTOR_AVAILABLE else Text, nullable=False)
     sample_index = Column(SmallInteger, nullable=True)

@@ -12,8 +12,8 @@ class PatientTest(Base):
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4,
                 server_default=text("gen_random_uuid()"))
-    patient_id = Column(UUID(as_uuid=True), ForeignKey("patients.id", ondelete="CASCADE"), nullable=False)
-    test_id = Column(UUID(as_uuid=True), ForeignKey("tests.id"), nullable=False)
+    patient_id = Column(UUID(as_uuid=True), ForeignKey("patients.id", ondelete="CASCADE"), nullable=False, index=True)
+    test_id = Column(UUID(as_uuid=True), ForeignKey("tests.id"), nullable=False, index=True)
     price_at_booking = Column(Numeric(10, 2), nullable=False)
 
     patient = relationship("Patient", back_populates="patient_tests")

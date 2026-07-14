@@ -13,14 +13,14 @@ class Report(Base):
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4,
                 server_default=text("gen_random_uuid()"))
-    patient_id = Column(UUID(as_uuid=True), ForeignKey("patients.id", ondelete="CASCADE"), nullable=False)
+    patient_id = Column(UUID(as_uuid=True), ForeignKey("patients.id", ondelete="CASCADE"), nullable=False, index=True)
     file_path = Column(String(255), nullable=False)
     original_filename = Column(String(255), nullable=True)
     signed = Column(Boolean, default=False)
     signature_applied_at = Column(DateTime(timezone=True), nullable=True)
     verification_hash = Column(String(128), nullable=True)
     version = Column(Integer, default=1)
-    uploaded_by = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
+    uploaded_by = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False, index=True)
     uploaded_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
     is_latest = Column(Boolean, default=True)
 

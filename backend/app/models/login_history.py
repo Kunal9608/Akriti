@@ -22,8 +22,8 @@ class LoginHistory(Base):
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4,
                 server_default=text("gen_random_uuid()"))
-    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
-    email_attempted = Column(String(255), nullable=False)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True, index=True)
+    email_attempted = Column(String(255), nullable=False, index=True)
     outcome = Column(Enum(LoginOutcomeEnum, name="login_outcome_enum"), nullable=False)
     ip_address = Column(String(45), nullable=False)  # String for cross-DB compat
     user_agent = Column(String(255), nullable=True)

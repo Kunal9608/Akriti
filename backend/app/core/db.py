@@ -63,6 +63,20 @@ def init_db():
         conn.execute(text("ALTER TABLE doctors ADD COLUMN IF NOT EXISTS commission_pct NUMERIC(5, 2) DEFAULT 0.0;"))
         conn.execute(text("ALTER TABLE patients ADD COLUMN IF NOT EXISTS referred_doctor_commission_pct NUMERIC(5, 2) DEFAULT 0.0;"))
         conn.execute(text("ALTER TABLE patients ADD COLUMN IF NOT EXISTS referred_doctor_commission_amount NUMERIC(10, 2) DEFAULT 0.0;"))
+        
+        # Create scale performance indexes for large datasets (lakhs+ patient data)
+        conn.execute(text("CREATE INDEX IF NOT EXISTS idx_patient_tests_patient_id ON patient_tests (patient_id);"))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS idx_patient_tests_test_id ON patient_tests (test_id);"))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS idx_reports_patient_id ON reports (patient_id);"))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS idx_reports_uploaded_by ON reports (uploaded_by);"))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS idx_active_sessions_refresh_token_hash ON active_sessions (refresh_token_hash);"))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS idx_active_sessions_user_id ON active_sessions (user_id);"))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS idx_patients_doctor_id ON patients (doctor_id);"))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS idx_patients_collected_by ON patients (collected_by);"))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS idx_face_embeddings_user_id ON face_embeddings (user_id);"))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS idx_expenses_expense_date ON expenses (expense_date);"))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS idx_login_history_email_attempted ON login_history (email_attempted);"))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS idx_login_history_user_id ON login_history (user_id);"))
         conn.commit()
         
         # PostgreSQL custom enum values fallback
