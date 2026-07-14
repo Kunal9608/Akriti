@@ -318,26 +318,6 @@ const Shell = (() => {
 
   return { init, icon };
 })();
-
-// Global auto uppercase for all inputs except password, file, checkbox, radio, date/time inputs
-document.addEventListener('input', (e) => {
-  if (e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA')) {
-    if (['password', 'file', 'checkbox', 'radio', 'date', 'time', 'datetime-local'].includes(e.target.type)) {
-      return;
-    }
-    const val = e.target.value;
-    const upper = val.toUpperCase();
-    if (val !== upper) {
-      const start = e.target.selectionStart;
-      const end = e.target.selectionEnd;
-      e.target.value = upper;
-      if (start !== null && end !== null) {
-        e.target.setSelectionRange(start, end);
-      }
-    }
-  }
-});
-
 // Global password visibility toggle handler via event delegation
 document.addEventListener('click', (e) => {
   const btn = e.target.closest('.password-toggle-btn');

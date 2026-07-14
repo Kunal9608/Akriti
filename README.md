@@ -120,9 +120,33 @@ Make sure you have the following installed on your machine:
     python main.py
     ```
 
-6.  **Access the Application:**
-    *   **Main Application/Kiosk:** [http://localhost:8000](http://localhost:8000)
-    *   **Interactive API Docs (Swagger UI):** [http://localhost:8000/docs](http://localhost:8000/docs)
+
+### 🐋 Running with Docker (Alternative Setup)
+
+If you have Docker and Docker Compose installed, you can spin up the entire application stack (FastAPI web server, PostgreSQL database with `pgvector`, and Redis) with a single command.
+
+1. **Prerequisites:**
+   Make sure you have Docker and Docker Compose installed on your host system.
+
+2. **Run the application stack:**
+   ```bash
+   docker compose up --build
+   ```
+   This will:
+   * Build the FastAPI web application image (including compiling system dependencies for WeasyPrint).
+   * Pull and launch `ankane/pgvector` database and `redis:7-alpine`.
+   * Wait for services to be healthy, apply pending migrations, auto-seed the test database, and start the app.
+
+3. **Access the services:**
+   * **Main Web App / Kiosk:** [http://localhost:8000](http://localhost:8000)
+   * **Swagger API Docs:** [http://localhost:8000/docs](http://localhost:8000/docs)
+   * **Local Database:** `localhost:5432` (Username: `postgres`, Password: `postgres`, DB Name: `akriti_lab`)
+   * **Local Redis:** `localhost:6379`
+
+4. **Stop the application:**
+   ```bash
+   docker compose down
+   ```
 
 ---
 
