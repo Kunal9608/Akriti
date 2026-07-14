@@ -58,12 +58,19 @@ def get_profit_loss(db: Session, date_from: date, date_to: date) -> dict:
         Expense.expense_date <= date_to,
     ).scalar() or 0
 
+    commissions = db.query(func.sum(Patient.referred_doctor_commission_amount)).filter(
+        func.date(Patient.created_at) >= date_from,
+        func.date(Patient.created_at) <= date_to,
+        Patient.deleted_at.is_(None),
+    ).scalar() or 0
+
     return {
         "from_date": str(date_from),
         "to_date": str(date_to),
         "total_revenue": float(revenue),
         "total_expenses": float(expenses),
-        "net_profit": float(revenue) - float(expenses),
+        "total_doctor_commissions": float(commissions),
+        "net_profit": float(revenue) - float(expenses) - float(commissions),
     }
 
 
@@ -142,6 +149,7 @@ def get_dashboard_stats(db: Session) -> dict:
         "staff_total": total_staff,
         "monthly_revenue": pl["total_revenue"],
         "monthly_expenses": pl["total_expenses"],
+        "monthly_doctor_commissions": pl["total_doctor_commissions"],
         "monthly_profit": pl["net_profit"],
     }
 

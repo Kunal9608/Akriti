@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="robots" content="noindex, nofollow">
+
+  <title>Doctors — Akriti Diagnostics Center</title>
+  <link rel="stylesheet" href="/assets/css/tokens.css">
+  <link rel="stylesheet" href="/assets/css/components.css">
+  <link rel="stylesheet" href="/assets/css/skeleton.css">
+  <link rel="stylesheet" href="/assets/css/layout.css">
+  <script src="/assets/js/theme.js"></script>
+</head>
+<body>
+<div class="app-shell">
+  <div class="sidebar-overlay" id="sidebar-overlay"></div>
+  <nav class="sidebar" id="sidebar"></nav>
+
+  <div class="main-area">
+    <header class="topbar">
+      <div class="topbar-left">
+        <button class="hamburger" id="hamburger-btn" aria-label="Open menu">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+        </button>
+        <h1 class="page-heading" id="topbar-title">Doctors</h1>
+      </div>
+      <div class="topbar-right">
+        <button class="topbar-btn" data-theme-toggle aria-label="Toggle theme">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></svg>
+        </button>
+      </div>
+    </header>
+    <div class="offline-banner" role="status"></div>
+
+    <main class="page-content">
+      <div class="page-header">
+        <div>
+          <h2 class="page-title">Referral Doctors</h2>
+          <p class="page-subtitle">Manage doctor accounts and commission rates</p>
+        </div>
+        <div class="page-actions">
+          <button class="btn btn-primary" id="add-doctor-btn">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            Add Doctor
+          </button>
+        </div>
+      </div>
+
+      <div class="filters-bar">
+        <div class="topbar-search" style="width:280px">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          <input type="text" id="search-doctor" placeholder="Search by name or clinic…" autocomplete="off">
+        </div>
+      </div>
+
+      <div id="doctors-table-container"></div>
+    </main>
+  </div>
+</div>
+
+<!-- Add/Edit Doctor Modal -->
+<div class="modal-backdrop" id="doctor-modal">
+  <div class="modal modal-sm" role="dialog" aria-modal="true" aria-labelledby="doctor-modal-title">
+    <div class="modal-header">
+      <h2 class="modal-title" id="doctor-modal-title">Add Doctor</h2>
+      <button class="modal-close" id="doctor-modal-close" aria-label="Close">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <div class="modal-body">
+      <form id="doctor-form" novalidate>
+        <input type="hidden" id="doctor-id">
+        <div class="form-field mb-4">
+          <label class="form-label" for="doctor-name">Doctor Name <span class="required">*</span></label>
+          <input class="form-input" type="text" id="doctor-name" placeholder="e.g. Dr. Sharma">
+        </div>
+        <div class="form-field mb-4">
+          <label class="form-label" for="doctor-clinic">Clinic / Hospital Name</label>
+          <input class="form-input" type="text" id="doctor-clinic" placeholder="e.g. Metro Clinic">
+        </div>
+        <div class="form-field mb-4">
+          <label class="form-label" for="doctor-commission">Commission Percentage (%) <span class="required">*</span></label>
+          <input class="form-input" type="number" id="doctor-commission" min="0" max="100" step="0.5" value="0" placeholder="e.g. 15">
+        </div>
+        <div class="form-field" id="doctor-status-row" style="display:none">
+          <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer">
+            <input type="checkbox" id="doctor-active" checked>
+            <strong>Account Active</strong>
+          </label>
+        </div>
+      </form>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" id="doctor-cancel-btn">Cancel</button>
+      <button class="btn btn-primary" id="doctor-save-btn">Save Doctor</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast-container"></div>
+
+<script src="/assets/js/toast.js"></script>
+<script src="/assets/js/modal.js"></script>
+<script src="/assets/js/api-client.js"></script>
+<script src="/assets/js/table.js"></script>
+<script src="/assets/js/shell.js"></script>
+<script>
+(async function() {
+  await Shell.init({ role: 'admin', pageTitle: 'Doctors' });
+
+  let editingId = null;
+
+  const table = new DataTable({
+    containerId: 'doctors-table-container',
+    columns: [
+      { key: null,             label: 'S.No.',          width: '60px',  render: (_, __, idx) => `<span class="tabular">${idx}</span>` },
+      { key: 'name',           label: 'Doctor Name',    render: v => `<span class="fw-600">${escapeHtml(v)}</span>` },
+      { key: 'clinic_name',    label: 'Clinic Name',    render: v => escapeHtml(v || '—') },
+      { key: 'commission_pct', label: 'Commission Rate', width: '150px', render: v => `<span class="tabular fw-600 text-primary">${v}%</span>` },
+      { key: 'is_active',      label: 'Status',         width: '100px',  render: v => v ? `<span class="badge badge-success">Active</span>` : `<span class="badge badge-neutral">Inactive</span>` },
+      { key: null,             label: 'Actions',        width: '180px', render: (_, row) => `
+        <div style="display:flex;gap:5px">
+          <button class="btn btn-sm btn-ghost" onclick="openEdit('${row.id}')">Edit</button>
+          <button class="btn btn-sm ${row.is_active ? 'btn-ghost text-error' : 'btn-ghost text-success'}" onclick="toggleStatus('${row.id}', ${row.is_active}, '${escapeHtml(row.name)}')">
+            ${row.is_active ? 'Deactivate' : 'Activate'}
+          </button>
+        </div>
+      ` },
+    ],
+    fetchFn: async (params) => {
+      const res = await API.get('/api/v1/doctors?include_inactive=true');
+      const q = (params.q || '').toLowerCase().trim();
+      const filtered = res.filter(d => 
+        !q || 
+        d.name.toLowerCase().includes(q) || 
+        (d.clinic_name && d.clinic_name.toLowerCase().includes(q))
+      );
+      return {
+        items: filtered,
+        total: filtered.length
+      };
+    },
+    pageSize: 30,
+    emptyMessage: 'No doctors registered',
+  });
+  table.load();
+
+  let searchTimer;
+  document.getElementById('search-doctor').addEventListener('input', e => {
+    clearTimeout(searchTimer);
+    searchTimer = setTimeout(() => { table.setFilter('q', e.target.value); table.load(); }, 400);
+  });
+
+  document.getElementById('add-doctor-btn').addEventListener('click', () => {
+    editingId = null;
+    document.getElementById('doctor-modal-title').textContent = 'Add Doctor';
+    document.getElementById('doctor-form').reset();
+    document.getElementById('doctor-id').value = '';
+    document.getElementById('doctor-status-row').style.display = 'none';
+    Modal.open('doctor-modal');
+  });
+
+  window.openEdit = async function(id) {
+    editingId = id;
+    document.getElementById('doctor-modal-title').textContent = 'Edit Doctor';
+    document.getElementById('doctor-status-row').style.display = '';
+    Modal.open('doctor-modal');
+    try {
+      const doc = table.items.find(d => d.id === id);
+      if (doc) {
+        document.getElementById('doctor-name').value = doc.name || '';
+        document.getElementById('doctor-clinic').value = doc.clinic_name || '';
+        document.getElementById('doctor-commission').value = doc.commission_pct || 0;
+        document.getElementById('doctor-active').checked = doc.is_active;
+      }
+    } catch { Toast.show('Failed to load doctor details', 'error'); Modal.close('doctor-modal'); }
+  };
+
+  document.getElementById('doctor-save-btn').addEventListener('click', async () => {
+    const name = document.getElementById('doctor-name').value.trim();
+    const clinic = document.getElementById('doctor-clinic').value.trim();
+    const comm = parseFloat(document.getElementById('doctor-commission').value);
+    const active = document.getElementById('doctor-active').checked;
+
+    if (!name || isNaN(comm) || comm < 0 || comm > 100) {
+      Toast.show('Enter a valid doctor name and commission (0-100%)', 'warning');
+      return;
+    }
+
+    const btn = document.getElementById('doctor-save-btn');
+    btn.setAttribute('aria-busy','true'); btn.innerHTML = `<span class="btn-loading-spinner"></span> Saving...`;
+    try {
+      if (editingId) {
+        await API.patch(`/api/v1/doctors/${editingId}`, { name, clinic_name: clinic, commission_pct: comm, is_active: active });
+        Toast.show('Doctor details updated', 'success');
+      } else {
+        await API.post('/api/v1/doctors', { name, clinic_name: clinic, commission_pct: comm });
+        Toast.show('Doctor registered successfully', 'success');
+      }
+      Modal.close('doctor-modal');
+      table.refresh();
+    } catch (err) { Toast.show(err.message || 'Failed to save', 'error'); }
+    finally { btn.removeAttribute('aria-busy'); btn.innerHTML = 'Save Doctor'; }
+  });
+
+  document.getElementById('doctor-cancel-btn').addEventListener('click', () => Modal.close('doctor-modal'));
+  document.getElementById('doctor-modal-close').addEventListener('click', () => Modal.close('doctor-modal'));
+
+  window.toggleStatus = async function(id, currentActive, name) {
+    const ok = await Modal.confirm(
+      currentActive ? 'Deactivate Doctor' : 'Activate Doctor',
+      `Are you sure you want to ${currentActive ? 'deactivate' : 'activate'} Dr. ${name}?`,
+      { confirmText: currentActive ? 'Deactivate' : 'Activate', danger: currentActive }
+    );
+    if (!ok) return;
+    try {
+      await API.patch(`/api/v1/doctors/${id}`, { is_active: !currentActive });
+      Toast.show(`Doctor is now ${!currentActive ? 'Active' : 'Inactive'}`, 'success');
+      table.refresh();
+    } catch { Toast.show('Failed to toggle status', 'error'); }
+  };
+})();
+</script>
+</body>
+</html>

@@ -62,16 +62,59 @@ def update_test(db: Session, test_id: uuid.UUID, payload, actor_id: uuid.UUID) -
     return _test_to_dict(test)
 
 
-def get_all_doctors(db: Session) -> List[dict]:
-    doctors = test_repo.get_all_doctors(db)
-    return [{"id": str(d.id), "name": d.name, "clinic_name": d.clinic_name} for d in doctors]
+def get_all_doctors(db: Session, include_inactive: bool = False) -> List[dict]:
+    doctors = test_repo.get_all_doctors(db, include_inactive)
+    return [
+        {
+            "id": str(d.id),
+            "name": d.name,
+            "clinic_name": d.clinic_name,
+            "commission_pct": float(d.commission_pct),
+            "is_active": d.is_active,
+        }
+        for d in doctors
+    ]
 
 
 def create_doctor(db: Session, name: str, clinic_name: Optional[str],
-                  actor_id: uuid.UUID) -> dict:
-    doc = test_repo.create_doctor(db, name, clinic_name)
+                  commission_pct: float, actor_id: uuid.UUID) -> dict:
+    doc = test_repo.create_doctor(db, name, clinic_name, commission_pct)
+    audit_service.log(db, "doctor.create", actor_user_id=actor_id,
+                      entity_type="doctor", entity_id=doc.id,
+                      after={"name": doc.name, "commission_pct": commission_pct})
     db.commit()
-    return {"id": str(doc.id), "name": doc.name, "clinic_name": doc.clinic_name}
+    return {
+        "id": str(doc.id),
+        "name": doc.name,
+        "clinic_name": doc.clinic_name,
+        "commission_pct": float(doc.commission_pct),
+        "is_active": doc.is_active,
+    }
+
+
+def update_doctor(db: Session, doctor_id: uuid.UUID, payload, actor_id: uuid.UUID) -> dict:
+    doc = test_repo.get_doctor_by_id(db, doctor_id)
+    if not doc:
+        raise ValueError("Doctor not found")
+    before = {
+        "name": doc.name,
+        "clinic_name": doc.clinic_name,
+        "commission_pct": float(doc.commission_pct),
+        "is_active": doc.is_active,
+    }
+    updates = payload.model_dump(exclude_none=True)
+    updated = test_repo.update_doctor(db, doctor_id, **updates)
+    audit_service.log(db, "doctor.edit", actor_user_id=actor_id,
+                      entity_type="doctor", entity_id=doctor_id,
+                      before=before, after=updates)
+    db.commit()
+    return {
+        "id": str(updated.id),
+        "name": updated.name,
+        "clinic_name": updated.clinic_name,
+        "commission_pct": float(updated.commission_pct),
+        "is_active": updated.is_active,
+    }
 
 
 def _test_to_dict(test) -> dict:

@@ -60,4 +60,15 @@ def init_db():
         conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS staff_code VARCHAR(16) UNIQUE;"))
         conn.execute(text("ALTER TABLE tests ADD COLUMN IF NOT EXISTS test_code VARCHAR(16) UNIQUE;"))
         conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS is_locked BOOLEAN DEFAULT FALSE;"))
+        conn.execute(text("ALTER TABLE doctors ADD COLUMN IF NOT EXISTS commission_pct NUMERIC(5, 2) DEFAULT 0.0;"))
+        conn.execute(text("ALTER TABLE patients ADD COLUMN IF NOT EXISTS referred_doctor_commission_pct NUMERIC(5, 2) DEFAULT 0.0;"))
+        conn.execute(text("ALTER TABLE patients ADD COLUMN IF NOT EXISTS referred_doctor_commission_amount NUMERIC(10, 2) DEFAULT 0.0;"))
         conn.commit()
+        
+        # PostgreSQL custom enum values fallback
+        try:
+            conn.execute(text("ALTER TYPE otp_purpose_enum ADD VALUE IF NOT EXISTS 'delete_verify';"))
+            conn.execute(text("ALTER TYPE otp_purpose_enum ADD VALUE IF NOT EXISTS 'password_change';"))
+            conn.commit()
+        except Exception:
+            pass

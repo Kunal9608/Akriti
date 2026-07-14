@@ -1,6 +1,6 @@
 """Doctor reference model."""
 import uuid
-from sqlalchemy import Column, String, Boolean, UniqueConstraint, text
+from sqlalchemy import Column, String, Boolean, UniqueConstraint, text, Numeric
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 
@@ -14,6 +14,7 @@ class Doctor(Base):
                 server_default=text("gen_random_uuid()"))
     name = Column(String(120), nullable=False)
     clinic_name = Column(String(150), nullable=True)
+    commission_pct = Column(Numeric(5, 2), default=0.0, nullable=False)
     is_active = Column(Boolean, default=True)
 
     __table_args__ = (

@@ -261,11 +261,37 @@
             </div>
             <form id="password-form" novalidate>
               <div class="form-field mb-4">
+                <label class="form-label">Verification Method</label>
+                <div style="display:flex;gap:16px;margin-top:4px">
+                  <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;user-select:none">
+                    <input type="radio" name="verify-method" value="password" checked style="accent-color:var(--color-cherry-cola)">
+                    Current Password
+                  </label>
+                  <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;user-select:none">
+                    <input type="radio" name="verify-method" value="otp" style="accent-color:var(--color-cherry-cola)">
+                    Email OTP
+                  </label>
+                </div>
+              </div>
+
+              <!-- Current Password Input -->
+              <div class="form-field mb-4" id="current-pw-wrapper">
                 <label class="form-label" for="current-pw">Current Password <span class="required">*</span></label>
                 <div style="position: relative;">
                   <input class="form-input" type="password" id="current-pw" placeholder="Enter current password" autocomplete="current-password" style="padding-right: 40px;">
                   <button type="button" class="password-toggle-btn" data-target="current-pw" style="position: absolute; right: 12px; top: 50%; transform: translateY(-50%); background: none; border: none; padding: 0; cursor: pointer; color: var(--color-ink-muted); display: flex; align-items: center;" aria-label="Show password">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                  </button>
+                </div>
+              </div>
+
+              <!-- OTP Input -->
+              <div class="form-field mb-4" id="otp-wrapper" style="display:none">
+                <label class="form-label" for="otp-code">Email OTP Code <span class="required">*</span></label>
+                <div style="display:flex;gap:8px">
+                  <input class="form-input" type="text" id="otp-code" placeholder="6-digit OTP code" maxlength="6" inputmode="numeric" autocomplete="one-time-code" style="flex:1">
+                  <button type="button" class="btn btn-secondary" id="request-pw-otp-btn" style="flex-shrink:0;height:36px;font-size:12px;padding:0 12px">
+                    Send OTP
                   </button>
                 </div>
               </div>
@@ -433,13 +459,48 @@
   });
 
   // ── Change Password ────────────────────────────────────────────────────────
+  const verifyRadios = document.querySelectorAll('input[name="verify-method"]');
+  const currentPwWrapper = document.getElementById('current-pw-wrapper');
+  const otpWrapper = document.getElementById('otp-wrapper');
+  const requestPwOtpBtn = document.getElementById('request-pw-otp-btn');
+
+  verifyRadios.forEach(radio => {
+    radio.addEventListener('change', () => {
+      if (radio.value === 'password') {
+        currentPwWrapper.style.display = 'block';
+        otpWrapper.style.display = 'none';
+      } else {
+        currentPwWrapper.style.display = 'none';
+        otpWrapper.style.display = 'block';
+      }
+    });
+  });
+
+  requestPwOtpBtn.addEventListener('click', async () => {
+    requestPwOtpBtn.setAttribute('aria-busy', 'true');
+    requestPwOtpBtn.textContent = 'Sending...';
+    try {
+      await API.post('/api/v1/auth/otp/request', { email: me.email, purpose: 'password_change' });
+      Toast.show('OTP code sent to your registered email', 'success');
+    } catch (err) {
+      Toast.show(err.message || 'Failed to send OTP', 'error');
+    } finally {
+      requestPwOtpBtn.removeAttribute('aria-busy');
+      requestPwOtpBtn.textContent = 'Send OTP';
+    }
+  });
+
   document.getElementById('change-pw-btn').addEventListener('click', async () => {
-    const currentPw = document.getElementById('current-pw').value;
+    const method    = document.querySelector('input[name="verify-method"]:checked').value;
+    const currentPw = document.getElementById('current-pw').value.trim();
+    const otpCode   = document.getElementById('otp-code').value.trim();
     const newPw     = document.getElementById('new-pw').value;
     const confirmPw = document.getElementById('confirm-pw').value;
 
-    if (!currentPw || !newPw || !confirmPw) { Toast.show('All password fields are required', 'warning'); return; }
-    if (newPw !== confirmPw)                { Toast.show('New passwords do not match', 'error'); return; }
+    if (method === 'password' && !currentPw) { Toast.show('Current password is required', 'warning'); return; }
+    if (method === 'otp' && !otpCode)        { Toast.show('OTP verification code is required', 'warning'); return; }
+    if (!newPw || !confirmPw)                { Toast.show('New password fields are required', 'warning'); return; }
+    if (newPw !== confirmPw)                 { Toast.show('New passwords do not match', 'error'); return; }
     if (newPw.length < 6 || newPw.length > 13) { Toast.show('Password must be between 6 and 13 characters', 'error'); return; }
     if (!/[A-Za-z]/.test(newPw) || !/\d/.test(newPw)) {
       Toast.show('Password must contain at least one letter and one digit', 'error'); return;
@@ -449,14 +510,24 @@
     btn.setAttribute('aria-busy', 'true');
     btn.innerHTML = `<span class="btn-loading-spinner"></span> Updating…`;
 
+    const payload = { new_password: newPw };
+    if (method === 'password') {
+      payload.current_password = currentPw;
+    } else {
+      payload.otp_code = otpCode;
+    }
+
     try {
-      await API.post('/api/v1/auth/me/change-password', {
-        current_password: currentPw,
-        new_password: newPw,
-      });
+      await API.post('/api/v1/auth/me/change-password', payload);
       document.getElementById('password-form').reset();
       document.getElementById('pw-strength-bar').style.width = '0%';
       document.getElementById('pw-strength-label').textContent = 'Enter a password';
+      
+      // Reset inputs visibility
+      currentPwWrapper.style.display = 'block';
+      otpWrapper.style.display = 'none';
+      document.querySelector('input[name="verify-method"][value="password"]').checked = true;
+
       Toast.show('Password changed successfully', 'success');
     } catch (err) {
       Toast.show(err.message || 'Failed to change password', 'error');

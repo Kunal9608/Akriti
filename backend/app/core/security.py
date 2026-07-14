@@ -38,7 +38,7 @@ def verify_password(plain: str, hashed: str) -> bool:
     return pwd_context.verify(plain, hashed)
 
 
-def create_access_token(user_id: str, role: str) -> str:
+def create_access_token(user_id: str, role: str, session_id: Optional[str] = None) -> str:
     expire = datetime.now(timezone.utc) + timedelta(minutes=settings.JWT_ACCESS_EXPIRE_MINUTES)
     payload = {
         "sub": str(user_id),
@@ -46,6 +46,8 @@ def create_access_token(user_id: str, role: str) -> str:
         "exp": expire,
         "type": "access",
     }
+    if session_id:
+        payload["sid"] = str(session_id)
     return jwt.encode(payload, settings.JWT_SECRET_KEY, algorithm=settings.JWT_ALGORITHM)
 
 

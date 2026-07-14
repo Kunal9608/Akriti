@@ -125,19 +125,31 @@
           <!-- Danger Zone -->
           <div class="settings-section" style="border: 1px solid var(--color-error)">
             <div class="settings-section-title" style="color: var(--color-error)">Danger Zone</div>
-            <p class="text-sm text-muted mb-4">Permanently hard-deletes all system data (patients, test bookings, reports, logs) except for admin/staff accounts. Enter safety password to confirm.</p>
+            <p class="text-sm text-muted mb-4">Permanently hard-deletes patient records, test bookings, and report PDF files. Enter your account password and the OTP sent to your registered email to confirm.</p>
+            
             <div class="form-field mb-4">
-              <label class="form-label" for="safety-password">Safety Password</label>
+              <label class="form-label" for="safety-password">Account Password</label>
               <div style="position: relative;">
-                <input class="form-input" type="password" id="safety-password" placeholder="Enter safety password" style="padding-right: 40px;">
+                <input class="form-input" type="password" id="safety-password" placeholder="Enter your password" style="padding-right: 40px;">
                 <button type="button" class="password-toggle-btn" data-target="safety-password" style="position: absolute; right: 12px; top: 50%; transform: translateY(-50%); background: none; border: none; padding: 0; cursor: pointer; color: var(--color-ink-muted); display: flex; align-items: center;" aria-label="Show password">
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
                 </button>
               </div>
             </div>
-            <button type="button" class="btn btn-danger" id="delete-everything-btn" style="background:var(--color-error);border-color:var(--color-error);color:#fff;width:100%">
-              Delete Everything
+
+            <button type="button" class="btn" id="request-delete-otp-btn" style="background:var(--color-ink-muted);border-color:var(--color-ink-muted);color:#fff;width:100%;margin-bottom:16px">
+              Request Verification OTP
             </button>
+
+            <div id="otp-section" style="display:none">
+              <div class="form-field mb-4">
+                <label class="form-label" for="delete-otp">Email Verification OTP</label>
+                <input class="form-input" type="text" id="delete-otp" placeholder="Enter 6-digit OTP code" maxlength="6" inputmode="numeric" autocomplete="one-time-code">
+              </div>
+              <button type="button" class="btn btn-danger" id="delete-everything-btn" style="background:var(--color-error);border-color:var(--color-error);color:#fff;width:100%">
+                Confirm Wipe & Download Backup
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -308,38 +320,83 @@
   document.getElementById('lh-outcome').addEventListener('change', e => { lhTable.setFilter('outcome', e.target.value); lhTable.load(); });
 
   // ── Danger Zone: Delete Everything ──────────────────────────────────────────
-  document.getElementById('delete-everything-btn').addEventListener('click', async () => {
-    const pwd = document.getElementById('safety-password').value.trim();
-    if (!pwd) { Toast.show('Safety password is required', 'warning'); return; }
-    
-    // Check password first before showing confirmation
-    if (pwd !== 'Kunal123') {
-      Toast.show('Incorrect safety password', 'error');
-      document.getElementById('safety-password').value = '';
-      return;
+  const requestOtpBtn = document.getElementById('request-delete-otp-btn');
+  const otpSection = document.getElementById('otp-section');
+  const deleteBtn = document.getElementById('delete-everything-btn');
+
+  requestOtpBtn.addEventListener('click', async () => {
+    const password = document.getElementById('safety-password').value.trim();
+    if (!password) { Toast.show('Account password is required', 'warning'); return; }
+
+    requestOtpBtn.setAttribute('aria-busy', 'true');
+    requestOtpBtn.innerHTML = `<span class="btn-loading-spinner"></span> Sending OTP...`;
+
+    try {
+      await API.post('/api/v1/settings/delete-request-otp', { password });
+      Toast.show('Verification OTP has been sent to your email', 'success');
+      otpSection.style.display = 'block';
+      requestOtpBtn.style.display = 'none';
+      document.getElementById('safety-password').disabled = true;
+    } catch (err) {
+      Toast.show(err.message || 'Failed to send OTP', 'error');
+    } finally {
+      requestOtpBtn.removeAttribute('aria-busy');
+      requestOtpBtn.innerHTML = 'Request Verification OTP';
     }
-    
+  });
+
+  deleteBtn.addEventListener('click', async () => {
+    const password = document.getElementById('safety-password').value.trim();
+    const otp = document.getElementById('delete-otp').value.trim();
+
+    if (!password) { Toast.show('Account password is required', 'warning'); return; }
+    if (!otp) { Toast.show('OTP verification code is required', 'warning'); return; }
+
     const ok = await Modal.confirm(
-      'Patient Data Backup Verification', 
-      'Warning: Please ensure you have backed up all patient records before proceeding. Continuing will permanently hard delete all data from the system, including patient files, reports, and timeline logs. This action is irreversible.', 
-      { confirmText: 'Wipe & Delete Everything', cancelText: 'Cancel', danger: true }
+      'CRITICAL: Patient Data Hard Delete', 
+      'Warning: This will permanently wipe all patient records, tests, and PDF files. An automatic backup of the past 15 days of patient records will be generated and downloaded to your device. This action cannot be undone.', 
+      { confirmText: 'Proceed and Wipe Data', cancelText: 'Cancel', danger: true }
     );
     if (!ok) return;
 
-    const btn = document.getElementById('delete-everything-btn');
-    btn.setAttribute('aria-busy','true');
-    btn.innerHTML = `<span class="btn-loading-spinner"></span> Deleting...`;
+    deleteBtn.setAttribute('aria-busy', 'true');
+    deleteBtn.innerHTML = `<span class="btn-loading-spinner"></span> Wiping & Downloading Backup...`;
 
     try {
-      await API.post('/api/v1/settings/delete-everything', { safety_password: pwd });
-      Toast.show('All system data has been permanently deleted.', 'success');
+      const res = await fetch('/api/v1/settings/delete-everything', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password, otp }),
+      });
+
+      if (!res.ok) {
+        const errJson = await res.json().catch(() => ({}));
+        throw new Error(errJson.detail || 'Data wipe failed');
+      }
+
+      // Download the PDF backup automatically
+      const blob = await res.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `patient_records_backup_${new Date().toISOString().substring(0,10)}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.URL.revokeObjectURL(url);
+
+      Toast.show('Database wiped and backup downloaded successfully!', 'success');
       document.getElementById('safety-password').value = '';
+      document.getElementById('safety-password').disabled = false;
+      document.getElementById('delete-otp').value = '';
+      otpSection.style.display = 'none';
+      requestOtpBtn.style.display = 'block';
       setTimeout(() => window.location.reload(), 1500);
     } catch (err) {
-      Toast.show(err.message || 'Failed to delete data', 'error');
+      Toast.show(err.message || 'Failed to complete delete', 'error');
     } finally {
-      btn.removeAttribute('aria-busy');
-      btn.innerHTML = 'Delete Everything';
+      deleteBtn.removeAttribute('aria-busy');
+      deleteBtn.innerHTML = 'Confirm Wipe & Download Backup';
     }
   });
 })();

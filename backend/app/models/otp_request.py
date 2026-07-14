@@ -11,6 +11,8 @@ from backend.app.core.db import Base
 class OtpPurposeEnum(str, enum.Enum):
     login = "login"
     password_reset = "password_reset"
+    delete_verify = "delete_verify"
+    password_change = "password_change"
 
 
 class OtpRequest(Base):

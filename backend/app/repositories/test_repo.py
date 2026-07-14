@@ -101,12 +101,30 @@ def get_current_prices(db: Session, test_ids: List[uuid.UUID]) -> dict:
 
 
 # Doctor CRUD
-def get_all_doctors(db: Session) -> List[Doctor]:
-    return db.query(Doctor).filter(Doctor.is_active == True).order_by(Doctor.name).all()
+def get_all_doctors(db: Session, include_inactive: bool = False) -> List[Doctor]:
+    q = db.query(Doctor)
+    if not include_inactive:
+        q = q.filter(Doctor.is_active == True)
+    return q.order_by(Doctor.name).all()
 
 
-def create_doctor(db: Session, name: str, clinic_name: Optional[str] = None) -> Doctor:
-    doc = Doctor(name=name.strip(), clinic_name=clinic_name)
+def get_doctor_by_id(db: Session, doctor_id: uuid.UUID) -> Optional[Doctor]:
+    return db.query(Doctor).filter(Doctor.id == doctor_id).first()
+
+
+def create_doctor(db: Session, name: str, clinic_name: Optional[str] = None, commission_pct: float = 0.0) -> Doctor:
+    doc = Doctor(name=name.strip(), clinic_name=clinic_name, commission_pct=commission_pct)
     db.add(doc)
+    db.flush()
+    return doc
+
+
+def update_doctor(db: Session, doctor_id: uuid.UUID, **updates) -> Optional[Doctor]:
+    doc = get_doctor_by_id(db, doctor_id)
+    if not doc:
+        return None
+    for k, v in updates.items():
+        if v is not None:
+            setattr(doc, k, v)
     db.flush()
     return doc

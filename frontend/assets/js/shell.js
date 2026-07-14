@@ -57,25 +57,26 @@ const Shell = (() => {
     {
       group: 'Main',
       items: [
-        { href: '/admin/dashboard.html',         label: 'Dashboard',        icon: 'grid' },
-        { href: '/admin/patients.html',           label: 'Patients',         icon: 'users' },
-        { href: '/admin/staff.html',              label: 'Staff',            icon: 'user-check' },
-        { href: '/admin/tests.html',              label: 'Tests',            icon: 'clipboard' },
+        { href: '/admin/dashboard',         label: 'Dashboard',        icon: 'grid' },
+        { href: '/admin/patients',           label: 'Patients',         icon: 'users' },
+        { href: '/admin/staff',              label: 'Staff',            icon: 'user-check' },
+        { href: '/admin/tests',              label: 'Tests',            icon: 'clipboard' },
+        { href: '/admin/doctors',            label: 'Doctors',          icon: 'person' },
       ],
     },
     {
       group: 'Finance',
       items: [
-        { href: '/admin/revenue.html',            label: 'Revenue',          icon: 'trending-up' },
-        { href: '/admin/expenses.html',           label: 'Expenses',         icon: 'credit-card' },
+        { href: '/admin/revenue',            label: 'Revenue',          icon: 'trending-up' },
+        { href: '/admin/expenses',           label: 'Expenses',         icon: 'credit-card' },
       ],
     },
     {
       group: 'Admin',
       items: [
-        { href: '/admin/audit-log.html',          label: 'Audit Log',        icon: 'shield' },
-        { href: '/admin/settings.html',           label: 'Settings',         icon: 'settings' },
-        { href: '/profile.html',                  label: 'My Profile',       icon: 'person' },
+        { href: '/admin/audit-log',          label: 'Audit Log',        icon: 'shield' },
+        { href: '/admin/settings',           label: 'Settings',         icon: 'settings' },
+        { href: '/profile',                  label: 'My Profile',       icon: 'person' },
       ],
     },
   ];
@@ -84,15 +85,15 @@ const Shell = (() => {
     {
       group: 'Main',
       items: [
-        { href: '/staff/add-patient.html',        label: 'Add Patient',      icon: 'user-plus' },
-        { href: '/staff/patients.html',           label: 'Patients',         icon: 'users' },
+        { href: '/staff/add-patient',        label: 'Add Patient',      icon: 'user-plus' },
+        { href: '/staff/patients',           label: 'Patients',         icon: 'users' },
       ],
     },
     {
       group: 'Account',
       items: [
-        { href: '/profile.html',                  label: 'My Profile',       icon: 'person' },
-        { href: '/staff/settings.html',           label: 'Settings',         icon: 'settings' },
+        { href: '/profile',                  label: 'My Profile',       icon: 'person' },
+        { href: '/staff/settings',           label: 'Settings',         icon: 'settings' },
       ],
     },
   ];
@@ -123,9 +124,24 @@ const Shell = (() => {
     let me;
     try {
       me = await API.get('/api/v1/auth/me', { silent: true });
+      localStorage.setItem('akriti_current_user', JSON.stringify(me));
+      // Proactively pre-cache test catalog for offline add-patient forms
+      API.get('/api/v1/tests?page_size=200', { silent: true }).then(res => {
+        const tests = (res.items || res || []).filter(t => t.is_active !== false);
+        localStorage.setItem('akriti_tests_cache', JSON.stringify(tests));
+      }).catch(() => {});
     } catch (err) {
-      window.location.href = '/index.html';
-      throw new Error('Redirecting to login... Access denied.');
+      const isNetworkError = err.message === 'No internet connection' || err.message === 'Server is unreachable';
+      const cached = localStorage.getItem('akriti_current_user');
+      if (isNetworkError && cached) {
+        try {
+          me = JSON.parse(cached);
+        } catch (_) {}
+      }
+      if (!me) {
+        window.location.href = '/';
+        throw new Error('Redirecting to login... Access denied.');
+      }
     }
 
     const nav = me.role === 'admin' ? NAV_ADMIN : NAV_STAFF;
@@ -136,7 +152,7 @@ const Shell = (() => {
     if (sidebarEl) {
       const initials = (me.name || 'U').split(' ').map(w => w[0]).join('').toUpperCase().slice(0,2);
       sidebarEl.innerHTML = `
-        <a href="${me.role === 'admin' ? '/admin/dashboard.html' : '/staff/patients.html'}" class="sidebar-brand" aria-label="Home">
+        <a href="${me.role === 'admin' ? '/admin/dashboard' : '/staff/patients'}" class="sidebar-brand" aria-label="Home">
           <div class="brand-mark">A</div>
           <div class="brand-text">
             <div class="brand-name">Akriti Diagnostics</div>
@@ -154,7 +170,7 @@ const Shell = (() => {
           </div>
         `).join('')}
         <div class="sidebar-footer">
-          <a href="/profile.html" class="sidebar-user" id="sidebar-user-area" title="View Profile">
+          <a href="/profile" class="sidebar-user" id="sidebar-user-area" title="View Profile">
             <div class="user-avatar">${initials}</div>
             <div class="user-info">
               <div class="user-name">${escapeHtml(me.name || 'User')}</div>
@@ -169,10 +185,16 @@ const Shell = (() => {
 
       // Logout
       document.getElementById('logout-btn')?.addEventListener('click', async () => {
-        const ok = await Modal.confirm('Sign Out', 'Are you sure you want to sign out?', { confirmText: 'Sign Out', danger: true });
-        if (!ok) return;
-        try { await API.post('/api/v1/auth/logout', {}, { silent: true }); } catch (_) {}
-        window.location.href = '/index.html';
+        await Modal.confirm('Sign Out', 'Are you sure you want to sign out?', {
+          confirmText: 'Sign Out',
+          danger: true,
+          onConfirm: async () => {
+            try {
+              await API.post('/api/v1/auth/logout', {}, { silent: true });
+            } catch (_) {}
+            window.location.href = '/';
+          }
+        });
       });
     }
 

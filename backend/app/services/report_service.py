@@ -95,6 +95,7 @@ def get_patient_reports(db: Session, patient_id: uuid.UUID) -> list:
             "verification_hash": r.verification_hash,
             "is_latest": r.is_latest,
             "uploaded_at": r.uploaded_at.isoformat() if r.uploaded_at else None,
+            "uploaded_by_name": r.uploader.name if r.uploader else "Unknown",
         }
         for r in reports
     ]

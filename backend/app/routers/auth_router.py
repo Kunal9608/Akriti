@@ -97,12 +97,53 @@ def verify_otp(payload: OtpVerifyRequest, request: Request, response: Response,
 
 
 @router.post("/password/reset")
-def reset_password(payload: PasswordResetRequest, response: Response,
+def reset_password(payload: PasswordResetRequest, request: Request, response: Response,
                    db: Session = Depends(get_db)):
+    from backend.app.services.auth_service import decode_token, create_access_token, create_refresh_token
+    from backend.app.core.security import hash_token
+    from backend.app.repositories import user_repo, session_repo as srepo
+    from backend.app.services.auth_service import _parse_device_label
+    import uuid
+
+    try:
+        token_payload = decode_token(payload.reset_token)
+        if token_payload.get("purpose") != "password_reset":
+            raise ValueError("Invalid token")
+        user_id = token_payload["sub"]
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid or expired reset token")
+
     auth_service.reset_password(db, payload.reset_token, payload.new_password)
-    response.delete_cookie("access_token")
-    response.delete_cookie("refresh_token")
-    return {"message": "Password reset successfully. Please log in again."}
+
+    user = user_repo.get_by_id(db, uuid.UUID(user_id))
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    # Issue session tokens
+    refresh_token = create_refresh_token(str(user.id))
+    token_hash = hash_token(refresh_token)
+
+    from backend.app.dependencies import get_client_ip
+    ip = get_client_ip(request)
+    ua = request.headers.get("User-Agent", "")
+    device_label = _parse_device_label(ua)
+    session = srepo.create_session(db, user.id, token_hash, device_label, ip)
+    access_token = create_access_token(str(user.id), user.role, session_id=str(session.id))
+    db.commit()
+
+    secure = settings.cookie_secure
+    response.set_cookie("access_token", access_token,
+                        httponly=True, secure=secure, samesite="strict",
+                        max_age=settings.JWT_ACCESS_EXPIRE_MINUTES * 60)
+    response.set_cookie("refresh_token", refresh_token,
+                        httponly=True, secure=secure, samesite="strict",
+                        max_age=settings.JWT_REFRESH_EXPIRE_HOURS * 3600)
+
+    return {
+        "message": "Password reset and logged in successfully",
+        "role": user.role,
+        "user": {"id": str(user.id), "name": user.name, "role": user.role}
+    }
 
 
 @router.post("/refresh")
@@ -162,21 +203,33 @@ def update_my_profile(payload: ProfileUpdate, current_user=Depends(get_current_u
     }
 
 
-from backend.app.schemas.auth import PasswordResetRequest as _PwReset
+from typing import Optional
 
 class ChangePasswordPayload(PydanticModel):
-    current_password: str
+    current_password: Optional[str] = None
+    otp_code: Optional[str] = None
     new_password: str
 
 
 @router.post("/me/change-password")
 def change_my_password(payload: ChangePasswordPayload,
+                       request: Request,
                        current_user=Depends(get_current_user),
                        db: Session = Depends(get_db)):
     from backend.app.core.security import verify_password, hash_password, validate_password_policy
     from backend.app.repositories import user_repo, session_repo as srepo
-    if not verify_password(payload.current_password, current_user.password_hash):
-        raise ValueError("Current password is incorrect")
+    
+    if not payload.current_password and not payload.otp_code:
+        raise ValueError("Either current password or OTP code must be provided")
+
+    if payload.current_password:
+        if not verify_password(payload.current_password, current_user.password_hash):
+            raise ValueError("Current password is incorrect")
+    else:
+        ip = request.client.host if request.client else "0.0.0.0"
+        ua = request.headers.get("user-agent")
+        auth_service.verify_otp_code(db, current_user.email, payload.otp_code, "password_change", ip, ua)
+
     if not validate_password_policy(payload.new_password):
         raise ValueError("Password must be between 6 and 13 characters with at least one letter and one digit")
     new_hash = hash_password(payload.new_password)

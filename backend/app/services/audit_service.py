@@ -8,6 +8,30 @@ from backend.app.core.security import sha256_hex, canonical_json
 from backend.app.repositories import audit_repo
 
 
+def _sanitize_for_json(data: Any) -> Any:
+    from datetime import date, datetime
+    import uuid
+    from decimal import Decimal
+    if isinstance(data, (datetime, date)):
+        return data.isoformat()
+    if isinstance(data, uuid.UUID):
+        return str(data)
+    if isinstance(data, Decimal):
+        return float(data)
+    if isinstance(data, bytes):
+        try:
+            return data.decode('utf-8')
+        except UnicodeDecodeError:
+            return data.hex()
+    if hasattr(data, "value"):
+        return data.value
+    if isinstance(data, dict):
+        return {k: _sanitize_for_json(v) for k, v in data.items()}
+    if isinstance(data, list):
+        return [_sanitize_for_json(v) for v in data]
+    return data
+
+
 def log(db, action: str, actor_user_id: Optional[uuid.UUID] = None,
         entity_type: Optional[str] = None, entity_id: Optional[uuid.UUID] = None,
         before: Optional[Any] = None, after: Optional[Any] = None,
@@ -17,6 +41,9 @@ def log(db, action: str, actor_user_id: Optional[uuid.UUID] = None,
     The record_hash links to the previous row — any tampering breaks the chain.
     """
     try:
+        before = _sanitize_for_json(before)
+        after = _sanitize_for_json(after)
+
         last_row = audit_repo.get_last_row(db)
         prev_hash = last_row.record_hash if last_row else "GENESIS"
 

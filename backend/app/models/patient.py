@@ -49,6 +49,8 @@ class Patient(Base):
     total_amount = Column(Numeric(10, 2), nullable=False)
     discount_amount = Column(Numeric(10, 2), default=0, nullable=True)
     amount_paid = Column(Numeric(10, 2), default=0)
+    referred_doctor_commission_pct = Column(Numeric(5, 2), default=0.0, nullable=True)
+    referred_doctor_commission_amount = Column(Numeric(10, 2), default=0.0, nullable=True)
     # amount_due is computed in Python (PG GENERATED ALWAYS AS not easily mapped in SQLAlchemy)
     payment_mode = Column(Enum("cash", "qr", name="payment_mode_enum"), nullable=True)
     status = Column(Enum(PatientStatusEnum, name="patient_status_enum"), default="sample_collected")

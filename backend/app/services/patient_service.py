@@ -66,6 +66,15 @@ def create_patient(db: Session, payload: PatientCreate, current_user_id: uuid.UU
 
     estimated_report_date = payload.estimated_report_date or (sample_date + timedelta(days=1))
 
+    commission_pct = 0.0
+    commission_amount = 0.0
+    if payload.doctor_id:
+        from backend.app.models.doctor import Doctor
+        doc = db.query(Doctor).filter(Doctor.id == payload.doctor_id).first()
+        if doc:
+            commission_pct = float(doc.commission_pct)
+            commission_amount = float(effective_total) * (commission_pct / 100.0)
+
     patient = patient_repo.create_patient(
         db,
         patient_code=patient_code,
@@ -82,6 +91,8 @@ def create_patient(db: Session, payload: PatientCreate, current_user_id: uuid.UU
         discount_amount=discount_amount,
         amount_paid=amount_paid,
         payment_mode=payload.payment_mode if amount_paid > 0 else None,
+        referred_doctor_commission_pct=commission_pct,
+        referred_doctor_commission_amount=commission_amount,
     )
 
     # Insert patient_tests with price snapshot
@@ -158,6 +169,25 @@ def update_patient(db: Session, patient_id: uuid.UUID, payload: PatientUpdate,
     if amount_paid > (total - discount_amount):
         raise ValueError("Amount paid cannot exceed total after discount")
 
+    # Recompute doctor commission if doctor_id, total_amount, or discount_amount changed
+    if "doctor_id" in update_data or "total_amount" in update_data or "discount_amount" in update_data:
+        new_doc_id = update_data.get("doctor_id") if "doctor_id" in update_data else patient.doctor_id
+        new_total = update_data.get("total_amount") if "total_amount" in update_data else patient.total_amount
+        new_discount = update_data.get("discount_amount") if "discount_amount" in update_data else patient.discount_amount
+        
+        commission_pct = 0.0
+        commission_amount = 0.0
+        if new_doc_id:
+            from backend.app.models.doctor import Doctor
+            doc = db.query(Doctor).filter(Doctor.id == new_doc_id).first()
+            if doc:
+                commission_pct = float(doc.commission_pct)
+                effective_total = float(new_total or 0) - float(new_discount or 0)
+                commission_amount = float(effective_total) * (commission_pct / 100.0)
+        
+        update_data["referred_doctor_commission_pct"] = commission_pct
+        update_data["referred_doctor_commission_amount"] = commission_amount
+
     patient_repo.update_patient(db, patient_id, **update_data)
     audit_service.log(
         db, "patient.edit",
@@ -227,10 +257,13 @@ def _patient_to_dict(db: Session, patient) -> dict:
     tests = []
     for pt in (patient.patient_tests or []):
         test_obj = pt.test
+        price = float(pt.price_at_booking)
         tests.append({
-            "id": str(pt.test_id),
+            "id": str(pt.test_id),           # test UUID
+            "test_id": str(pt.test_id),      # alias used by setSelectedTests()
             "name": test_obj.name if test_obj else "Unknown",
-            "price_at_booking": float(pt.price_at_booking),
+            "price": price,                  # alias expected by frontend
+            "price_at_booking": price,       # kept for schema compatibility
         })
 
     return {
@@ -251,6 +284,8 @@ def _patient_to_dict(db: Session, patient) -> dict:
         "amount_due": patient.amount_due,
         "payment_mode": patient.payment_mode,
         "payment_status": patient.payment_status,
+        "referred_doctor_commission_pct": float(patient.referred_doctor_commission_pct or 0.0),
+        "referred_doctor_commission_amount": float(patient.referred_doctor_commission_amount or 0.0),
         "status": patient.status,
         "processing_note": patient.processing_note,
         "created_at": patient.created_at.isoformat() if patient.created_at else None,

@@ -7,7 +7,7 @@
  *  - HTML pages: Network-first, fallback to cache, then offline page
  */
 
-const CACHE_VERSION = 'akriti-v1';
+const CACHE_VERSION = 'akriti-v2';
 const STATIC_CACHE  = `${CACHE_VERSION}-static`;
 const PAGES_CACHE   = `${CACHE_VERSION}-pages`;
 
@@ -38,7 +38,10 @@ const HTML_PAGES = [
   '/admin/attendance-report.html',
   '/admin/audit-log.html',
   '/admin/settings.html',
+  '/admin/add-patient.html',
+  '/admin/add-patient',
   '/staff/add-patient.html',
+  '/staff/add-patient',
   '/staff/patients.html',
   '/staff/settings.html',
   '/attendance-kiosk.html',

@@ -7,10 +7,26 @@ import logging
 logger = logging.getLogger(__name__)
 
 
+def _json_safe(data):
+    if isinstance(data, bytes):
+        try:
+            return data.decode("utf-8")
+        except UnicodeDecodeError:
+            return data.hex()
+    elif isinstance(data, dict):
+        return {k: _json_safe(v) for k, v in data.items()}
+    elif isinstance(data, list):
+        return [_json_safe(item) for item in data]
+    elif isinstance(data, tuple):
+        return tuple(_json_safe(item) for item in data)
+    return data
+
+
 async def validation_exception_handler(request: Request, exc: RequestValidationError):
+    errors = _json_safe(exc.errors())
     return JSONResponse(
         status_code=422,
-        content={"detail": exc.errors(), "message": "Validation error"},
+        content={"detail": errors, "message": "Validation error"},
     )
 
 

@@ -21,22 +21,33 @@ class EmailProvider(NotificationProvider):
     def send(self, event_type: str, recipient_email: str, context: Dict[str, Any]) -> bool:
         try:
             from backend.app.config import settings
-            if not settings.MAIL_USERNAME or not settings.MAIL_PASSWORD:
-                print("  [MAIL WARNING] Email not configured — settings.MAIL_USERNAME or settings.MAIL_PASSWORD is empty")
-                logger.warning("Email not configured — skipping notification")
+            
+            # --- BREVO CONFIG CHECK ---
+            if not settings.BREVO_API_KEY:
+                print("  [BREVO WARNING] Brevo API Key not configured — settings.BREVO_API_KEY is empty")
+                logger.warning("Brevo API Key not configured — skipping notification")
                 return False
 
-            import smtplib
-            from email.mime.text import MIMEText
-            from email.mime.multipart import MIMEMultipart
-            from email.mime.base import MIMEBase
-            from email import encoders
+            # --- COMMENTED OUT SMTP CONFIGURATION (DO NOT REMOVE) ---
+            # if not settings.MAIL_USERNAME or not settings.MAIL_PASSWORD:
+            #     print("  [MAIL WARNING] Email not configured — settings.MAIL_USERNAME or settings.MAIL_PASSWORD is empty")
+            #     logger.warning("Email not configured — skipping notification")
+            #     return False
+            #
+            # import smtplib
+            # from email.mime.text import MIMEText
+            # from email.mime.multipart import MIMEMultipart
+            # from email.mime.base import MIMEBase
+            # from email import encoders
+            # --------------------------------------------------------
 
             subject_map = {
                 "otp": f"Your OTP for Akriti Diagnostics — {context.get('otp', '')}",
                 "password_reset": "Reset your Akriti Lab password",
                 "report_ready": f"Your lab report is ready — {context.get('patient_name', '')}",
                 "welcome_staff": f"Welcome to Akriti Diagnostics Center — {context.get('name', '')}",
+                "password_change": f"Your OTP for password change — {context.get('otp', '')}",
+                "delete_verify": f"Your OTP for hard deleting patient data — {context.get('otp', '')}",
             }
             body_map = {
                 "otp": f"""
@@ -96,99 +107,138 @@ class EmailProvider(NotificationProvider):
                   </div>
                 </div>
                 """,
+                "password_change": f"""
+                <div style="font-family:'Manrope', -apple-system, sans-serif; max-width: 480px; margin: 20px auto; border: 1px solid #E7E7E3; border-radius: 12px; overflow: hidden; background-color: #FFFFFF; box-shadow: 0 4px 12px rgba(22,32,28,0.04);">
+                  <div style="background-color: #0E5C4E; padding: 24px; text-align: center;">
+                    <h2 style="color: #FFFFFF; margin: 0; font-size: 20px; font-weight: 700; letter-spacing: -0.5px;">Akriti Diagnostics Center</h2>
+                  </div>
+                  <div style="padding: 32px; color: #16201C; line-height: 1.6;">
+                    <p style="margin-top: 0; font-size: 15px; font-weight: 500;">Hello,</p>
+                    <p style="font-size: 14px; color: #7A8880;">Use the following One-Time Password (OTP) to securely change your password. This code is valid for 5 minutes.</p>
+                    <div style="font-size: 32px; font-weight: 800; letter-spacing: 6px; color: #0E5C4E; padding: 18px; background-color: #E4EEEB; border-radius: 8px; text-align: center; margin: 24px 0; border: 1px solid #C4DFD8;">{context.get('otp','')}</div>
+                    <p style="color: #A7B2AC; font-size: 12px; margin-bottom: 0; text-align: center;">If you did not request this, please secure your account immediately.</p>
+                  </div>
+                </div>
+                """,
+                "delete_verify": f"""
+                <div style="font-family:'Manrope', -apple-system, sans-serif; max-width: 480px; margin: 20px auto; border: 1px solid #E7E7E3; border-radius: 12px; overflow: hidden; background-color: #FFFFFF; box-shadow: 0 4px 12px rgba(22,32,28,0.04);">
+                  <div style="background-color: #9A0002; padding: 24px; text-align: center;">
+                    <h2 style="color: #FFFFFF; margin: 0; font-size: 20px; font-weight: 700; letter-spacing: -0.5px;">Akriti Diagnostics Center</h2>
+                  </div>
+                  <div style="padding: 32px; color: #16201C; line-height: 1.6;">
+                    <p style="margin-top: 0; font-size: 15px; font-weight: 600; color: #9A0002;">CRITICAL ACTION — Hard Delete Patient Data</p>
+                    <p style="font-size: 14px; color: #7A8880;">You have requested to hard delete patient data from the system. Use the following One-Time Password (OTP) to verify and authorize this wipe. This code is valid for 5 minutes.</p>
+                    <div style="font-size: 32px; font-weight: 800; letter-spacing: 6px; color: #9A0002; padding: 18px; background-color: #FDF3F3; border-radius: 8px; text-align: center; margin: 24px 0; border: 1px solid #F3D3D3;">{context.get('otp','')}</div>
+                    <p style="color: #A7B2AC; font-size: 12px; margin-bottom: 0; text-align: center;">If you did not request this delete action, contact admin support immediately.</p>
+                  </div>
+                </div>
+                """,
             }
 
-            # Use 'mixed' for emails that carry attachments, 'alternative' otherwise
             attachment_bytes = context.get("attachment_bytes")
             attachment_name  = context.get("attachment_name")
 
+            # --- COMMENTED OUT SMTP EMAIL CONSTRUCTION (DO NOT REMOVE) ---
+            # if attachment_bytes and attachment_name:
+            #     msg = MIMEMultipart("mixed")
+            #     html_part = MIMEMultipart("alternative")
+            #     html_body = body_map.get(event_type, f"<p>{context}</p>")
+            #     html_part.attach(MIMEText(html_body, "html"))
+            #     msg.attach(html_part)
+            #
+            #     # Attach the PDF
+            #     part = MIMEBase("application", "pdf")
+            #     part.set_payload(attachment_bytes)
+            #     encoders.encode_base64(part)
+            #     part.add_header(
+            #         "Content-Disposition",
+            #         "attachment",
+            #         filename=attachment_name,
+            #     )
+            #     msg.attach(part)
+            # else:
+            #     msg = MIMEMultipart("alternative")
+            #     html_body = body_map.get(event_type, f"<p>{context}</p>")
+            #     msg.attach(MIMEText(html_body, "html"))
+            #
+            # msg["Subject"] = subject_map.get(event_type, "Notification from Akriti Diagnostics")
+            # msg["From"] = f"{settings.MAIL_FROM_NAME} <{settings.MAIL_FROM}>"
+            # msg["To"] = recipient_email
+            #
+            # with smtplib.SMTP(settings.MAIL_SERVER, settings.MAIL_PORT, timeout=10.0) as server:
+            #     server.ehlo()
+            #     if settings.MAIL_TLS:
+            #         server.starttls()
+            #     server.login(settings.MAIL_USERNAME, settings.MAIL_PASSWORD)
+            #     server.sendmail(settings.MAIL_FROM, recipient_email, msg.as_string())
+            # -------------------------------------------------------------
+
+            # --- ACTIVE BREVO TRANSACTIONAL EMAIL REST CLIENT IMPLEMENTATION ---
+            import urllib.request
+            import urllib.error
+            import json
+            import base64
+
+            subject = subject_map.get(event_type, "Notification from Akriti Diagnostics")
+            html_body = body_map.get(event_type, f"<p>{context}</p>")
+
+            payload = {
+                "sender": {
+                    "name": settings.MAIL_FROM_NAME,
+                    "email": settings.MAIL_FROM
+                },
+                "to": [
+                    {
+                        "email": recipient_email
+                    }
+                ],
+                "subject": subject,
+                "htmlContent": html_body
+            }
+
             if attachment_bytes and attachment_name:
-                msg = MIMEMultipart("mixed")
-                html_part = MIMEMultipart("alternative")
-                html_body = body_map.get(event_type, f"<p>{context}</p>")
-                html_part.attach(MIMEText(html_body, "html"))
-                msg.attach(html_part)
+                attachment_content = base64.b64encode(attachment_bytes).decode("utf-8")
+                payload["attachment"] = [
+                    {
+                        "name": attachment_name,
+                        "content": attachment_content
+                    }
+                ]
 
-                # Attach the PDF
-                part = MIMEBase("application", "pdf")
-                part.set_payload(attachment_bytes)
-                encoders.encode_base64(part)
-                part.add_header(
-                    "Content-Disposition",
-                    "attachment",
-                    filename=attachment_name,
-                )
-                msg.attach(part)
-            else:
-                msg = MIMEMultipart("alternative")
-                html_body = body_map.get(event_type, f"<p>{context}</p>")
-                msg.attach(MIMEText(html_body, "html"))
+            headers = {
+                "api-key": settings.BREVO_API_KEY,
+                "Content-Type": "application/json",
+                "Accept": "application/json"
+            }
 
-            msg["Subject"] = subject_map.get(event_type, "Notification from Akriti Diagnostics")
-            msg["From"] = f"{settings.MAIL_FROM_NAME} <{settings.MAIL_FROM}>"
-            msg["To"] = recipient_email
+            req = urllib.request.Request(
+                "https://api.brevo.com/v3/smtp/email",
+                data=json.dumps(payload).encode("utf-8"),
+                headers=headers,
+                method="POST"
+            )
 
-            # Check if Brevo HTTP API is configured (to bypass Render SMTP block)
-            brevo_api_key = os.getenv("BREVO_API_KEY")
-            if brevo_api_key:
-                print(f"  [MAIL INFO] Sending email via Brevo HTTP API: {event_type} -> {recipient_email}")
-                import httpx
-                import base64
-                
-                headers = {
-                    "accept": "application/json",
-                    "api-key": brevo_api_key,
-                    "content-type": "application/json"
-                }
-                
-                html_body = body_map.get(event_type, f"<p>{context}</p>")
-                subject = subject_map.get(event_type, "Notification from Akriti Diagnostics")
-                
-                payload = {
-                    "sender": {"name": settings.MAIL_FROM_NAME, "email": settings.MAIL_FROM},
-                    "to": [{"email": recipient_email}],
-                    "subject": subject,
-                    "htmlContent": html_body
-                }
-                
-                attachment_bytes = context.get("attachment_bytes")
-                attachment_name = context.get("attachment_name")
-                if attachment_bytes and attachment_name:
-                    encoded_content = base64.b64encode(attachment_bytes).decode("utf-8")
-                    payload["attachments"] = [
-                        {
-                            "content": encoded_content,
-                            "name": attachment_name
-                        }
-                    ]
-                
-                resp = httpx.post("https://api.brevo.com/v3/smtp/email", json=payload, headers=headers, timeout=10.0)
-                if resp.status_code in (200, 201, 202):
-                    print(f"  [MAIL OK] Email sent successfully via Brevo: {event_type} -> {recipient_email}")
-                    logger.info(f"Email sent via Brevo: {event_type} -> {recipient_email}")
-                    return True
-                else:
-                    print(f"  [MAIL ERROR] Brevo API failed ({resp.status_code}): {resp.text}")
-                    logger.error(f"Brevo API failed: {resp.text}")
-                    return False
+            with urllib.request.urlopen(req, timeout=10.0) as response:
+                resp_data = response.read().decode("utf-8")
+                logger.info(f"Brevo API response: {resp_data}")
 
-            # Fallback to standard SMTP if Brevo is not set (Local Development)
-            with smtplib.SMTP(settings.MAIL_SERVER, settings.MAIL_PORT, timeout=10.0) as server:
-                server.ehlo()
-                if settings.MAIL_TLS:
-                    server.starttls()
-                server.login(settings.MAIL_USERNAME, settings.MAIL_PASSWORD)
-                server.sendmail(settings.MAIL_FROM, recipient_email, msg.as_string())
-
-            print(f"  [MAIL OK] Email sent successfully: {event_type} -> {recipient_email}")
-            logger.info(f"Email sent: {event_type} -> {recipient_email}")
+            print(f"  [BREVO OK] Email sent successfully via Brevo API: {event_type} -> {recipient_email}")
+            logger.info(f"Email sent via Brevo API: {event_type} -> {recipient_email}")
             return True
 
+        except urllib.error.HTTPError as he:
+            try:
+                err_body = he.read().decode("utf-8")
+            except Exception:
+                err_body = "Could not read error body"
+            print(f"  [BREVO HTTP ERROR] Code: {he.code}, Detail: {err_body}")
+            logger.error(f"Brevo HTTP Error: {he.code} - {err_body}")
+            return False
         except Exception as e:
             import traceback
             traceback.print_exc()
-            print(f"  [MAIL ERROR] Email send failed: {e}")
-            logger.error(f"Email send failed: {e}")
+            print(f"  [BREVO ERROR] Email send failed: {e}")
+            logger.error(f"Email send failed via Brevo API: {e}")
             return False
 
 
@@ -210,6 +260,8 @@ PROVIDER_REGISTRY: Dict[str, list] = {
     "password_reset": [EmailProvider()],
     "report_ready": [EmailProvider()],
     "welcome_staff": [EmailProvider()],
+    "password_change": [EmailProvider()],
+    "delete_verify": [EmailProvider()],
 }
 
 

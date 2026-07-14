@@ -72,6 +72,35 @@ app.add_middleware(
 )
 
 
+# ── Clean URLs Middleware ────────────────────────────────────────────────────
+@app.middleware("http")
+async def clean_urls_middleware(request: Request, call_next):
+    path = request.url.path
+    
+    # If path starts with API prefix or health or static paths with dots, bypass
+    if path.startswith("/api/") or path == "/health" or path.startswith("/docs") or path.startswith("/redoc"):
+        return await call_next(request)
+        
+    # Check if request is for a clean HTML path (e.g. /admin/dashboard)
+    last_segment = path.split("/")[-1]
+    if not path.endswith("/") and "." not in last_segment:
+        rel_path = path.lstrip("/")
+        file_path = FRONTEND_DIR / f"{rel_path}.html"
+        if file_path.is_file():
+            from fastapi.responses import FileResponse
+            return FileResponse(str(file_path), media_type="text/html")
+            
+    # If path ends in .html directly, redirect to clean URL
+    if path.endswith(".html"):
+        clean_path = path[:-5]
+        if clean_path.endswith("/index"):
+            clean_path = clean_path[:-5] or "/"
+        from fastapi.responses import RedirectResponse
+        return RedirectResponse(url=clean_path, status_code=301)
+        
+    return await call_next(request)
+
+
 # ── Web Security Headers Middleware ──────────────────────────────────────────
 @app.middleware("http")
 async def add_security_headers(request: Request, call_next):
@@ -84,7 +113,7 @@ async def add_security_headers(request: Request, call_next):
         "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://www.google.com/recaptcha/ https://www.gstatic.com/recaptcha/; "
         "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdn.jsdelivr.net; "
         "font-src 'self' https://fonts.gstatic.com; "
-        "img-src 'self' data: blob:; "
+        "img-src 'self' data: blob: https://api.qrserver.com; "
         "connect-src 'self' https://www.google.com/recaptcha/; "
         "frame-src 'self' https://www.google.com/recaptcha/ https://recaptcha.google.com/recaptcha/; "
         "frame-ancestors 'none';"
@@ -182,57 +211,115 @@ def patch_lab_settings(
     return get_lab_settings()
 
 
+class DeleteOtpRequestSchema(PydanticBaseModel):
+    password: str
+
+
+@app.post("/api/v1/settings/delete-request-otp")
+def delete_request_otp(
+    payload: DeleteOtpRequestSchema,
+    request: Request,
+    current_user=Depends(require_admin),
+):
+    from backend.app.core.db import SessionLocal
+    from backend.app.core.security import verify_password
+    from backend.app.services import auth_service
+    from fastapi import HTTPException
+    
+    if not verify_password(payload.password, current_user.password_hash):
+        raise HTTPException(status_code=400, detail="Incorrect account password")
+        
+    db = SessionLocal()
+    try:
+        ip = request.client.host if request.client else "0.0.0.0"
+        auth_service.request_otp(db, current_user.email, "delete_verify", ip)
+    finally:
+        db.close()
+    return {"message": "OTP has been sent to your registered email address"}
+
+
 class DeleteEverythingSchema(PydanticBaseModel):
-    safety_password: str
+    password: str
+    otp: str
 
 
 @app.post("/api/v1/settings/delete-everything")
 def delete_everything(
     payload: DeleteEverythingSchema,
+    request: Request,
     current_user=Depends(require_admin),
 ):
-    if payload.safety_password != "Kunal123":
-        from fastapi import HTTPException
-        raise HTTPException(status_code=400, detail="Incorrect safety password")
-
-    # Clean report files from disk
-    import glob
-    for f in glob.glob("uploads/reports/*"):
-        try:
-            os.remove(f)
-        except Exception:
-            pass
-
     from backend.app.core.db import SessionLocal
-    # Hard delete all data from tables except users
-    from backend.app.models.patient import Patient
-    from backend.app.models.patient_test import PatientTest
-    from backend.app.models.report import Report
-    from backend.app.models.login_history import LoginHistory
-    from backend.app.models.active_session import ActiveSession
-    from backend.app.models.audit_log import AuditLog
-    from backend.app.models.expense import Expense
-    from backend.app.models.attendance_event import AttendanceEvent
-
+    from backend.app.core.security import verify_password
+    from backend.app.services import auth_service, pdf_generator
+    from fastapi.responses import StreamingResponse
+    from fastapi import HTTPException
+    import io
+    
+    # 1. Verify Password
+    if not verify_password(payload.password, current_user.password_hash):
+        raise HTTPException(status_code=400, detail="Incorrect account password")
+        
     db = SessionLocal()
     try:
+        # 2. Verify OTP
+        ip = request.client.host if request.client else "0.0.0.0"
+        ua = request.headers.get("user-agent")
+        try:
+            auth_service.verify_otp_code(db, current_user.email, payload.otp, "delete_verify", ip, ua)
+        except Exception as e:
+            raise HTTPException(status_code=400, detail=str(e))
+
+        # 3. Query patients from past 15 days
+        from backend.app.models.patient import Patient
+        from datetime import datetime, timedelta, timezone
+        from sqlalchemy import and_
+        
+        cutoff = datetime.now(timezone.utc) - timedelta(days=15)
+        patients = db.query(Patient).filter(
+            and_(
+                Patient.created_at >= cutoff,
+                Patient.deleted_at.is_(None)
+            )
+        ).order_by(Patient.created_at.desc()).all()
+        
+        # 4. Generate backup PDF
+        try:
+            pdf_bytes = pdf_generator.generate_patients_pdf(patients)
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"Failed to generate backup PDF: {str(e)}")
+
+        # 5. Clean report files from disk
+        import glob
+        import os
+        for f in glob.glob("uploads/reports/*"):
+            try:
+                os.remove(f)
+            except Exception:
+                pass
+
+        # 6. Hard delete patient-related data ONLY
+        from backend.app.models.patient_test import PatientTest
+        from backend.app.models.report import Report
+
         db.query(Report).delete()
         db.query(PatientTest).delete()
         db.query(Patient).delete()
-        db.query(ActiveSession).delete()
-        db.query(LoginHistory).delete()
-        db.query(AuditLog).delete()
-        db.query(Expense).delete()
-        db.query(AttendanceEvent).delete()
         db.commit()
     except Exception as e:
         db.rollback()
-        from fastapi import HTTPException
+        if isinstance(e, HTTPException):
+            raise e
         raise HTTPException(status_code=500, detail=f"Database wipe failed: {e}")
     finally:
         db.close()
 
-    return {"message": "All database records have been deleted successfully"}
+    # Return PDF as attachment download
+    return StreamingResponse(
+        io.BytesIO(pdf_bytes),
+        media_type="application/pdf",
+        headers={"Content-Disposition": "attachment; filename=patient_backup_15days.pdf"}
+    )
 
 
 # ── Static frontend (served at /) ─────────────────────────────────────────────

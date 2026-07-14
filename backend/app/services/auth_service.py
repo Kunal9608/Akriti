@@ -121,13 +121,13 @@ def login(db: Session, email: str, password: str, ip: str,
             "user": {"id": str(user.id), "name": user.name, "role": user.role},
         }
 
-    access_token = create_access_token(str(user.id), user.role)
     refresh_token = create_refresh_token(str(user.id))
     token_hash = hash_token(refresh_token)
 
     # Parse user agent for device label
     device_label = _parse_device_label(user_agent or "")
-    session_repo.create_session(db, user.id, token_hash, device_label, ip)
+    session = session_repo.create_session(db, user.id, token_hash, device_label, ip)
+    access_token = create_access_token(str(user.id), user.role, session_id=str(session.id))
     db.commit()
 
     return {
@@ -245,11 +245,11 @@ def verify_otp_code(db: Session, email: str, otp_code: str, purpose: str,
             "user": {"id": str(user.id), "name": user.name, "role": user.role},
         }
 
-    access_token = create_access_token(str(user.id), user.role)
     refresh_token = create_refresh_token(str(user.id))
     token_hash = hash_token(refresh_token)
     device_label = _parse_device_label(user_agent or "")
-    session_repo.create_session(db, user.id, token_hash, device_label, ip)
+    session = session_repo.create_session(db, user.id, token_hash, device_label, ip)
+    access_token = create_access_token(str(user.id), user.role, session_id=str(session.id))
     db.commit()
     return {
         "requires_password_reset": False,
@@ -315,7 +315,7 @@ def refresh_access_token(db: Session, refresh_token: str) -> Optional[str]:
 
     session_repo.update_session_activity(db, session.id)
     db.commit()
-    return create_access_token(str(user.id), user.role)
+    return create_access_token(str(user.id), user.role, session_id=str(session.id))
 
 
 def generate_temp_password(length: int = 10) -> str:

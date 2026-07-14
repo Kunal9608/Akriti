@@ -30,7 +30,7 @@
     .test-price { font-size: var(--text-sm); color: var(--color-cherry-cola); font-weight: 600; white-space: nowrap; margin-left: 12px; }
     /* QR section */
     #qr-code-section { background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-lg); padding: 24px; text-align: center; }
-    /* ── Force search bar visible inside the form (overrides global display:none on mobile) ── */
+    /* ── Force search bar visible inside the form ── */
     .form-search.topbar-search { display: flex !important; width: 100% !important; }
     @media (max-width: 640px) {
       .form-card { padding: 18px 14px; }
@@ -96,7 +96,7 @@
                 <option value="">Select gender</option>
                 <option value="male">Male</option>
                 <option value="female">Female</option>
-                <option value="other">Other</option>
+                <option value="trans">Other / Trans</option>
               </select>
             </div>
           </div>
@@ -186,7 +186,7 @@
 
         <!-- Submit -->
         <div style="display:flex;gap:12px;justify-content:flex-end;margin-bottom:40px">
-          <a href="/staff/patients" class="btn btn-ghost">Cancel</a>
+          <a href="/admin/patients" class="btn btn-ghost">Cancel</a>
           <button type="submit" class="btn btn-primary btn-lg" id="submit-btn">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
             Save Patient
@@ -242,7 +242,6 @@
   const totalHiddenEl = document.getElementById('total-amount-hidden');
   if (totalHiddenEl) {
     new MutationObserver(updateNetPayable).observe(totalHiddenEl, { attributes: true, attributeFilter: ['value'] });
-    // Also patch PatientForm.updateTotal to call our function
     const origUpdateTotal = PatientForm.updateTotal?.bind(PatientForm);
     if (origUpdateTotal) {
       PatientForm.updateTotal = function() {
@@ -266,7 +265,6 @@
   }
   document.getElementById('amount-paid')?.addEventListener('input', capAmountPaid);
   document.getElementById('amount-paid')?.addEventListener('blur', capAmountPaid);
-  // Also cap when discount changes (net payable drops)
   document.getElementById('discount-amount')?.addEventListener('input', capAmountPaid);
 
   // Prefill if editing
@@ -320,7 +318,6 @@
     if (discountAmount < 0) { Toast.show('Discount cannot be negative', 'error'); return; }
     if (discountAmount > total) { Toast.show('Discount cannot exceed total bill amount', 'error'); return; }
 
-    // Enforce 20% - 100% billing validation rule (on net payable)
     if (amountPaid > netPayable) {
       amountPaid = netPayable;
       document.getElementById('amount-paid').value = netPayable;
@@ -369,7 +366,7 @@
         Toast.show(`Patient registered — ${res.patient_code}`, 'success');
       }
       PatientForm.clearForm();
-      setTimeout(() => window.location.href = '/staff/patients', 1500);
+      setTimeout(() => window.location.href = '/admin/patients', 1500);
     } catch (err) {
       Toast.show(err.message || 'Failed to save patient', 'error');
     } finally {

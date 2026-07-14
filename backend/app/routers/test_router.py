@@ -6,7 +6,7 @@ import uuid
 
 from backend.app.core.db import get_db
 from backend.app.dependencies import get_current_user, require_admin
-from backend.app.schemas.test import TestCreate, TestUpdate, DoctorCreate
+from backend.app.schemas.test import TestCreate, TestUpdate, DoctorCreate, DoctorUpdate
 from backend.app.services import test_service
 from backend.app.repositories import test_repo
 
@@ -110,14 +110,25 @@ def soft_delete_test(
 doctor_router = APIRouter(prefix="/doctors")
 
 @doctor_router.get("")
-def list_doctors(db: Session = Depends(get_db), current_user=Depends(get_current_user)):
-    return test_service.get_all_doctors(db)
+def list_doctors(include_inactive: bool = Query(False), db: Session = Depends(get_db),
+                 current_user=Depends(get_current_user)):
+    return test_service.get_all_doctors(db, include_inactive)
 
 
 @doctor_router.post("", status_code=201)
 def create_doctor(payload: DoctorCreate, db: Session = Depends(get_db),
                   current_user=Depends(get_current_user)):
-    return test_service.create_doctor(db, payload.name, payload.clinic_name, current_user.id)
+    return test_service.create_doctor(db, payload.name, payload.clinic_name, payload.commission_pct, current_user.id)
+
+
+@doctor_router.patch("/{doctor_id}")
+def update_doctor(doctor_id: uuid.UUID, payload: DoctorUpdate, db: Session = Depends(get_db),
+                  admin=Depends(require_admin)):
+    try:
+        return test_service.update_doctor(db, doctor_id, payload, admin.id)
+    except ValueError as e:
+        from fastapi import HTTPException
+        raise HTTPException(status_code=404, detail=str(e))
 
 
 router.include_router(test_router)

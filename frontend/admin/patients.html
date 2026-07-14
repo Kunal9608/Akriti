@@ -12,6 +12,7 @@
   <link rel="stylesheet" href="/assets/css/skeleton.css">
   <link rel="stylesheet" href="/assets/css/layout.css">
   <script src="/assets/js/theme.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
   <style>
     /* ── Slide Panel ────────────────────────────────────────────────────────── */
     .slide-panel {
@@ -146,7 +147,7 @@
           <h2>Patient Overview</h2>
           <p>All registered patients — search, filter, view details & manage reports</p>
         </div>
-        <a href="/staff/add-patient.html" class="btn" style="background:rgba(255,255,255,0.18);color:#fff;border-color:rgba(255,255,255,0.35);backdrop-filter:blur(8px);font-weight:600">
+        <a href="/admin/add-patient" class="btn" style="background:rgba(255,255,255,0.18);color:#fff;border-color:rgba(255,255,255,0.35);backdrop-filter:blur(8px);font-weight:600">
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
           Add Patient
         </a>
@@ -394,7 +395,7 @@
                 <div class="report-card">
                   <div class="report-card-meta">
                     <div class="report-card-name">${escapeHtml(r.filename)}</div>
-                    <div class="report-card-sub">v${r.version} · ${formatDateTime(r.uploaded_at)}</div>
+                    <div class="report-card-sub">v${r.version} · ${formatDateTime(r.uploaded_at)}<br>Uploaded by: ${escapeHtml(r.uploaded_by_name || 'Unknown')}</div>
                   </div>
                   <a href="/api/v1/reports/download/${r.id}" target="_blank" class="btn btn-sm btn-secondary" style="flex-shrink:0;height:30px;gap:5px">
                     <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
@@ -469,6 +470,10 @@
             <div class="detail-item-label">Status</div>
             <div class="detail-item-value">${statusBadge(p.status)}</div>
           </div>
+          <div class="detail-item">
+            <div class="detail-item-label">Sample Collected By</div>
+            <div class="detail-item-value">${escapeHtml(p.collected_by_name || 'Unknown')}</div>
+          </div>
           <div class="detail-item full-width">
             <div class="detail-item-label">Tests Booked</div>
             <div style="display:flex;flex-wrap:wrap;gap:4px;margin-top:4px">${tests}</div>
@@ -513,7 +518,7 @@
 
         <!-- Action Buttons -->
         <div style="display:flex;gap:8px;margin-top:24px">
-          <a href="/staff/add-patient.html?id=${p.id}" class="btn btn-secondary" style="flex:1">
+          <a href="/admin/add-patient?id=${p.id}" class="btn btn-secondary" style="flex:1">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
             Edit Patient
           </a>
@@ -550,9 +555,12 @@
 
     try {
       const p = await API.get(`/api/v1/patients/${id}`, { silent: true });
-      const netPayable = Math.max(0, parseFloat(p.total_amount || 0) - parseFloat(p.discount_amount || 0));
-      paySec.dataset.netPayable = netPayable;  // store net (after discount) — used when completing payment
-      const due = Number(p.amount_due);
+      const total = parseFloat(p.total_amount || 0);
+      const discount = parseFloat(p.discount_amount || 0);
+      const paid = parseFloat(p.amount_paid || 0);
+      const netPayable = Math.max(0, total - discount);
+      paySec.dataset.netPayable = netPayable;
+      const due = Math.max(0, netPayable - paid);
 
       if (due > 0) {
         paySec.innerHTML = `

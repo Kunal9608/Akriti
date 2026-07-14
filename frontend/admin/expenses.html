@@ -73,6 +73,7 @@
       <div class="pl-summary" id="pl-summary">
         <div class="pl-card"><div class="pl-label">Total Revenue</div><div class="skel skel-kpi" style="width:120px"></div></div>
         <div class="pl-card"><div class="pl-label">Total Expenses</div><div class="skel skel-kpi" style="width:120px"></div></div>
+        <div class="pl-card"><div class="pl-label">Doctor Commissions</div><div class="skel skel-kpi" style="width:120px"></div></div>
         <div class="pl-card"><div class="pl-label">Net Profit/Loss</div><div class="skel skel-kpi" style="width:120px"></div></div>
       </div>
 
@@ -188,6 +189,7 @@
     document.getElementById('pl-summary').innerHTML = `
       <div class="pl-card"><div class="pl-label">Total Revenue</div><div class="skel skel-kpi" style="width:120px"></div></div>
       <div class="pl-card"><div class="pl-label">Total Expenses</div><div class="skel skel-kpi" style="width:120px"></div></div>
+      <div class="pl-card"><div class="pl-label">Doctor Commissions</div><div class="skel skel-kpi" style="width:120px"></div></div>
       <div class="pl-card"><div class="pl-label">Net Profit/Loss</div><div class="skel skel-kpi" style="width:120px"></div></div>
     `;
     try {
@@ -196,6 +198,7 @@
       document.getElementById('pl-summary').innerHTML = `
         <div class="pl-card"><div class="pl-label">Total Revenue</div><div class="pl-value">${formatCurrency(pl.total_revenue)}</div></div>
         <div class="pl-card"><div class="pl-label">Total Expenses</div><div class="pl-value">${formatCurrency(pl.total_expenses)}</div></div>
+        <div class="pl-card"><div class="pl-label">Doctor Commissions</div><div class="pl-value text-error">${formatCurrency(pl.total_doctor_commissions)}</div></div>
         <div class="pl-card"><div class="pl-label">Net Profit/Loss</div><div class="pl-value ${profit >= 0 ? 'profit' : 'loss'}">${formatCurrency(Math.abs(profit))} ${profit < 0 ? 'Loss' : 'Profit'}</div></div>
       `;
     } catch {

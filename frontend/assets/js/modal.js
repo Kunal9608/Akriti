@@ -71,7 +71,7 @@ const Modal = (() => {
     activeModal = null;
   }
 
-  function confirm(title, message, { confirmText = 'Confirm', cancelText = 'Cancel', danger = false } = {}) {
+  function confirm(title, message, { confirmText = 'Confirm', cancelText = 'Cancel', danger = false, onConfirm = null } = {}) {
     return new Promise((resolve) => {
       // Remove any existing confirm modal
       const existing = document.getElementById('_confirm-modal');
@@ -107,9 +107,34 @@ const Modal = (() => {
         resolve(result);
       }
 
-      backdrop.querySelector('#_confirm-ok').addEventListener('click', () => done(true));
-      backdrop.querySelector('#_confirm-cancel').addEventListener('click', () => done(false));
-      backdrop.querySelector('#_confirm-cancel-x').addEventListener('click', () => done(false));
+      const okBtn = backdrop.querySelector('#_confirm-ok');
+      const cancelBtn = backdrop.querySelector('#_confirm-cancel');
+      const cancelX = backdrop.querySelector('#_confirm-cancel-x');
+
+      async function handleOk() {
+        if (onConfirm) {
+          okBtn.setAttribute('aria-busy', 'true');
+          okBtn.innerHTML = `<span class="btn-loading-spinner"></span>`;
+          okBtn.disabled = true;
+          if (cancelBtn) cancelBtn.disabled = true;
+          if (cancelX) cancelX.disabled = true;
+          try {
+            await onConfirm();
+          } catch (_) {
+            okBtn.removeAttribute('aria-busy');
+            okBtn.innerHTML = confirmText;
+            okBtn.disabled = false;
+            if (cancelBtn) cancelBtn.disabled = false;
+            if (cancelX) cancelX.disabled = false;
+            return;
+          }
+        }
+        done(true);
+      }
+
+      okBtn.addEventListener('click', handleOk);
+      cancelBtn.addEventListener('click', () => done(false));
+      cancelX.addEventListener('click', () => done(false));
     });
   }
 

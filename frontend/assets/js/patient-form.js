@@ -20,16 +20,46 @@ const PatientForm = (() => {
   let lookupDebounce = null;
   let qrDebounce = null;
   let labSettingsCache = null;
+  let activeRender = null;
 
-  // ── Load tests from API ───────────────────────────────────────────────────
+  // ── Load tests from API with Stale-While-Revalidate caching ────────────────
   async function loadTests() {
+    const cached = localStorage.getItem('akriti_tests_cache');
+    if (cached) {
+      try {
+        allTests = JSON.parse(cached);
+      } catch (_) {}
+    }
+    
+    // If no cached tests are available, block and wait for network fetch
+    if (!allTests || allTests.length === 0) {
+      await revalidateTests().catch(() => {});
+    } else {
+      revalidateTests().catch(() => {});
+    }
+    
+    return allTests;
+  }
+
+  async function revalidateTests() {
     try {
-      const res = await API.get('/api/v1/tests?page_size=200');
-      allTests = (res.items || res || []).filter(t => t.is_active !== false);
-      return allTests;
-    } catch {
-      Toast.show('Failed to load test catalog', 'error');
-      return [];
+      const res = await API.get('/api/v1/tests?page_size=1000');
+      const latestTests = (res.items || res || []).filter(t => t.is_active !== false);
+      const latestStr = JSON.stringify(latestTests);
+      
+      if (JSON.stringify(allTests) !== latestStr) {
+        allTests = latestTests;
+        localStorage.setItem('akriti_tests_cache', latestStr);
+        
+        // Refresh picker if currently visible on page
+        if (document.getElementById('test-picker-container')) {
+          renderTestPicker('test-picker-container', 'test-search-input');
+        }
+      }
+    } catch (err) {
+      if (!allTests.length) {
+        Toast.show('Failed to load test catalog', 'error');
+      }
     }
   }
 
@@ -99,18 +129,21 @@ const PatientForm = (() => {
       triggerQRRefresh();
     });
 
-    // Wire search input
+    // Wire search input without cloning to prevent focus loss during background revalidation
     if (searchInput) {
-      // Remove old listeners by cloning
-      const freshSearch = searchInput.cloneNode(true);
-      searchInput.parentNode.replaceChild(freshSearch, searchInput);
-      const si = document.getElementById(searchInputId);
-      si.addEventListener('input', e => {
-        render(e.target.value);
-      });
+      if (!searchInput.dataset.listenerBound) {
+        searchInput.addEventListener('input', e => {
+          if (activeRender) {
+            activeRender(e.target.value);
+          }
+        });
+        searchInput.dataset.listenerBound = 'true';
+      }
+      activeRender = render;
+      render(searchInput.value);
+    } else {
+      render();
     }
-
-    render(); // Initial render after tests are loaded
     return { render };
   }
 
@@ -323,7 +356,7 @@ const PatientForm = (() => {
               if (nameEl)   nameEl.value   = p.name;
               if (ageEl)    ageEl.value    = p.age;
               if (genderEl) genderEl.value = p.gender || '';
-              if (doctorEl) doctorEl.value = p.doctor_name || '';
+              if (doctorEl) doctorEl.value = p.doctor_id || '';
               suggestionEl.style.display = 'none';
               Toast.show('Patient details prefilled', 'info', 2000);
             });
@@ -337,15 +370,36 @@ const PatientForm = (() => {
     });
   }
 
+  // ── Load doctors from API ──────────────────────────────────────────────────
+  let allDoctors = [];
+  async function loadDoctors() {
+    try {
+      allDoctors = await API.get('/api/v1/doctors', { silent: true }) || [];
+      return allDoctors;
+    } catch {
+      return [];
+    }
+  }
+
+  function renderDoctorDropdown(selectId) {
+    const el = document.getElementById(selectId);
+    if (!el) return;
+    el.innerHTML = `
+      <option value="">SELF</option>
+      ${allDoctors.map(d => `<option value="${d.id}">${escapeHtml(d.name)}</option>`).join('')}
+    `;
+  }
+
   // ── Collect form data ─────────────────────────────────────────────────────
   function getFormData() {
     const v = id => { const el = document.getElementById(id); return el ? el.value : ''; };
+    const docId = v('patient-doctor');
     return {
       name:          v('patient-name').trim(),
       mobile:        v('patient-mobile').trim(),
       age:           parseInt(v('patient-age')),
       gender:        v('patient-gender'),
-      doctor_name:   v('patient-doctor').trim(),
+      doctor_id:     docId ? docId : null,
       sample_date:   v('patient-sample-date'),
       amount_paid:   parseFloat(v('amount-paid')) || 0,
       payment_mode:  v('payment-mode') || 'cash',
@@ -358,13 +412,16 @@ const PatientForm = (() => {
 
   function setSelectedTests(tests) {
     selectedTests.clear();
-    tests.forEach(t => selectedTests.set(String(t.test_id || t.id), { name: t.name, price: Number(t.price) }));
+    tests.forEach(t => selectedTests.set(String(t.test_id || t.id), { name: t.name, price: Number(t.price ?? t.price_at_booking ?? 0) }));
   }
 
   function clearForm() { selectedTests.clear(); }
 
   return {
     loadTests,
+    revalidateTests,
+    loadDoctors,
+    renderDoctorDropdown,
     renderTestPicker,
     renderSelectedChips,
     updateTotal,

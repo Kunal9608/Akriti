@@ -35,10 +35,19 @@ def get_current_user(
     try:
         payload = decode_token(token)
         user_id = payload.get("sub")
+        sid = payload.get("sid")
         if not user_id:
             raise HTTPException(status_code=401, detail="Invalid token")
     except Exception:
         raise HTTPException(status_code=401, detail="Invalid or expired token")
+
+    if not sid:
+        raise HTTPException(status_code=401, detail="Session has been terminated or is invalid")
+
+    from backend.app.models.active_session import ActiveSession
+    session = db.query(ActiveSession).filter(ActiveSession.id == uuid.UUID(sid)).first()
+    if not session or session.revoked_at is not None:
+        raise HTTPException(status_code=401, detail="Session has been terminated by another device login")
 
     user = user_repo.get_by_id(db, uuid.UUID(user_id))
     if not user or not user.is_active:

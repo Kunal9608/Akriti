@@ -116,7 +116,8 @@
       kpiCard('Pending Reports',    stats.pending_reports,                  'Awaiting upload') +
       kpiCard('Outstanding Due',    formatCurrency(stats.outstanding_due),  'Unpaid balances') +
       kpiCard('Monthly Revenue',    formatCurrency(stats.monthly_revenue),  'This month') +
-      kpiCard('Monthly Profit',     formatCurrency(stats.monthly_profit),   `Rev ${formatCurrency(stats.monthly_revenue)}`);
+      kpiCard('Doctor Commissions', formatCurrency(stats.monthly_doctor_commissions), 'This month') +
+      kpiCard('Monthly Profit',     formatCurrency(stats.monthly_profit),   'Net profit');
   } catch {
     document.getElementById('kpi-grid').innerHTML = `<div class="text-muted text-sm" style="grid-column:1/-1;padding:20px">Failed to load KPIs</div>`;
   }

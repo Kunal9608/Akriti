@@ -31,6 +31,7 @@ class DataTable {
 
     this.page = 1;
     this.total = 0;
+    this.items = [];
     this.filters = {};
     this.loading = false;
 
@@ -84,8 +85,9 @@ class DataTable {
 
     try {
       const result = await this.fetchFn(params);
+      this.items = result.items || [];
       this.total = result.total || 0;
-      this._renderRows(result.items || []);
+      this._renderRows(this.items);
       this._renderPagination();
     } catch (err) {
       this.tbody.innerHTML = `

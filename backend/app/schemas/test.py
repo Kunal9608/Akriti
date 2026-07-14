@@ -50,12 +50,21 @@ class TestResponse(BaseModel):
 class DoctorCreate(BaseModel):
     name: str
     clinic_name: Optional[str] = None
+    commission_pct: float = 0.0
+
+
+class DoctorUpdate(BaseModel):
+    name: Optional[str] = None
+    clinic_name: Optional[str] = None
+    commission_pct: Optional[float] = None
+    is_active: Optional[bool] = None
 
 
 class DoctorResponse(BaseModel):
     id: uuid.UUID
     name: str
     clinic_name: Optional[str]
+    commission_pct: float
     is_active: bool
 
     class Config:
