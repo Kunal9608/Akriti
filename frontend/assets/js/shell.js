@@ -361,6 +361,21 @@ const Shell = (() => {
       }
     }
 
+    // Dynamically load copilot.js if not already present
+    if (typeof window.Copilot === 'undefined') {
+      try {
+        await new Promise((resolve, reject) => {
+          const script = document.createElement('script');
+          script.src = '/assets/js/copilot.js';
+          script.onload = resolve;
+          script.onerror = reject;
+          document.head.appendChild(script);
+        });
+      } catch (err) {
+        console.warn("Failed to dynamically load copilot.js:", err);
+      }
+    }
+
     // Mobile hamburger
     const hamburger = document.getElementById('hamburger-btn');
     const overlay   = document.getElementById('sidebar-overlay');
@@ -377,7 +392,10 @@ const Shell = (() => {
     }
 
     // Re-bind theme toggle buttons now that topbar HTML has been injected by this shell
-    if (typeof Theme !== 'undefined') Theme.bindButtons();
+    // Wait, the Theme toggle is being replaced by Copilot!
+    if (typeof window.Copilot !== 'undefined') {
+      window.Copilot.init();
+    }
 
     // Auto-setup flatpickr on date fields dynamically
     try {

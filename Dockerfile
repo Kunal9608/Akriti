@@ -10,7 +10,7 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 # Set working directory
 WORKDIR /app
 
-# Install system dependencies required for WeasyPrint, compilation, and general usage
+# Install system dependencies required for WeasyPrint, ReportLab, PostgreSQL client/healthcheck, and general usage
 RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
     python3-dev \
@@ -21,6 +21,14 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libjpeg-dev \
     libopenjp2-7-dev \
     shared-mime-info \
+    libgobject-2.0-0 \
+    libglib2.0-0 \
+    fonts-liberation \
+    fonts-dejavu-core \
+    fontconfig \
+    postgresql-client \
+    ca-certificates \
+    tzdata \
     curl \
     && rm -rf /var/lib/apt/lists/*
 

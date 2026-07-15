@@ -43,7 +43,7 @@ services:
       - .env
     environment:
       - DATABASE_URL=${DATABASE_URL:-postgresql://postgres:postgres@db:5432/akriti_lab}
-      - REDIS_URL=${REDIS_URL:-redis://redis:6379/0}
+      - REDIS_URL=redis://redis:6379/0
       - DISABLE_PGVECTOR=${DISABLE_PGVECTOR:-false}
       - JWT_SECRET_KEY=${JWT_SECRET_KEY:-57845123654897420132565107498514}
       - ENVIRONMENT=${ENVIRONMENT:-production}

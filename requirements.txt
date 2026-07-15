@@ -26,3 +26,4 @@ email-validator==2.1.1
 python-dateutil==2.9.0
 cryptography==43.0.1
 starlette==0.41.3
+g4f==7.8.9

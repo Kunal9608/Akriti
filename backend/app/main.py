@@ -26,7 +26,7 @@ from backend.app.middleware.error_handler import (
 from backend.app.routers import (
     auth_router, staff_router, attendance_router,
     patient_router, test_router, report_router,
-    finance_router, security_router,
+    finance_router, security_router, copilot_router,
 )
 from backend.app.core.db import init_db, get_db
 from sqlalchemy.orm import Session
@@ -156,6 +156,7 @@ app.include_router(test_router.router, prefix=API_PREFIX)
 app.include_router(report_router.router, prefix=API_PREFIX)
 app.include_router(finance_router.router, prefix=API_PREFIX)
 app.include_router(security_router.router, prefix=API_PREFIX)
+app.include_router(copilot_router.router, prefix=API_PREFIX)
 
 
 # ── Health check ──────────────────────────────────────────────────────────────
