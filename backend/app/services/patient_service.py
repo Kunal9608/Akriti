@@ -99,6 +99,14 @@ def create_patient(db: Session, payload: PatientCreate, current_user_id: uuid.UU
     for test_id in payload.test_ids:
         patient_repo.add_patient_test(db, patient.id, test_id, price_map[str(test_id)])
 
+    from backend.app.models.patient_status_history import PatientStatusHistory
+    initial_history = PatientStatusHistory(
+        patient_id=patient.id,
+        status="sample_collected",
+        updated_by=current_user_id,
+    )
+    db.add(initial_history)
+
     audit_service.log(
         db, "patient.create",
         actor_user_id=current_user_id,
@@ -188,6 +196,28 @@ def update_patient(db: Session, patient_id: uuid.UUID, payload: PatientUpdate,
         update_data["referred_doctor_commission_pct"] = commission_pct
         update_data["referred_doctor_commission_amount"] = commission_amount
 
+    new_status = update_data.get("status")
+    if new_status and new_status != patient.status:
+        extra_info = {}
+        if new_status == "sent_to_franchise":
+            extra_info = {
+                "franchise_name": update_data.get("franchise_name", patient.franchise_name),
+                "franchise_other": update_data.get("franchise_other", patient.franchise_other),
+                "sample_sent_date": str(update_data.get("sample_sent_date", patient.sample_sent_date)) if update_data.get("sample_sent_date", patient.sample_sent_date) else None,
+                "sample_sent_time": update_data.get("sample_sent_time", patient.sample_sent_time),
+                "courier_name": update_data.get("courier_name", patient.courier_name),
+                "tracking_id": update_data.get("tracking_id", patient.tracking_id),
+                "remarks": update_data.get("franchise_remarks", patient.franchise_remarks),
+            }
+        from backend.app.models.patient_status_history import PatientStatusHistory
+        status_history_entry = PatientStatusHistory(
+            patient_id=patient_id,
+            status=new_status,
+            updated_by=current_user_id,
+            extra_info=extra_info
+        )
+        db.add(status_history_entry)
+
     patient_repo.update_patient(db, patient_id, **update_data)
     audit_service.log(
         db, "patient.edit",
@@ -200,14 +230,14 @@ def update_patient(db: Session, patient_id: uuid.UUID, payload: PatientUpdate,
     db.commit()
 
     patient = patient_repo.get_by_id(db, patient_id)
-    return _patient_to_dict(db, patient)
+    return _patient_to_dict(db, patient, include_history=True)
 
 
 def get_patient(db: Session, patient_id: uuid.UUID) -> dict:
     patient = patient_repo.get_by_id(db, patient_id)
     if not patient:
         raise ValueError("Patient not found")
-    return _patient_to_dict(db, patient)
+    return _patient_to_dict(db, patient, include_history=True)
 
 
 def list_patients(db: Session, current_user, **kwargs) -> dict:
@@ -252,7 +282,7 @@ def generate_qr_payload(db: Session, patient_id: uuid.UUID) -> str:
     )
 
 
-def _patient_to_dict(db: Session, patient) -> dict:
+def _patient_to_dict(db: Session, patient, include_history: bool = False) -> dict:
     """Convert Patient ORM object to dict for API response."""
     tests = []
     for pt in (patient.patient_tests or []):
@@ -272,6 +302,21 @@ def _patient_to_dict(db: Session, patient) -> dict:
         latest_report = max(patient.reports, key=lambda r: r.uploaded_at)
         if latest_report.uploaded_at:
             report_released_at = latest_report.uploaded_at.isoformat()
+
+    history_list = None
+    if include_history:
+        from backend.app.models.patient_status_history import PatientStatusHistory
+        histories = db.query(PatientStatusHistory).filter(PatientStatusHistory.patient_id == patient.id).order_by(PatientStatusHistory.updated_at.asc()).all()
+        history_list = []
+        for h in histories:
+            history_list.append({
+                "id": str(h.id),
+                "status": h.status,
+                "updated_at": h.updated_at.isoformat(),
+                "updater_name": h.updater.name if h.updater else "Unknown",
+                "updater_role": h.updater.role.value if h.updater and hasattr(h.updater.role, 'value') else str(h.updater.role) if h.updater else "Unknown",
+                "extra_info": h.extra_info,
+            })
 
     return {
         "id": str(patient.id),
@@ -300,4 +345,14 @@ def _patient_to_dict(db: Session, patient) -> dict:
         "updated_at": patient.updated_at.isoformat() if patient.updated_at else None,
         "tests": tests,
         "collected_by_name": patient.collector.name if patient.collector else None,
+        
+        # Franchise Fields
+        "franchise_name": patient.franchise_name,
+        "franchise_other": patient.franchise_other,
+        "sample_sent_date": str(patient.sample_sent_date) if patient.sample_sent_date else None,
+        "sample_sent_time": patient.sample_sent_time,
+        "courier_name": patient.courier_name,
+        "tracking_id": patient.tracking_id,
+        "franchise_remarks": patient.franchise_remarks,
+        "status_history": history_list,
     }

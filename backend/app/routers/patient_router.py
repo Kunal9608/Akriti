@@ -1,12 +1,12 @@
 """Patient router."""
-from fastapi import APIRouter, Depends, Query, Header
+from fastapi import APIRouter, Depends, Query, Header, HTTPException
 from sqlalchemy.orm import Session
 from typing import Optional
 from datetime import date
 import uuid
 
 from backend.app.core.db import get_db
-from backend.app.dependencies import get_current_user, get_idempotency_key
+from backend.app.dependencies import get_current_user, get_idempotency_key, check_patient_access
 from backend.app.schemas.patient import PatientCreate, PatientUpdate
 from backend.app.services import patient_service, idempotency_service
 
@@ -66,6 +66,11 @@ def search_by_mobile(
 @router.get("/{patient_id}")
 def get_patient(patient_id: uuid.UUID, current_user=Depends(get_current_user),
                 db: Session = Depends(get_db)):
+    from backend.app.repositories import patient_repo
+    patient = patient_repo.get_by_id(db, patient_id)
+    if not patient:
+        raise HTTPException(status_code=404, detail="Patient not found")
+    check_patient_access(current_user, patient)
     return patient_service.get_patient(db, patient_id)
 
 
@@ -77,11 +82,21 @@ def update_patient(
     db: Session = Depends(get_db),
     idempotency_key: Optional[str] = Depends(get_idempotency_key),
 ):
+    from backend.app.repositories import patient_repo
+    patient = patient_repo.get_by_id(db, patient_id)
+    if not patient:
+        raise HTTPException(status_code=404, detail="Patient not found")
+    check_patient_access(current_user, patient)
     return patient_service.update_patient(db, patient_id, payload, current_user.id)
 
 
 @router.post("/{patient_id}/qr-code")
 def get_qr_code(patient_id: uuid.UUID, current_user=Depends(get_current_user),
                 db: Session = Depends(get_db)):
+    from backend.app.repositories import patient_repo
+    patient = patient_repo.get_by_id(db, patient_id)
+    if not patient:
+        raise HTTPException(status_code=404, detail="Patient not found")
+    check_patient_access(current_user, patient)
     upi_string = patient_service.generate_qr_payload(db, patient_id)
     return {"upi_string": upi_string}

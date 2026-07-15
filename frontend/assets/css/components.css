@@ -475,20 +475,49 @@
 
 /* PWA offline indicator */
 .offline-banner {
-  position: fixed;
+  position: sticky;
   top: var(--topbar-height);
   left: 0; right: 0;
-  background: var(--color-warning);
   color: #fff;
   text-align: center;
-  padding: 8px;
   font-size: var(--text-sm);
   font-weight: 600;
-  z-index: 999;
-  transform: translateY(-100%);
-  transition: transform var(--transition-base);
+  z-index: 99;
+  
+  /* Collapsed state by default */
+  max-height: 0;
+  padding: 0 16px;
+  opacity: 0;
+  overflow: hidden;
+  border-bottom: 0px solid transparent;
+  
+  /* Smooth transitions */
+  transition: max-height 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+              padding 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+              opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+              background 0.3s ease,
+              border-bottom 0.3s ease;
 }
-.offline-banner.show { transform: none; }
+
+.offline-banner.show {
+  max-height: 48px;
+  padding: 8px 16px;
+  opacity: 1;
+  border-bottom: 1.5px solid rgba(0, 0, 0, 0.1);
+}
+
+.offline-banner.state-offline {
+  background: var(--color-warning);
+}
+
+.offline-banner.state-syncing {
+  background: var(--color-info);
+}
+
+.offline-banner.state-success {
+  background: var(--color-success);
+}
+
 
 /* ── Glassmorphism Effects ────────────────────────────────────────────────── */
 .card, .kpi-card, .section-card, .modal, .slide-panel {

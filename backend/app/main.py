@@ -28,7 +28,8 @@ from backend.app.routers import (
     patient_router, test_router, report_router,
     finance_router, security_router,
 )
-from backend.app.core.db import init_db
+from backend.app.core.db import init_db, get_db
+from sqlalchemy.orm import Session
 
 ROOT = Path(__file__).parent.parent.parent  # project root
 FRONTEND_DIR = ROOT / "frontend"
@@ -159,8 +160,39 @@ app.include_router(security_router.router, prefix=API_PREFIX)
 
 # ── Health check ──────────────────────────────────────────────────────────────
 @app.get("/health")
-def health():
-    return {"status": "ok", "service": "Akriti Lab Management System"}
+def health(db: Session = Depends(get_db)):
+    from sqlalchemy import text
+    try:
+        db.execute(text("SELECT 1"))
+        return {"status": "ok", "service": "Akriti Lab Management System", "database": "connected"}
+    except Exception as e:
+        return JSONResponse(
+            status_code=503,
+            content={"status": "error", "service": "Akriti Lab Management System", "database": "disconnected", "detail": str(e)}
+        )
+
+
+# ── Exception Handlers ────────────────────────────────────────────────────────
+import logging
+from sqlalchemy.exc import OperationalError, InterfaceError
+
+logger = logging.getLogger("app")
+
+@app.exception_handler(OperationalError)
+async def db_operational_exception_handler(request: Request, exc: OperationalError):
+    logger.error(f"Database operational error on {request.method} {request.url}: {exc}")
+    return JSONResponse(
+        status_code=503,
+        content={"detail": "Database is temporarily unreachable. Please try again in a few seconds."}
+    )
+
+@app.exception_handler(InterfaceError)
+async def db_interface_exception_handler(request: Request, exc: InterfaceError):
+    logger.error(f"Database interface error on {request.method} {request.url}: {exc}")
+    return JSONResponse(
+        status_code=503,
+        content={"detail": "Database connection interface error. Please try again in a few seconds."}
+    )
 
 
 # ── Settings API (lab config) ─────────────────────────────────────────────────

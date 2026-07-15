@@ -212,6 +212,10 @@
         <input class="form-input" id="report-patient-id" disabled>
       </div>
       <div id="report-modal-payment-section"></div>
+      <div class="form-field mb-4">
+        <label class="form-label" for="report-reason">Reason for Upload <span style="font-weight:400;color:var(--color-ink-faint);font-size:11px">(Optional; e.g. "Corrected CBC values")</span></label>
+        <input class="form-input" id="report-reason" placeholder="e.g. Corrected CBC values">
+      </div>
       <div class="form-field">
         <label class="form-label" for="report-file">
           Report File <span class="required">*</span>
@@ -232,6 +236,77 @@
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
         Upload Report
       </button>
+    </div>
+  </div>
+</div>
+
+<!-- Status Update Modal -->
+<div class="modal-backdrop" id="status-modal">
+  <div class="modal modal-sm" role="dialog" aria-modal="true" aria-labelledby="status-modal-title">
+    <div class="modal-header">
+      <h2 class="modal-title" id="status-modal-title">Update Patient Status</h2>
+      <button class="modal-close" id="status-modal-close" aria-label="Close">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <div class="modal-body">
+      <form id="status-form" novalidate onsubmit="return false;">
+        <div class="form-field mb-4">
+          <label class="form-label" for="status-select">Status <span class="required">*</span></label>
+          <select class="form-select" id="status-select">
+            <option value="sample_collected">Collected</option>
+            <option value="sent_to_franchise">Sent to Franchise</option>
+            <option value="under_process">Processing</option>
+          </select>
+        </div>
+
+        <!-- Franchise Details Section (Conditional) -->
+        <div id="franchise-fields" style="display:none; border-top:1px dashed var(--color-border); padding-top:16px;">
+          <div class="form-field mb-3">
+            <label class="form-label" for="franchise-select">Franchise Name <span class="required">*</span></label>
+            <select class="form-select" id="franchise-select">
+              <option value="Serum">Serum</option>
+              <option value="Redcliffe Labs">Redcliffe Labs</option>
+              <option value="Thyrocare">Thyrocare</option>
+              <option value="Dr Lal PathLabs">Dr Lal PathLabs</option>
+              <option value="Apollo Diagnostics">Apollo Diagnostics</option>
+              <option value="Other">Other</option>
+            </select>
+          </div>
+          <div class="form-field mb-3" id="franchise-other-field" style="display:none">
+            <label class="form-label" for="franchise-other-input">Specify Franchise <span class="required">*</span></label>
+            <input class="form-input" type="text" id="franchise-other-input" placeholder="Enter franchise name">
+          </div>
+          <div class="form-row mb-3" style="display:grid; grid-template-columns:1fr 1fr; gap:8px">
+            <div class="form-field">
+              <label class="form-label" for="franchise-sent-date">Sent Date <span class="required">*</span></label>
+              <input class="form-input" type="date" id="franchise-sent-date">
+            </div>
+            <div class="form-field">
+              <label class="form-label" for="franchise-sent-time">Sent Time <span class="required">*</span></label>
+              <input class="form-input" type="time" id="franchise-sent-time">
+            </div>
+          </div>
+          <div class="form-row mb-3" style="display:grid; grid-template-columns:1fr 1fr; gap:8px">
+            <div class="form-field">
+              <label class="form-label" for="franchise-courier">Courier Name <span class="required">*</span></label>
+              <input class="form-input" type="text" id="franchise-courier" placeholder="e.g. Blue Dart">
+            </div>
+            <div class="form-field">
+              <label class="form-label" for="franchise-tracking">Tracking ID</label>
+              <input class="form-input" type="text" id="franchise-tracking" placeholder="Optional">
+            </div>
+          </div>
+          <div class="form-field mb-3">
+            <label class="form-label" for="franchise-remarks">Remarks</label>
+            <input class="form-input" type="text" id="franchise-remarks" placeholder="Optional notes">
+          </div>
+        </div>
+      </form>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" id="status-cancel-btn">Cancel</button>
+      <button class="btn btn-primary" id="status-save-btn">Save Status</button>
     </div>
   </div>
 </div>
@@ -493,41 +568,75 @@
           Timeline
         </div>
         <div class="timeline">
-          <div class="timeline-item">
-            <div class="timeline-dot done"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg></div>
-            <div class="timeline-body"><div class="timeline-title">Patient Registered</div><div class="timeline-time">${formatDateTime(p.created_at)}</div></div>
-          </div>
-          <div class="timeline-item">
-            <div class="timeline-dot ${['under_process','report_ready'].includes(p.status) ? 'done' : ''}">
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/></svg>
-            </div>
-            <div class="timeline-body"><div class="timeline-title">Sample Collected</div><div class="timeline-time">${formatDate(p.sample_date)} (by ${escapeHtml(p.collected_by_name || 'Unknown')})</div></div>
-          </div>
-          <div class="timeline-item">
-            <div class="timeline-dot ${p.status === 'report_ready' ? 'done' : ''}">
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
-            </div>
-            <div class="timeline-body">
-              <div class="timeline-title">
-                ${latestReportUrl
-                  ? `<a href="${latestReportUrl}" target="_blank" style="color:var(--color-primary);text-decoration:underline;cursor:pointer;display:inline-flex;align-items:center;gap:5px">Report Ready <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg></a>`
-                  : 'Report Ready'
-                }
+          ${(p.status_history || []).map((h, index) => {
+            let title = '';
+            let detailsHtml = '';
+            if (h.status === 'sample_collected') {
+              title = 'Sample Collected';
+              detailsHtml = `<div style="font-size:12px;color:var(--color-ink-muted);margin-top:2px">Collected by: <strong>${escapeHtml(h.updater_name)}</strong> (${escapeHtml(h.updater_role)})</div>`;
+            } else if (h.status === 'sent_to_franchise') {
+              title = 'Sample Sent To Franchise';
+              const info = h.extra_info || {};
+              const franchiseDisp = info.franchise_name === 'Other' ? info.franchise_other : info.franchise_name;
+              detailsHtml = `
+                <div style="font-size:12px;color:var(--color-ink-muted);margin-top:4px;line-height:1.4">
+                  Franchise: <strong>${escapeHtml(franchiseDisp || '—')}</strong><br>
+                  Sent On: ${info.sample_sent_date ? formatDate(info.sample_sent_date) : '—'} ${info.sample_sent_time || ''}<br>
+                  Courier: ${escapeHtml(info.courier_name || '—')}<br>
+                  Tracking ID: ${escapeHtml(info.tracking_id || '—')}<br>
+                  ${info.remarks ? `Remarks: <em>${escapeHtml(info.remarks)}</em>` : ''}
+                </div>
+              `;
+            } else if (h.status === 'under_process') {
+              title = 'In Process';
+              detailsHtml = `<div style="font-size:12px;color:var(--color-ink-muted);margin-top:2px">Moved to processing by <strong>${escapeHtml(h.updater_name)}</strong></div>`;
+            } else if (h.status === 'report_ready') {
+              title = 'Report Uploaded';
+              const info = h.extra_info || {};
+              detailsHtml = `
+                <div style="font-size:12px;color:var(--color-ink-muted);margin-top:4px;line-height:1.4">
+                  Version: <strong>V${info.version || 1}</strong> · ${escapeHtml(info.filename || 'report.pdf')}<br>
+                  Uploaded by: <strong>${escapeHtml(h.updater_name)}</strong><br>
+                  ${info.reason ? `Reason: <em>${escapeHtml(info.reason)}</em>` : ''}
+                </div>
+              `;
+            } else {
+              title = h.status;
+            }
+
+            return `
+              <div class="timeline-item">
+                <div class="timeline-dot done">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+                </div>
+                <div class="timeline-body">
+                  <div class="timeline-title fw-600">${title}</div>
+                  <div class="timeline-time" style="font-size:11px;color:var(--color-ink-faint)">${formatDateTime(h.updated_at)}</div>
+                  ${detailsHtml}
+                </div>
               </div>
-              <div class="timeline-time">${p.status === 'report_ready' ? 'Completed' : 'Pending'}</div>
+            `;
+          }).join('') || `
+            <div class="timeline-item">
+              <div class="timeline-dot done"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg></div>
+              <div class="timeline-body"><div class="timeline-title">Registered / Collected</div><div class="timeline-time">${formatDateTime(p.created_at)}</div></div>
             </div>
-          </div>
+          `}
         </div>
 
         <!-- Action Buttons -->
         <div style="display:flex;gap:8px;margin-top:24px">
           <a href="/staff/add-patient?id=${p.id}" class="btn btn-secondary" style="flex:1">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-            Edit Patient
+            Edit
           </a>
+          <button class="btn btn-secondary" style="flex:1" onclick="openStatusModal('${p.id}','${p.status}')">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+            Status
+          </button>
           <button class="btn btn-primary" style="flex:1" onclick="openReportModal('${p.id}','${escapeHtml(p.patient_code)}')">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-            Upload Report
+            Upload
           </button>
         </div>
       `;
@@ -547,6 +656,7 @@
   window.openReportModal = async function(id, code) {
     currentPatientId = id;
     document.getElementById('report-patient-id').value = code;
+    // Reset file drop zone
     fileInput.value = '';
     updateDropLabel(null);
 
@@ -632,14 +742,106 @@
     }
   };
 
-  document.getElementById('report-modal-close').addEventListener('click', () => Modal.close('report-modal'));
+  // Status Update Modal Logic
+  window.openStatusModal = function(id, currentStatus) {
+    currentPatientId = id;
+    const select = document.getElementById('status-select');
+    select.value = currentStatus;
+    
+    document.getElementById('status-form').reset();
+    select.value = currentStatus;
+    
+    const fFields = document.getElementById('franchise-fields');
+    fFields.style.display = currentStatus === 'sent_to_franchise' ? '' : 'none';
+    document.getElementById('franchise-other-field').style.display = 'none';
+
+    if (currentStatus === 'sent_to_franchise') {
+      const now = new Date();
+      document.getElementById('franchise-sent-date').value = now.toISOString().split('T')[0];
+      document.getElementById('franchise-sent-time').value = now.toTimeString().split(' ')[0].substring(0, 5);
+    }
+    Modal.open('status-modal');
+  };
+
+  document.getElementById('status-select').addEventListener('change', (e) => {
+    const isFranchise = e.target.value === 'sent_to_franchise';
+    document.getElementById('franchise-fields').style.display = isFranchise ? '' : 'none';
+    if (isFranchise) {
+      const now = new Date();
+      document.getElementById('franchise-sent-date').value = now.toISOString().split('T')[0];
+      document.getElementById('franchise-sent-time').value = now.toTimeString().split(' ')[0].substring(0, 5);
+    }
+  });
+
+  document.getElementById('franchise-select').addEventListener('change', (e) => {
+    document.getElementById('franchise-other-field').style.display = e.target.value === 'Other' ? '' : 'none';
+  });
+
+  document.getElementById('status-cancel-btn').addEventListener('click', () => Modal.close('status-modal'));
+  document.getElementById('status-modal-close').addEventListener('click', () => Modal.close('status-modal'));
+
+  document.getElementById('status-save-btn').addEventListener('click', async () => {
+    const status = document.getElementById('status-select').value;
+    const payload = { status };
+    
+    if (status === 'sent_to_franchise') {
+      const franchise = document.getElementById('franchise-select').value;
+      const other = document.getElementById('franchise-other-input').value.trim();
+      const sDate = document.getElementById('franchise-sent-date').value;
+      const sTime = document.getElementById('franchise-sent-time').value;
+      const courier = document.getElementById('franchise-courier').value.trim();
+      const tracking = document.getElementById('franchise-tracking').value.trim();
+      const remarks = document.getElementById('franchise-remarks').value.trim();
+      
+      if (!franchise) { Toast.show('Franchise name is required', 'warning'); return; }
+      if (franchise === 'Other' && !other) { Toast.show('Specify other franchise name', 'warning'); return; }
+      if (!sDate || !sTime) { Toast.show('Sent date and time are required', 'warning'); return; }
+      if (!courier) { Toast.show('Courier name is required', 'warning'); return; }
+      
+      payload.franchise_name = franchise;
+      payload.franchise_other = other;
+      payload.sample_sent_date = sDate;
+      payload.sample_sent_time = sTime;
+      payload.courier_name = courier;
+      payload.tracking_id = tracking;
+      payload.franchise_remarks = remarks;
+    }
+    
+    const btn = document.getElementById('status-save-btn');
+    btn.setAttribute('aria-busy', 'true');
+    btn.disabled = true;
+    btn.innerHTML = `<span class="btn-loading-spinner"></span> Saving...`;
+    
+    try {
+      await API.patch(`/api/v1/patients/${currentPatientId}`, payload);
+      Toast.show('Status updated successfully', 'success');
+      Modal.close('status-modal');
+      table.refresh();
+      if (document.getElementById('patient-panel').classList.contains('open')) {
+        openPanel(currentPatientId, document.getElementById('panel-patient-name').textContent, document.getElementById('panel-patient-code').textContent);
+      }
+    } catch (err) {
+      Toast.show(err.message || 'Failed to update status', 'error');
+    } finally {
+      btn.removeAttribute('aria-busy');
+      btn.disabled = false;
+      btn.innerHTML = 'Save Status';
+    }
+  });
+
+  document.getElementById('report-modal-close').addEventListener('click', () => {
+    document.getElementById('report-reason').value = '';
+    Modal.close('report-modal');
+  });
 
   document.getElementById('report-upload-btn').addEventListener('click', async () => {
     const file = fileInput.files[0];
     if (!file) { Toast.show('Please select a report file', 'warning'); return; }
 
     const btn = document.getElementById('report-upload-btn');
-    btn.setAttribute('aria-busy','true'); btn.innerHTML = `<span class="btn-loading-spinner"></span> Uploading...`;
+    btn.setAttribute('aria-busy','true'); 
+    btn.disabled = true;
+    btn.innerHTML = `<span class="btn-loading-spinner"></span> Uploading...`;
 
     // Process payment if checked
     const chk = document.getElementById('complete-payment-chk');
@@ -652,24 +854,49 @@
       } catch (err) {
         Toast.show(err.message || 'Failed to complete payment', 'error');
         btn.removeAttribute('aria-busy');
+        btn.disabled = false;
         btn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg> Upload Report`;
         return;
       }
     }
 
+    const reason = document.getElementById('report-reason').value.trim();
+
     try {
       const fd = new FormData();
       fd.append('file', file);
-      const res = await fetch(`/api/v1/reports/${currentPatientId}`, {
+      if (reason) {
+        fd.append('reason', reason);
+      }
+      
+      let res = await fetch(`/api/v1/reports/${currentPatientId}`, {
         method: 'POST',
         credentials: 'include',
         headers: { 'Idempotency-Key': API.uuidv4() },
         body: fd,
       });
+
+      if (res.status === 409) {
+        const errData = await res.json().catch(() => ({}));
+        const confirmed = confirm(`${errData.detail}\n\nDo you want to upload this file as a new version anyway?`);
+        if (confirmed) {
+          res = await fetch(`/api/v1/reports/${currentPatientId}?force=true`, {
+            method: 'POST',
+            credentials: 'include',
+            headers: { 'Idempotency-Key': API.uuidv4() },
+            body: fd,
+          });
+        } else {
+          throw new Error('Upload cancelled by user.');
+        }
+      }
+
       if (!res.ok) {
         const errData = await res.json().catch(() => ({}));
         throw new Error(errData.detail || 'Upload failed');
       }
+
+      document.getElementById('report-reason').value = '';
       Modal.close('report-modal');
       Toast.show('Report uploaded successfully', 'success');
       table.refresh();
@@ -680,6 +907,7 @@
       Toast.show(err.message || 'Failed to upload report', 'error');
     } finally {
       btn.removeAttribute('aria-busy');
+      btn.disabled = false;
       btn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg> Upload Report`;
     }
   });

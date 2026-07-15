@@ -221,6 +221,7 @@
     ],
     fetchFn: async (params) => {
       const qs = new URLSearchParams({ page: params.page, page_size: params.page_size,
+        ...(params.q         && { q:         params.q }),
         ...(params.category  && { category:  params.category }),
         ...(params.date_from && { date_from: params.date_from }),
         ...(params.date_to   && { date_to:   params.date_to }),
@@ -259,7 +260,9 @@
     if (!category || !desc || !amount || !date) { Toast.show('Please fill all required fields', 'warning'); return; }
 
     const btn = document.getElementById('exp-save-btn');
-    btn.setAttribute('aria-busy','true'); btn.innerHTML = `<span class="btn-loading-spinner"></span> Saving...`;
+    btn.setAttribute('aria-busy','true'); 
+    btn.disabled = true;
+    btn.innerHTML = `<span class="btn-loading-spinner"></span> Saving...`;
     try {
       await API.post('/api/v1/finance/expenses', { category, description: desc, amount, payment_mode: mode, paid_to: paidTo, expense_date: date });
       Toast.show('Expense logged', 'success');
@@ -267,7 +270,7 @@
       table.refresh();
       loadPL();
     } catch (err) { Toast.show(err.message || 'Failed to log expense', 'error'); }
-    finally { btn.removeAttribute('aria-busy'); btn.innerHTML = 'Log Expense'; }
+    finally { btn.removeAttribute('aria-busy'); btn.disabled = false; btn.innerHTML = 'Log Expense'; }
   });
 
   document.getElementById('exp-cancel-btn').addEventListener('click', () => Modal.close('expense-modal'));

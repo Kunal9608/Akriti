@@ -8,7 +8,7 @@ import uuid
 from backend.app.core.db import get_db
 from backend.app.core.security import decode_token
 from backend.app.repositories import user_repo
-from backend.app.models.user import User, RoleEnum
+from backend.app.models.user import User, RoleEnum, ViewScopeEnum
 
 security = HTTPBearer(auto_error=False)
 
@@ -82,3 +82,18 @@ def get_idempotency_key(
 ) -> Optional[str]:
     """Extract Idempotency-Key header — required on mutating endpoints."""
     return idempotency_key
+
+
+def check_patient_access(current_user: User, patient) -> None:
+    """Enforce patient access scope: admin, full scope, or own registered patients."""
+    if current_user.role == RoleEnum.admin:
+        return
+    if current_user.view_scope == ViewScopeEnum.all:
+        return
+    if patient.collected_by == current_user.id:
+        return
+    raise HTTPException(
+        status_code=403,
+        detail="You do not have permission to view or modify this patient record"
+    )
+

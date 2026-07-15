@@ -101,6 +101,7 @@ def main():
     port = int(os.getenv("PORT", "8000"))
     env = os.getenv("ENVIRONMENT", "development")
     reload = env == "development"
+    workers = int(os.getenv("WORKERS", "1")) if not reload else 1
 
     print(f"\n{'='*60}")
     print(f"  Starting server...")
@@ -108,6 +109,8 @@ def main():
     print(f"  URL         : http://{'localhost' if host == '0.0.0.0' else host}:{port}")
     print(f"  API Docs    : http://{'localhost' if host == '0.0.0.0' else host}:{port}/docs")
     print(f"  Hot reload  : {'yes (development)' if reload else 'no (production)'}")
+    if not reload:
+        print(f"  Workers     : {workers}")
     print(f"{'='*60}\n")
 
     import uvicorn
@@ -117,6 +120,7 @@ def main():
         host=host,
         port=port,
         reload=reload,
+        workers=workers,
         log_level="info",
         access_log=True,
     )

@@ -10,32 +10,29 @@ import json
 from datetime import datetime, timedelta, timezone
 from typing import Optional, Any, Dict
 
-from jose import jwt, JWTError
-# Hotfix for AttributeError: module 'bcrypt' has no attribute '__about__' in passlib
-try:
-    import bcrypt
-    if not hasattr(bcrypt, "__about__"):
-        class About:
-            __version__ = getattr(bcrypt, "__version__", "4.0.0")
-        bcrypt.__about__ = About
-except ImportError:
-    pass
-
-from passlib.context import CryptContext
+import jwt
+from jwt.exceptions import PyJWTError as JWTError
+import bcrypt
 
 import sys
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))))
 from backend.app.config import settings
 
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
-
 
 def hash_password(plain: str) -> str:
-    return pwd_context.hash(plain)
+    pw_bytes = plain.encode('utf-8')
+    salt = bcrypt.gensalt()
+    hashed = bcrypt.hashpw(pw_bytes, salt)
+    return hashed.decode('utf-8')
 
 
 def verify_password(plain: str, hashed: str) -> bool:
-    return pwd_context.verify(plain, hashed)
+    pw_bytes = plain.encode('utf-8')
+    hashed_bytes = hashed.encode('utf-8')
+    try:
+        return bcrypt.checkpw(pw_bytes, hashed_bytes)
+    except Exception:
+        return False
 
 
 def create_access_token(user_id: str, role: str, session_id: Optional[str] = None) -> str:

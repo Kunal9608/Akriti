@@ -11,11 +11,14 @@ from backend.app.models.face_embedding import FaceEmbedding
 
 def get_last_event_today(db: Session, user_id: uuid.UUID) -> Optional[AttendanceEvent]:
     today = date.today()
+    start_dt = datetime.combine(today, datetime.min.time())
+    end_dt = datetime.combine(today, datetime.max.time())
     return (
         db.query(AttendanceEvent)
         .filter(
             AttendanceEvent.user_id == user_id,
-            func.date(AttendanceEvent.event_time) == today,
+            AttendanceEvent.event_time >= start_dt,
+            AttendanceEvent.event_time <= end_dt,
             AttendanceEvent.is_pending == 0,
         )
         .order_by(desc(AttendanceEvent.event_time))
@@ -58,12 +61,46 @@ def add_embedding(db: Session, user_id: uuid.UUID, embedding, sample_index: int)
     return fe
 
 
+def get_user_events_today(db: Session, user_id: uuid.UUID) -> List[AttendanceEvent]:
+    today = date.today()
+    start_dt = datetime.combine(today, datetime.min.time())
+    end_dt = datetime.combine(today, datetime.max.time())
+    return (
+        db.query(AttendanceEvent)
+        .filter(
+            AttendanceEvent.user_id == user_id,
+            AttendanceEvent.event_time >= start_dt,
+            AttendanceEvent.event_time <= end_dt,
+            AttendanceEvent.is_pending == 0,
+        )
+        .order_by(AttendanceEvent.event_time)
+        .all()
+    )
+
+
+def get_pending_events(db: Session) -> List[AttendanceEvent]:
+    return (
+        db.query(AttendanceEvent)
+        .options(joinedload(AttendanceEvent.user))
+        .filter(AttendanceEvent.is_pending == 1)
+        .order_by(AttendanceEvent.event_time.desc())
+        .all()
+    )
+
+
+def get_event_by_id(db: Session, event_id: uuid.UUID) -> Optional[AttendanceEvent]:
+    return db.query(AttendanceEvent).filter(AttendanceEvent.id == event_id).first()
+
+
 def get_today_present_user_ids(db: Session) -> List[uuid.UUID]:
     today = date.today()
+    start_dt = datetime.combine(today, datetime.min.time())
+    end_dt = datetime.combine(today, datetime.max.time())
     rows = (
         db.query(AttendanceEvent.user_id)
         .filter(
-            func.date(AttendanceEvent.event_time) == today,
+            AttendanceEvent.event_time >= start_dt,
+            AttendanceEvent.event_time <= end_dt,
             AttendanceEvent.event_type == "check_in",
             AttendanceEvent.is_pending == 0,
         )
@@ -75,12 +112,14 @@ def get_today_present_user_ids(db: Session) -> List[uuid.UUID]:
 
 def get_events_for_range(db: Session, date_from: date, date_to: date,
                          user_id: Optional[uuid.UUID] = None) -> List[AttendanceEvent]:
+    start_dt = datetime.combine(date_from, datetime.min.time())
+    end_dt = datetime.combine(date_to, datetime.max.time())
     q = (
         db.query(AttendanceEvent)
         .options(joinedload(AttendanceEvent.user))
         .filter(
-            func.date(AttendanceEvent.event_time) >= date_from,
-            func.date(AttendanceEvent.event_time) <= date_to,
+            AttendanceEvent.event_time >= start_dt,
+            AttendanceEvent.event_time <= end_dt,
         )
     )
     if user_id:

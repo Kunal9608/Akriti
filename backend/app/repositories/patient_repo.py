@@ -1,5 +1,5 @@
 """Patient repository — all DB queries for patients, patient_tests."""
-from sqlalchemy.orm import Session, joinedload
+from sqlalchemy.orm import Session, joinedload, selectinload
 from sqlalchemy import func, or_, and_, desc
 from typing import Optional, List, Tuple
 from datetime import date, datetime, timezone
@@ -29,7 +29,7 @@ def get_by_id(db: Session, patient_id: uuid.UUID) -> Optional[Patient]:
     return (
         db.query(Patient)
         .options(
-            joinedload(Patient.patient_tests).joinedload(PatientTest.test),
+            selectinload(Patient.patient_tests).joinedload(PatientTest.test),
             joinedload(Patient.doctor),
             joinedload(Patient.collector),
         )
@@ -53,11 +53,11 @@ def list_patients(
     page: int = 1,
     page_size: int = 20,
 ) -> Tuple[List[Patient], int]:
-    # 1. Base query for data (with joinedload)
+    # 1. Base query for data (with selectinload for collection to avoid cartesian/LIMIT mismatch)
     query = (
         db.query(Patient)
         .options(
-            joinedload(Patient.patient_tests).joinedload(PatientTest.test),
+            selectinload(Patient.patient_tests).joinedload(PatientTest.test),
             joinedload(Patient.doctor),
             joinedload(Patient.collector),
         )

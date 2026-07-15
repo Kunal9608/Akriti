@@ -7,8 +7,16 @@
  * Solution: expose Theme.bindButtons() so shell.js calls it after render.
  */
 
-// Apply theme IMMEDIATELY (before DOMContentLoaded) to prevent flash
+// Apply theme and block page flashing IMMEDIATELY (before DOMContentLoaded)
 (function () {
+  const path = window.location.pathname;
+  const isProtected = path.includes('/admin/') || path.includes('/staff/') || path.includes('/profile');
+  if (isProtected) {
+    const style = document.createElement('style');
+    style.id = 'page-blocking-style';
+    style.innerHTML = 'body { display: none !important; }';
+    document.documentElement.appendChild(style);
+  }
   const saved = localStorage.getItem('akriti-theme');
   if (saved === 'dark') document.documentElement.setAttribute('data-theme', 'dark');
 })();

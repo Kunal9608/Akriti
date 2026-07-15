@@ -39,12 +39,15 @@ services:
     restart: unless-stopped
     ports:
       - "8000:8000"
+    env_file:
+      - .env
     environment:
-      - DATABASE_URL=postgresql://postgres:postgres@db:5432/akriti_lab
-      - REDIS_URL=redis://redis:6379/0
-      - DISABLE_PGVECTOR=false
-      - JWT_SECRET_KEY=57845123654897420132565107498514
-      - ENVIRONMENT=development
+      - DATABASE_URL=${DATABASE_URL:-postgresql://postgres:postgres@db:5432/akriti_lab}
+      - REDIS_URL=${REDIS_URL:-redis://redis:6379/0}
+      - DISABLE_PGVECTOR=${DISABLE_PGVECTOR:-false}
+      - JWT_SECRET_KEY=${JWT_SECRET_KEY:-57845123654897420132565107498514}
+      - ENVIRONMENT=${ENVIRONMENT:-production}
+      - WORKERS=${WORKERS:-2}
       - HOST=0.0.0.0
       - PORT=8000
     volumes:
@@ -52,6 +55,12 @@ services:
       - /app/venv/
       - /app/.venv/
       - app_uploads:/app/uploads
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
     depends_on:
       db:
         condition: service_healthy

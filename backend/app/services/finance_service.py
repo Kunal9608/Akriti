@@ -32,6 +32,7 @@ def create_expense(db: Session, payload, actor_id: uuid.UUID) -> dict:
 
 def list_expenses(db: Session, date_from: Optional[date] = None,
                   date_to: Optional[date] = None, category: Optional[str] = None,
+                  search_query: Optional[str] = None,
                   page: int = 1, page_size: int = 50):
     q = db.query(Expense)
     if date_from:
@@ -40,16 +41,24 @@ def list_expenses(db: Session, date_from: Optional[date] = None,
         q = q.filter(Expense.expense_date <= date_to)
     if category:
         q = q.filter(Expense.category == category)
+    if search_query:
+        search = f"%{search_query.strip()}%"
+        q = q.filter(
+            Expense.description.ilike(search) | Expense.paid_to.ilike(search)
+        )
     total = q.count()
     items = q.order_by(Expense.expense_date.desc()).offset((page - 1) * page_size).limit(page_size).all()
     return [_expense_to_dict(e) for e in items], total
 
 
 def get_profit_loss(db: Session, date_from: date, date_to: date) -> dict:
-    """FR-9.1 — Net profit/loss over a date range."""
+    """FR-9.1 — Net profit/loss over a date range (Index SARGable)."""
+    start_dt = datetime.combine(date_from, datetime.min.time())
+    end_dt = datetime.combine(date_to, datetime.max.time())
+
     revenue = db.query(func.sum(Patient.amount_paid)).filter(
-        func.date(Patient.created_at) >= date_from,
-        func.date(Patient.created_at) <= date_to,
+        Patient.created_at >= start_dt,
+        Patient.created_at <= end_dt,
         Patient.deleted_at.is_(None),
     ).scalar() or 0
 
@@ -59,8 +68,8 @@ def get_profit_loss(db: Session, date_from: date, date_to: date) -> dict:
     ).scalar() or 0
 
     commissions = db.query(func.sum(Patient.referred_doctor_commission_amount)).filter(
-        func.date(Patient.created_at) >= date_from,
-        func.date(Patient.created_at) <= date_to,
+        Patient.created_at >= start_dt,
+        Patient.created_at <= end_dt,
         Patient.deleted_at.is_(None),
     ).scalar() or 0
 
@@ -75,14 +84,17 @@ def get_profit_loss(db: Session, date_from: date, date_to: date) -> dict:
 
 
 def get_daily_revenue(db: Session, date_from: date, date_to: date) -> dict:
-    """FR-8.1 — Daily revenue series for charts."""
+    """FR-8.1 — Daily revenue series for charts (Index SARGable)."""
+    start_dt = datetime.combine(date_from, datetime.min.time())
+    end_dt = datetime.combine(date_to, datetime.max.time())
+
     rows = db.query(
         func.date(Patient.created_at).label("day"),
         func.sum(Patient.amount_paid).label("revenue"),
         func.count(Patient.id).label("count"),
     ).filter(
-        func.date(Patient.created_at) >= date_from,
-        func.date(Patient.created_at) <= date_to,
+        Patient.created_at >= start_dt,
+        Patient.created_at <= end_dt,
         Patient.deleted_at.is_(None),
     ).group_by(func.date(Patient.created_at)).order_by("day").all()
 
@@ -91,15 +103,19 @@ def get_daily_revenue(db: Session, date_from: date, date_to: date) -> dict:
 
 
 def get_monthly_revenue(db: Session, year: int) -> dict:
-    """FR-8.1 — Monthly revenue series."""
+    """FR-8.1 — Monthly revenue series (Index SARGable)."""
+    start_dt = datetime(year, 1, 1, 0, 0, 0)
+    end_dt = datetime(year, 12, 31, 23, 59, 59)
+
     rows = db.query(
         func.extract("month", Patient.created_at).label("month"),
         func.sum(Patient.amount_paid).label("revenue"),
         func.count(Patient.id).label("count"),
     ).filter(
-        func.extract("year", Patient.created_at) == year,
+        Patient.created_at >= start_dt,
+        Patient.created_at <= end_dt,
         Patient.deleted_at.is_(None),
-    ).group_by("month").order_by("month").all()
+    ).group_by(func.extract("month", Patient.created_at)).order_by("month").all()
 
     months = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"]
     data = [{"period": months[int(r.month)-1], "revenue": float(r.revenue or 0), "patient_count": r.count} for r in rows]
@@ -107,23 +123,30 @@ def get_monthly_revenue(db: Session, year: int) -> dict:
 
 
 def get_payment_split(db: Session, date_from: date, date_to: date) -> dict:
-    cash = db.query(func.sum(Patient.amount_paid), func.count(Patient.id)).filter(
-        Patient.payment_mode == "cash",
-        func.date(Patient.created_at) >= date_from,
-        func.date(Patient.created_at) <= date_to,
+    start_dt = datetime.combine(date_from, datetime.min.time())
+    end_dt = datetime.combine(date_to, datetime.max.time())
+
+    # Single aggregation pass grouping by payment_mode instead of two separate table scans
+    rows = db.query(
+        Patient.payment_mode,
+        func.sum(Patient.amount_paid),
+        func.count(Patient.id)
+    ).filter(
+        Patient.created_at >= start_dt,
+        Patient.created_at <= end_dt,
         Patient.deleted_at.is_(None),
-    ).first()
-    qr = db.query(func.sum(Patient.amount_paid), func.count(Patient.id)).filter(
-        Patient.payment_mode == "qr",
-        func.date(Patient.created_at) >= date_from,
-        func.date(Patient.created_at) <= date_to,
-        Patient.deleted_at.is_(None),
-    ).first()
+        Patient.payment_mode.in_(["cash", "qr"])
+    ).group_by(Patient.payment_mode).all()
+
+    split_map = {row[0]: (float(row[1] or 0), row[2] or 0) for row in rows if row[0]}
+    cash_amt, cash_cnt = split_map.get("cash", (0.0, 0))
+    qr_amt, qr_cnt = split_map.get("qr", (0.0, 0))
+
     return {
-        "cash_amount": float(cash[0] or 0),
-        "cash_count": cash[1] or 0,
-        "qr_amount": float(qr[0] or 0),
-        "qr_count": qr[1] or 0,
+        "cash_amount": cash_amt,
+        "cash_count": cash_cnt,
+        "qr_amount": qr_amt,
+        "qr_count": qr_cnt,
     }
 
 

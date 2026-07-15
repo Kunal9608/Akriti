@@ -25,15 +25,23 @@ async def recognize_and_checkin(
     """FR-3.1 — Submit camera frame for face recognition + auto check-in/out."""
     from fastapi import HTTPException
     
-    # Enforce file size limit of 10MB
-    max_size = 10 * 1024 * 1024  # 10MB
-    image.file.seek(0, 2)
-    file_size = image.file.tell()
-    image.file.seek(0)
-    if file_size > max_size:
+    # Read file bytes
+    image_bytes = await image.read()
+
+    # Perform multi-layer image validation
+    from backend.app.core.upload_security import validate_file_upload
+    allowed_image_exts = (".jpg", ".jpeg", ".png", ".webp")
+    try:
+        validate_file_upload(
+            file_bytes=image_bytes,
+            filename=image.filename,
+            max_size=10 * 1024 * 1024,  # 10MB
+            allowed_extensions=allowed_image_exts
+        )
+    except ValueError as e:
         raise HTTPException(
-            status_code=413,
-            detail="File size exceeds the maximum limit of 10MB"
+            status_code=400,
+            detail=str(e)
         )
 
     from backend.app.services import idempotency_service
@@ -41,8 +49,6 @@ async def recognize_and_checkin(
         cached = idempotency_service.check_key_exists(idempotency_key, "kiosk")
         if cached:
             return cached
-
-    image_bytes = await image.read()
     result = attendance_service.recognize_and_log(db, image_bytes, device_id)
 
     if idempotency_key and result.get("matched"):

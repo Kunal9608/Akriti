@@ -18,12 +18,12 @@ dashboard_router = APIRouter(prefix="/dashboard")
 
 # Dashboard
 @dashboard_router.get("/stats")
-def dashboard_stats(current_user=Depends(get_current_user), db: Session = Depends(get_db)):
+def dashboard_stats(admin=Depends(require_admin), db: Session = Depends(get_db)):
     return finance_service.get_dashboard_stats(db)
 
 
 @finance_router.get("/dashboard")
-def finance_dashboard(current_user=Depends(get_current_user), db: Session = Depends(get_db)):
+def finance_dashboard(admin=Depends(require_admin), db: Session = Depends(get_db)):
     return finance_service.get_dashboard_stats(db)
 
 
@@ -74,10 +74,11 @@ def create_expense(payload: ExpenseCreate, admin=Depends(require_admin),
 @finance_router.get("/expenses")
 def list_expenses(
     date_from: Optional[date] = None, date_to: Optional[date] = None,
-    category: Optional[str] = None, page: int = 1, page_size: int = 50,
+    category: Optional[str] = None, q: Optional[str] = None,
+    page: int = 1, page_size: int = 50,
     admin=Depends(require_admin), db: Session = Depends(get_db)
 ):
-    items, total = finance_service.list_expenses(db, date_from, date_to, category, page, page_size)
+    items, total = finance_service.list_expenses(db, date_from, date_to, category, q, page, page_size)
     return {"items": items, "total": total}
 
 

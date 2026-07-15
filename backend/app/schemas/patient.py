@@ -92,6 +92,15 @@ class PatientUpdate(BaseModel):
     payment_mode: Optional[str] = None
     status: Optional[str] = None
     processing_note: Optional[str] = None
+    
+    # Franchise Fields
+    franchise_name: Optional[str] = None
+    franchise_other: Optional[str] = None
+    sample_sent_date: Optional[date] = None
+    sample_sent_time: Optional[str] = None
+    courier_name: Optional[str] = None
+    tracking_id: Optional[str] = None
+    franchise_remarks: Optional[str] = None
 
 
 class TestSummary(BaseModel):
@@ -127,6 +136,16 @@ class PatientResponse(BaseModel):
     updated_at: Optional[datetime]
     tests: List[TestSummary] = []
     collected_by_name: Optional[str] = None
+    
+    # Franchise Fields
+    franchise_name: Optional[str] = None
+    franchise_other: Optional[str] = None
+    sample_sent_date: Optional[date] = None
+    sample_sent_time: Optional[str] = None
+    courier_name: Optional[str] = None
+    tracking_id: Optional[str] = None
+    franchise_remarks: Optional[str] = None
+    status_history: Optional[List[dict]] = None
 
     class Config:
         from_attributes = True

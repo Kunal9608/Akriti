@@ -119,6 +119,116 @@ const Shell = (() => {
     return svg.replace('<svg ', `<svg width="${size}" height="${size}" `);
   }
 
+  function showAccessDenied(expectedRole, actualRole) {
+    document.getElementById('page-blocking-style')?.remove();
+    const roleLabel = expectedRole === 'admin' ? 'Administrator' : 'Staff';
+    const redirectDashboard = actualRole === 'admin' ? '/admin/dashboard.html' : '/staff/patients.html';
+    const css = `
+      <style>
+        .access-denied-container {
+          position: fixed;
+          inset: 0;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          background: #0d1a17;
+          background-image: radial-gradient(circle at 10% 20%, rgba(13, 26, 23, 0.95) 0%, rgba(11, 19, 17, 0.98) 90%);
+          z-index: 99999;
+          font-family: 'Inter', sans-serif;
+          padding: 24px;
+        }
+        .access-denied-card {
+          background: rgba(25, 40, 37, 0.35);
+          backdrop-filter: blur(16px);
+          -webkit-backdrop-filter: blur(16px);
+          border: 1px solid rgba(109, 0, 1, 0.25);
+          border-radius: 16px;
+          padding: 48px 40px;
+          max-width: 440px;
+          width: 100%;
+          text-align: center;
+          box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5);
+          animation: denSlideUp 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        @keyframes denSlideUp {
+          from { transform: translateY(24px); opacity: 0; }
+          to { transform: translateY(0); opacity: 1; }
+        }
+        .access-denied-icon {
+          width: 84px;
+          height: 84px;
+          background: rgba(109, 0, 1, 0.15);
+          color: #ff4d4f;
+          border-radius: 50%;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          margin: 0 auto 28px;
+          border: 1.5px solid rgba(109, 0, 1, 0.3);
+          box-shadow: 0 0 20px rgba(109, 0, 1, 0.1);
+        }
+        .access-denied-title {
+          font-size: 26px;
+          font-weight: 700;
+          color: #E8F4F0;
+          margin: 0 0 10px;
+          letter-spacing: -0.02em;
+        }
+        .access-denied-subtitle {
+          font-size: 13px;
+          font-weight: 600;
+          color: #ff4d4f;
+          margin-bottom: 20px;
+          text-transform: uppercase;
+          letter-spacing: 0.1em;
+        }
+        .access-denied-text {
+          font-size: 14px;
+          color: #b2c4bf;
+          margin: 0 0 32px;
+          line-height: 1.6;
+        }
+        .access-denied-btn {
+          width: 100%;
+          padding: 14px;
+          font-weight: 600;
+          font-size: 14px;
+          background: #6D0001;
+          color: #ffffff;
+          border: none;
+          border-radius: 8px;
+          cursor: pointer;
+          transition: background 0.2s, transform 0.1s;
+          box-shadow: 0 4px 12px rgba(109, 0, 1, 0.3);
+        }
+        .access-denied-btn:hover {
+          background: #8b0002;
+        }
+        .access-denied-btn:active {
+          transform: scale(0.98);
+        }
+      </style>
+    `;
+    const html = `
+      ${css}
+      <div class="access-denied-container">
+        <div class="access-denied-card">
+          <div class="access-denied-icon">
+            <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+              <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+            </svg>
+          </div>
+          <h1 class="access-denied-title">Access Denied</h1>
+          <div class="access-denied-subtitle">${roleLabel} Access Required</div>
+          <p class="access-denied-text">You do not have permission to view this section of the system. Please click below to return.</p>
+          <button onclick="window.history.length > 1 ? window.history.back() : (window.location.href = '${redirectDashboard}')" class="access-denied-btn">Go Back</button>
+        </div>
+      </div>
+    `;
+    document.body.innerHTML = html;
+  }
+
   async function init({ role = 'admin', pageTitle = '', searchable = false } = {}) {
     // Auth check
     let me;
@@ -143,6 +253,23 @@ const Shell = (() => {
         throw new Error('Redirecting to login... Access denied.');
       }
     }
+
+    // Role gate
+    const path = window.location.pathname;
+    let expectedRole = null;
+    if (path.includes('/admin/')) {
+      expectedRole = 'admin';
+    } else if (path.includes('/staff/')) {
+      expectedRole = 'staff';
+    }
+
+    if (expectedRole && me.role !== expectedRole) {
+      showAccessDenied(expectedRole, me.role);
+      throw new Error(`Access Denied: ${expectedRole} access required.`);
+    }
+
+    // Access granted — unblock page rendering
+    document.getElementById('page-blocking-style')?.remove();
 
     const nav = me.role === 'admin' ? NAV_ADMIN : NAV_STAFF;
     const currentPath = window.location.pathname;
@@ -201,6 +328,38 @@ const Shell = (() => {
     // Render topbar
     const topbarEl = document.getElementById('topbar-title');
     if (topbarEl) topbarEl.textContent = pageTitle;
+
+    // Make sure offline banner exists
+    let onlineBanner = document.querySelector('.offline-banner');
+    if (!onlineBanner) {
+      const mainArea = document.querySelector('.main-area');
+      if (mainArea) {
+        onlineBanner = document.createElement('div');
+        onlineBanner.className = 'offline-banner';
+        onlineBanner.setAttribute('role', 'status');
+        const topbar = mainArea.querySelector('.topbar');
+        if (topbar) {
+          topbar.after(onlineBanner);
+        } else {
+          mainArea.prepend(onlineBanner);
+        }
+      }
+    }
+
+    // Dynamically load offline-queue.js if not already present
+    if (typeof window.OfflineQueue === 'undefined') {
+      try {
+        await new Promise((resolve, reject) => {
+          const script = document.createElement('script');
+          script.src = '/assets/js/offline-queue.js';
+          script.onload = resolve;
+          script.onerror = reject;
+          document.head.appendChild(script);
+        });
+      } catch (err) {
+        console.warn("Failed to dynamically load offline-queue.js:", err);
+      }
+    }
 
     // Mobile hamburger
     const hamburger = document.getElementById('hamburger-btn');

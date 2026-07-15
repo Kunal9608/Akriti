@@ -189,7 +189,9 @@
     }
 
     const btn = document.getElementById('doctor-save-btn');
-    btn.setAttribute('aria-busy','true'); btn.innerHTML = `<span class="btn-loading-spinner"></span> Saving...`;
+    btn.setAttribute('aria-busy','true'); 
+    btn.disabled = true;
+    btn.innerHTML = `<span class="btn-loading-spinner"></span> Saving...`;
     try {
       if (editingId) {
         await API.patch(`/api/v1/doctors/${editingId}`, { name, clinic_name: clinic, commission_pct: comm, is_active: active });
@@ -201,7 +203,7 @@
       Modal.close('doctor-modal');
       table.refresh();
     } catch (err) { Toast.show(err.message || 'Failed to save', 'error'); }
-    finally { btn.removeAttribute('aria-busy'); btn.innerHTML = 'Save Doctor'; }
+    finally { btn.removeAttribute('aria-busy'); btn.disabled = false; btn.innerHTML = 'Save Doctor'; }
   });
 
   document.getElementById('doctor-cancel-btn').addEventListener('click', () => Modal.close('doctor-modal'));

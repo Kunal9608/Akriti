@@ -117,8 +117,8 @@ def list_doctors(include_inactive: bool = Query(False), db: Session = Depends(ge
 
 @doctor_router.post("", status_code=201)
 def create_doctor(payload: DoctorCreate, db: Session = Depends(get_db),
-                  current_user=Depends(get_current_user)):
-    return test_service.create_doctor(db, payload.name, payload.clinic_name, payload.commission_pct, current_user.id)
+                  admin=Depends(require_admin)):
+    return test_service.create_doctor(db, payload.name, payload.clinic_name, payload.commission_pct, admin.id)
 
 
 @doctor_router.patch("/{doctor_id}")

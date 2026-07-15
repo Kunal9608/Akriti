@@ -60,17 +60,32 @@ async def face_enroll(staff_id: str, image: UploadFile = File(...),
                       db: Session = Depends(get_db)):
     import uuid
     from fastapi import HTTPException
+    from backend.app.models.user import RoleEnum
     
-    # Enforce file size limit of 10MB
-    max_size = 10 * 1024 * 1024  # 10MB
-    image.file.seek(0, 2)
-    file_size = image.file.tell()
-    image.file.seek(0)
-    if file_size > max_size:
+    target_uuid = uuid.UUID(staff_id)
+    if current_user.role != RoleEnum.admin and current_user.id != target_uuid:
         raise HTTPException(
-            status_code=413,
-            detail="File size exceeds the maximum limit of 10MB"
+            status_code=403,
+            detail="You are not authorized to enroll face data for this staff member"
         )
-        
+    
+    # Read file bytes
     image_bytes = await image.read()
-    return face_service.enroll_sample(db, uuid.UUID(staff_id), image_bytes)
+
+    # Perform multi-layer image validation
+    from backend.app.core.upload_security import validate_file_upload
+    allowed_image_exts = (".jpg", ".jpeg", ".png", ".webp")
+    try:
+        validate_file_upload(
+            file_bytes=image_bytes,
+            filename=image.filename,
+            max_size=10 * 1024 * 1024,  # 10MB
+            allowed_extensions=allowed_image_exts
+        )
+    except ValueError as e:
+        raise HTTPException(
+            status_code=400,
+            detail=str(e)
+        )
+
+    return face_service.enroll_sample(db, target_uuid, image_bytes)

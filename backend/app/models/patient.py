@@ -26,6 +26,7 @@ class CollectionTypeEnum(str, enum.Enum):
 
 class PatientStatusEnum(str, enum.Enum):
     sample_collected = "sample_collected"
+    sent_to_franchise = "sent_to_franchise"
     under_process = "under_process"
     report_ready = "report_ready"
 
@@ -54,6 +55,16 @@ class Patient(Base):
     # amount_due is computed in Python (PG GENERATED ALWAYS AS not easily mapped in SQLAlchemy)
     payment_mode = Column(Enum("cash", "qr", name="payment_mode_enum"), nullable=True)
     status = Column(Enum(PatientStatusEnum, name="patient_status_enum"), default="sample_collected")
+    
+    # Franchise Fields
+    franchise_name = Column(String(100), nullable=True)
+    franchise_other = Column(String(100), nullable=True)
+    sample_sent_date = Column(Date, nullable=True)
+    sample_sent_time = Column(String(20), nullable=True)
+    courier_name = Column(String(100), nullable=True)
+    tracking_id = Column(String(100), nullable=True)
+    franchise_remarks = Column(String(255), nullable=True)
+    
     processing_note = Column(String(120), nullable=True)
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), index=True)
     updated_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc),
@@ -87,3 +98,4 @@ class Patient(Base):
     collector = relationship("User", foreign_keys=[collected_by], back_populates="patients_collected")
     patient_tests = relationship("PatientTest", back_populates="patient", cascade="all, delete-orphan")
     reports = relationship("Report", back_populates="patient")
+    status_history = relationship("PatientStatusHistory", back_populates="patient", cascade="all, delete-orphan", order_by="PatientStatusHistory.updated_at.asc()")

@@ -14,6 +14,7 @@ from backend.app.models.login_history import LoginHistory, LoginOutcomeEnum
 from backend.app.models.active_session import ActiveSession
 from backend.app.models.audit_log import AuditLog
 from backend.app.models.otp_request import OtpRequest, OtpPurposeEnum
+from backend.app.models.patient_status_history import PatientStatusHistory
 
 __all__ = [
     "User", "RoleEnum", "ViewScopeEnum",
@@ -31,4 +32,5 @@ __all__ = [
     "ActiveSession",
     "AuditLog",
     "OtpRequest", "OtpPurposeEnum",
+    "PatientStatusHistory",
 ]

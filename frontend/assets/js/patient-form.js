@@ -337,6 +337,13 @@ const PatientForm = (() => {
       }
       lookupDebounce = setTimeout(async () => {
         try {
+          if (typeof OfflineQueue !== 'undefined') {
+            const online = await OfflineQueue.isOnline();
+            if (!online) {
+              if (suggestionEl) suggestionEl.style.display = 'none';
+              return;
+            }
+          }
           const res = await API.get(`/api/v1/patients/search?mobile=${val}`, { silent: true });
           if (res && res.length > 0 && suggestionEl) {
             const p = res[0];

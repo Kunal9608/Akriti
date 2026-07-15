@@ -279,7 +279,9 @@
     if (!editingId && (!aadhar || aadhar.length !== 12)) { Toast.show('Aadhar must be exactly 12 digits', 'error'); return; }
 
     const btn = document.getElementById('staff-save-btn');
-    btn.setAttribute('aria-busy','true'); btn.innerHTML = `<span class="btn-loading-spinner"></span> Saving...`;
+    btn.setAttribute('aria-busy','true'); 
+    btn.disabled = true;
+    btn.innerHTML = `<span class="btn-loading-spinner"></span> Saving...`;
 
     try {
       const payload = { name, email, mobile, dob, view_scope: scope };
@@ -300,7 +302,9 @@
     } catch (err) {
       Toast.show(err.message || 'Failed to save', 'error');
     } finally {
-      btn.removeAttribute('aria-busy'); btn.innerHTML = 'Save Staff Member';
+      btn.removeAttribute('aria-busy'); 
+      btn.disabled = false;
+      btn.innerHTML = 'Save Staff Member';
     }
   });
 

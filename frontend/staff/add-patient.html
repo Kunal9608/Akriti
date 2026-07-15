@@ -32,10 +32,80 @@
     #qr-code-section { background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-lg); padding: 24px; text-align: center; }
     /* ── Force search bar visible inside the form (overrides global display:none on mobile) ── */
     .form-search.topbar-search { display: flex !important; width: 100% !important; }
+    /* Wizard / Multi-step Form styling */
+    .wizard-steps {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 28px;
+      background: var(--color-surface);
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-lg);
+      padding: 16px 24px;
+    }
+    .wizard-step {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      color: var(--color-ink-muted);
+      font-size: var(--text-sm);
+      font-weight: 500;
+      transition: color 0.2s;
+    }
+    .wizard-step.active {
+      color: var(--color-cherry-cola);
+      font-weight: 700;
+    }
+    .wizard-step.completed {
+      color: var(--color-ink);
+    }
+    .wizard-step-num {
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      background: var(--color-bg);
+      border: 2px solid var(--color-border);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--color-ink-faint);
+      transition: all 0.2s;
+    }
+    .wizard-step.active .wizard-step-num {
+      background: var(--color-cherry-cola);
+      border-color: var(--color-cherry-cola);
+      color: #fff;
+    }
+    .wizard-step.completed .wizard-step-num {
+      background: var(--color-cherry-cola-tint-10);
+      border-color: var(--color-cherry-cola);
+      color: var(--color-cherry-cola);
+    }
+    .wizard-step-line {
+      flex: 1;
+      height: 2px;
+      background: var(--color-border);
+      margin: 0 16px;
+      transition: background 0.2s;
+    }
+    .wizard-step-line.completed {
+      background: var(--color-cherry-cola);
+    }
+    .form-step-section {
+      display: none;
+    }
+    .form-step-section.active {
+      display: block;
+    }
     @media (max-width: 640px) {
       .form-card { padding: 18px 14px; }
       .billing-total-bar { flex-direction: column; align-items: flex-start; gap: 4px; padding: 12px 16px; }
       .billing-total-value { font-size: 22px; }
+      .wizard-steps { padding: 12px; gap: 4px; }
+      .wizard-step-label { display: none; }
+      .wizard-step-line { margin: 0 8px; }
     }
   </style>
 </head>
@@ -68,126 +138,152 @@
         </div>
       </div>
 
+      <!-- Wizard Progress Indicators -->
+      <div class="wizard-steps">
+        <div class="wizard-step active" id="step-ind-1">
+          <div class="wizard-step-num">1</div>
+          <div class="wizard-step-label">Patient Details</div>
+        </div>
+        <div class="wizard-step-line" id="step-line-1"></div>
+        <div class="wizard-step" id="step-ind-2">
+          <div class="wizard-step-num">2</div>
+          <div class="wizard-step-label">Test Selection</div>
+        </div>
+        <div class="wizard-step-line" id="step-line-2"></div>
+        <div class="wizard-step" id="step-ind-3">
+          <div class="wizard-step-num">3</div>
+          <div class="wizard-step-label">Billing & Review</div>
+        </div>
+      </div>
+
       <form id="patient-main-form" novalidate>
         <!-- Returning patient suggestion -->
         <div id="returning-patient-suggestion" style="display:none;margin-bottom:16px"></div>
 
-        <!-- Patient Details -->
-        <div class="form-card">
-          <div class="form-card-title">Patient Information</div>
-          <div class="form-row mb-4">
-            <div class="form-field">
-              <label class="form-label" for="patient-name">Full Name <span class="required">*</span></label>
-              <input class="form-input" type="text" id="patient-name" placeholder="Patient's full name" required>
+        <!-- Step 1: Patient Details -->
+        <div class="form-step-section active" id="step-1-section">
+          <div class="form-card">
+            <div class="form-card-title">Patient Information</div>
+            <div class="form-row mb-4">
+              <div class="form-field">
+                <label class="form-label" for="patient-name">Full Name <span class="required">*</span></label>
+                <input class="form-input" type="text" id="patient-name" placeholder="Patient's full name" required>
+              </div>
+              <div class="form-field">
+                <label class="form-label" for="patient-mobile">Mobile <span class="required">*</span></label>
+                <input class="form-input" type="tel" id="patient-mobile" placeholder="10-digit mobile" maxlength="10" inputmode="numeric" required>
+              </div>
             </div>
-            <div class="form-field">
-              <label class="form-label" for="patient-mobile">Mobile <span class="required">*</span></label>
-              <input class="form-input" type="tel" id="patient-mobile" placeholder="10-digit mobile" maxlength="10" inputmode="numeric" required>
+            <div class="form-row mb-4">
+              <div class="form-field">
+                <label class="form-label" for="patient-age">Age <span class="required">*</span></label>
+                <input class="form-input" type="number" id="patient-age" min="0" max="130" placeholder="Years" required>
+              </div>
+              <div class="form-field">
+                <label class="form-label" for="patient-gender">Gender <span class="required">*</span></label>
+                <select class="form-select" id="patient-gender" required>
+                  <option value="">Select gender</option>
+                  <option value="male">Male</option>
+                  <option value="female">Female</option>
+                  <option value="other">Other</option>
+                </select>
+              </div>
             </div>
-          </div>
-          <div class="form-row mb-4">
-            <div class="form-field">
-              <label class="form-label" for="patient-age">Age <span class="required">*</span></label>
-              <input class="form-input" type="number" id="patient-age" min="0" max="130" placeholder="Years" required>
-            </div>
-            <div class="form-field">
-              <label class="form-label" for="patient-gender">Gender <span class="required">*</span></label>
-              <select class="form-select" id="patient-gender" required>
-                <option value="">Select gender</option>
-                <option value="male">Male</option>
-                <option value="female">Female</option>
-                <option value="other">Other</option>
-              </select>
-            </div>
-          </div>
-          <div class="form-row">
-            <div class="form-field">
-              <label class="form-label" for="patient-doctor">Referring Doctor</label>
-              <select class="form-select" id="patient-doctor"></select>
-            </div>
-            <div class="form-field">
-              <label class="form-label" for="patient-sample-date">Sample Collection Date <span class="required">*</span></label>
-              <input class="form-input" type="date" id="patient-sample-date" required>
-            </div>
-          </div>
-        </div>
-
-        <!-- Test Selection -->
-        <div class="form-card">
-          <div class="form-card-title">Select Tests</div>
-          <div class="form-field mb-4">
-            <label class="form-label" for="test-search-input">Search Tests</label>
-            <div class="topbar-search form-search" style="width:100%;margin-bottom:8px">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-              <input type="text" id="test-search-input" placeholder="Type to filter tests…">
-            </div>
-            <div class="test-picker" id="test-picker-container">
-              <div style="padding:12px;text-align:center"><span class="skel skel-text" style="width:60%"></span></div>
-            </div>
-          </div>
-          <div class="form-field">
-            <label class="form-label">Selected Tests</label>
-            <div class="selected-chips-bar" id="selected-tests-chips" style="display:flex;flex-wrap:wrap;gap:6px;min-height:28px">
-              <span class="text-faint text-xs">No tests selected</span>
-            </div>
-          </div>
-        </div>
-
-        <!-- Billing -->
-        <div class="form-card">
-          <div class="form-card-title">Billing</div>
-
-          <!-- Live total -->
-          <div class="billing-total-bar mb-6">
-            <div class="billing-total-label">Total Bill Amount</div>
-            <div class="billing-total-value" id="total-amount-display">₹0</div>
-            <input type="hidden" id="total-amount-hidden" value="0">
-          </div>
-
-          <!-- Discount (optional) -->
-          <div class="form-row mb-4">
-            <div class="form-field">
-              <label class="form-label" for="discount-amount">
-                Discount Amount (INR)
-                <span style="font-weight:400;color:var(--color-ink-faint);font-size:11px;margin-left:4px">— Optional</span>
-              </label>
-              <input class="form-input" type="number" id="discount-amount" min="0" step="0.01" value="" placeholder="0 (leave blank if no discount)">
-            </div>
-            <div class="form-field" style="align-self:flex-end">
-              <div style="background:var(--color-cherry-cola-tint-10);border:1px solid var(--color-border);border-radius:var(--radius-md);padding:10px 14px;">
-                <div style="font-size:var(--text-xs);color:var(--color-ink-muted);font-weight:600;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:2px">Net Payable</div>
-                <div id="net-payable-display" style="font-size:var(--text-xl);font-weight:700;color:var(--color-cherry-cola);font-variant-numeric:tabular-nums">₹0</div>
+            <div class="form-row">
+              <div class="form-field">
+                <label class="form-label" for="patient-doctor">Referring Doctor</label>
+                <select class="form-select" id="patient-doctor"></select>
+              </div>
+              <div class="form-field">
+                <label class="form-label" for="patient-sample-date">Sample Collection Date <span class="required">*</span></label>
+                <input class="form-input" type="date" id="patient-sample-date" required>
               </div>
             </div>
           </div>
+        </div>
 
-          <div class="form-row mb-4">
+        <!-- Step 2: Test Selection -->
+        <div class="form-step-section" id="step-2-section">
+          <div class="form-card">
+            <div class="form-card-title">Select Tests</div>
+            <div class="form-field mb-4">
+              <label class="form-label" for="test-search-input">Search Tests</label>
+              <div class="topbar-search form-search" style="width:100%;margin-bottom:8px">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                <input type="text" id="test-search-input" placeholder="Type to filter tests…">
+              </div>
+              <div class="test-picker" id="test-picker-container">
+                <div style="padding:12px;text-align:center"><span class="skel skel-text" style="width:60%"></span></div>
+              </div>
+            </div>
             <div class="form-field">
-              <label class="form-label" for="amount-paid">Amount Paid Now (INR)</label>
-              <input class="form-input" type="number" id="amount-paid" min="0" step="0.01" value="0" placeholder="0">
+              <label class="form-label">Selected Tests</label>
+              <div class="selected-chips-bar" id="selected-tests-chips" style="display:flex;flex-wrap:wrap;gap:6px;min-height:28px">
+                <span class="text-faint text-xs">No tests selected</span>
+              </div>
             </div>
-            <div class="form-field" id="payment-mode-section" style="display:none">
-              <label class="form-label" for="payment-mode">Payment Mode <span class="required">*</span></label>
-              <select class="form-select" id="payment-mode">
-                <option value="cash">Cash</option>
-                <option value="qr">QR / UPI</option>
-              </select>
-            </div>
-          </div>
-
-          <!-- QR Code section -->
-          <div id="qr-code-section" style="display:none;margin-top:16px">
-            <div class="divider mb-4"></div>
-            <p class="text-sm text-muted mb-3">Scan to collect payment:</p>
-            <div id="qr-code-canvas" style="text-align:center;padding:20px;background:var(--color-bg);border-radius:var(--radius-md);border:1px solid var(--color-border)"></div>
-            <p class="text-xs text-faint text-center mt-2">After payment, click "Save Patient"</p>
           </div>
         </div>
 
-        <!-- Submit -->
-        <div style="display:flex;gap:12px;justify-content:flex-end;margin-bottom:40px">
-          <a href="/staff/patients" class="btn btn-ghost">Cancel</a>
-          <button type="submit" class="btn btn-primary btn-lg" id="submit-btn">
+        <!-- Step 3: Billing & Review -->
+        <div class="form-step-section" id="step-3-section">
+          <div class="form-card">
+            <div class="form-card-title">Billing</div>
+
+            <!-- Live total -->
+            <div class="billing-total-bar mb-6">
+              <div class="billing-total-label">Total Bill Amount</div>
+              <div class="billing-total-value" id="total-amount-display">₹0</div>
+              <input type="hidden" id="total-amount-hidden" value="0">
+            </div>
+
+            <!-- Discount (optional) -->
+            <div class="form-row mb-4">
+              <div class="form-field">
+                <label class="form-label" for="discount-amount">
+                  Discount Amount (INR)
+                  <span style="font-weight:400;color:var(--color-ink-faint);font-size:11px;margin-left:4px">— Optional</span>
+                </label>
+                <input class="form-input" type="number" id="discount-amount" min="0" step="0.01" value="" placeholder="0 (leave blank if no discount)">
+              </div>
+              <div class="form-field" style="align-self:flex-end">
+                <div style="background:var(--color-cherry-cola-tint-10);border:1px solid var(--color-border);border-radius:var(--radius-md);padding:10px 14px;">
+                  <div style="font-size:var(--text-xs);color:var(--color-ink-muted);font-weight:600;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:2px">Net Payable</div>
+                  <div id="net-payable-display" style="font-size:var(--text-xl);font-weight:700;color:var(--color-cherry-cola);font-variant-numeric:tabular-nums">₹0</div>
+                </div>
+              </div>
+            </div>
+
+            <div class="form-row mb-4">
+              <div class="form-field">
+                <label class="form-label" for="amount-paid">Amount Paid Now (INR)</label>
+                <input class="form-input" type="number" id="amount-paid" min="0" step="0.01" value="0" placeholder="0">
+              </div>
+              <div class="form-field" id="payment-mode-section" style="display:none">
+                <label class="form-label" for="payment-mode">Payment Mode <span class="required">*</span></label>
+                <select class="form-select" id="payment-mode">
+                  <option value="cash">Cash</option>
+                  <option value="qr">QR / UPI</option>
+                </select>
+              </div>
+            </div>
+
+            <!-- QR Code section -->
+            <div id="qr-code-section" style="display:none;margin-top:16px">
+              <div class="divider mb-4"></div>
+              <p class="text-sm text-muted mb-3">Scan to collect payment:</p>
+              <div id="qr-code-canvas" style="text-align:center;padding:20px;background:var(--color-bg);border-radius:var(--radius-md);border:1px solid var(--color-border)"></div>
+              <p class="text-xs text-faint text-center mt-2">After payment, click "Save Patient"</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Submit & Navigation -->
+        <div style="display:flex;gap:12px;justify-content:flex-end;margin-bottom:40px;margin-top:20px">
+          <button type="button" class="btn btn-ghost" id="prev-step-btn" style="display:none">Back</button>
+          <a href="/staff/patients" class="btn btn-ghost" id="cancel-form-btn">Cancel</a>
+          <button type="button" class="btn btn-primary" id="next-step-btn">Next</button>
+          <button type="submit" class="btn btn-primary btn-lg" id="submit-btn" style="display:none">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
             Save Patient
           </button>
@@ -223,11 +319,43 @@
   }
 
   // Load tests, doctors and init form logic
-  await Promise.all([PatientForm.loadTests(), PatientForm.loadDoctors()]);
+  const [allTests, _] = await Promise.all([PatientForm.loadTests(), PatientForm.loadDoctors()]);
   PatientForm.renderTestPicker('test-picker-container', 'test-search-input');
   PatientForm.renderDoctorDropdown('patient-doctor');
   PatientForm.initPaymentMode();
   PatientForm.initReturningPatientLookup();
+
+  // Load draft if exists
+  const savedDraft = localStorage.getItem('akriti_patient_draft');
+  if (savedDraft && !editId) {
+    try {
+      const draft = JSON.parse(savedDraft);
+      if (draft.name) document.getElementById('patient-name').value = draft.name;
+      if (draft.mobile) document.getElementById('patient-mobile').value = draft.mobile;
+      if (draft.age) document.getElementById('patient-age').value = draft.age;
+      if (draft.gender) document.getElementById('patient-gender').value = draft.gender;
+      if (draft.doctor_id) document.getElementById('patient-doctor').value = draft.doctor_id;
+      if (draft.sample_date) document.getElementById('patient-sample-date').value = draft.sample_date;
+      if (draft.amount_paid) document.getElementById('amount-paid').value = draft.amount_paid;
+      if (draft.payment_mode) document.getElementById('payment-mode').value = draft.payment_mode;
+      if (draft.test_ids && draft.test_ids.length > 0) {
+        const tests = allTests.filter(t => draft.test_ids.includes(t.id));
+        PatientForm.setSelectedTests(tests);
+        PatientForm.updateTotal();
+        PatientForm.renderSelectedChips();
+        PatientForm.renderTestPicker('test-picker-container', 'test-search-input');
+      }
+      Toast.show('Draft restored from your last session', 'info', 3000);
+    } catch (_) {}
+  }
+
+  // Setup draft auto-save timer
+  function saveDraft() {
+    if (editId) return;
+    const data = PatientForm.getFormData();
+    localStorage.setItem('akriti_patient_draft', JSON.stringify(data));
+  }
+  setInterval(saveDraft, 30000);
 
   // ── Live Net Payable Calculation ──────────────────────────────────────────
   function updateNetPayable() {
@@ -294,6 +422,90 @@
     } catch { Toast.show('Failed to load patient data', 'error'); }
   }
 
+  // ── Multi-Step Wizard Control ──────────────────────────────────────────────
+  let currentStep = 1;
+
+  function showStep(step) {
+    currentStep = step;
+    
+    // Update step visibility
+    document.querySelectorAll('.form-step-section').forEach((section, idx) => {
+      if (idx + 1 === step) {
+        section.classList.add('active');
+      } else {
+        section.classList.remove('active');
+      }
+    });
+
+    // Update indicator states
+    for (let i = 1; i <= 3; i++) {
+      const ind = document.getElementById(`step-ind-${i}`);
+      const line = document.getElementById(`step-line-${i}`);
+      if (ind) {
+        ind.classList.remove('active', 'completed');
+        if (i === step) {
+          ind.classList.add('active');
+        } else if (i < step) {
+          ind.classList.add('completed');
+        }
+      }
+      if (line) {
+        line.classList.remove('completed');
+        if (i < step) {
+          line.classList.add('completed');
+        }
+      }
+    }
+
+    // Update button states
+    const prevBtn = document.getElementById('prev-step-btn');
+    const cancelBtn = document.getElementById('cancel-form-btn');
+    const nextBtn = document.getElementById('next-step-btn');
+    const submitBtn = document.getElementById('submit-btn');
+
+    if (prevBtn) prevBtn.style.display = step > 1 ? '' : 'none';
+    if (cancelBtn) cancelBtn.style.display = step === 1 ? '' : 'none';
+    if (nextBtn) nextBtn.style.display = step < 3 ? '' : 'none';
+    if (submitBtn) submitBtn.style.display = step === 3 ? '' : 'none';
+  }
+  showStep(1);
+
+  // Next Button handler
+  document.getElementById('next-step-btn')?.addEventListener('click', async () => {
+    if (currentStep === 1) {
+      // Validate Step 1
+      const name = document.getElementById('patient-name').value.trim();
+      const mobile = document.getElementById('patient-mobile').value.trim();
+      const age = parseInt(document.getElementById('patient-age').value);
+      const gender = document.getElementById('patient-gender').value;
+      const sampleDate = document.getElementById('patient-sample-date').value;
+
+      if (!name) { Toast.show('Patient name is required', 'error'); return; }
+      if (!/^[6-9]\d{9}$/.test(mobile)) { Toast.show('Enter a valid 10-digit mobile number', 'error'); return; }
+      if (isNaN(age) || age < 0 || age > 130) { Toast.show('Enter a valid age', 'error'); return; }
+      if (!gender) { Toast.show('Please select a gender', 'error'); return; }
+      if (!sampleDate) { Toast.show('Sample date is required', 'error'); return; }
+
+      showStep(2);
+    } else if (currentStep === 2) {
+      // Validate Step 2
+      const testIds = PatientForm.getSelectedTestIds();
+      if (!testIds.length) {
+        Toast.show('Please select at least one test', 'error');
+        return;
+      }
+
+      showStep(3);
+    }
+  });
+
+  // Back Button handler
+  document.getElementById('prev-step-btn')?.addEventListener('click', () => {
+    if (currentStep > 1) {
+      showStep(currentStep - 1);
+    }
+  });
+
   // ── Form Submit ───────────────────────────────────────────────────────────
   document.getElementById('patient-main-form').addEventListener('submit', async (e) => {
     e.preventDefault();
@@ -333,6 +545,7 @@
 
     const btn = document.getElementById('submit-btn');
     btn.setAttribute('aria-busy','true');
+    btn.disabled = true;
     btn.innerHTML = `<span class="btn-loading-spinner"></span> Saving...`;
 
     const idempotencyKey = API.uuidv4();
@@ -348,16 +561,19 @@
     };
 
     try {
-      if (!navigator.onLine) {
+      const isOnline = await OfflineQueue.isOnline();
+      if (!isOnline) {
         await OfflineQueue.enqueue(
           editId ? `/api/v1/patients/${editId}` : '/api/v1/patients',
           editId ? 'PATCH' : 'POST',
           payload,
           idempotencyKey,
         );
+        localStorage.removeItem('akriti_patient_draft');
         Toast.show('Offline: patient saved locally and will sync when online.', 'warning', 6000);
         PatientForm.clearForm();
         document.getElementById('patient-main-form').reset();
+        showStep(1);
         return;
       }
 
@@ -368,12 +584,15 @@
         const res = await API.post('/api/v1/patients', payload, { idempotencyKey });
         Toast.show(`Patient registered — ${res.patient_code}`, 'success');
       }
+
+      localStorage.removeItem('akriti_patient_draft');
       PatientForm.clearForm();
       setTimeout(() => window.location.href = '/staff/patients', 1500);
     } catch (err) {
       Toast.show(err.message || 'Failed to save patient', 'error');
     } finally {
       btn.removeAttribute('aria-busy');
+      btn.disabled = false;
       btn.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg> Save Patient`;
     }
   });

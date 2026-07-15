@@ -1,13 +1,14 @@
 """Report router."""
-from fastapi import APIRouter, Depends, UploadFile, File, HTTPException, BackgroundTasks
+from fastapi import APIRouter, Depends, UploadFile, File, HTTPException, BackgroundTasks, Form, Query
 from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 from pathlib import Path
+from typing import Optional
 import uuid
 import os
 
 from backend.app.core.db import get_db
-from backend.app.dependencies import get_current_user
+from backend.app.dependencies import get_current_user, check_patient_access
 from backend.app.services import report_service
 
 router = APIRouter(prefix="/reports", tags=["reports"])
@@ -18,33 +19,42 @@ async def upload_report(
     patient_id: uuid.UUID,
     background_tasks: BackgroundTasks,
     file: UploadFile = File(...),
+    reason: Optional[str] = Form(None),
+    force: bool = Query(False),
     current_user=Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
+    from backend.app.repositories import patient_repo
+    patient = patient_repo.get_by_id(db, patient_id)
+    if not patient:
+        raise HTTPException(status_code=404, detail="Patient not found")
+    check_patient_access(current_user, patient)
+
     filename_lower = file.filename.lower()
     
     # All accepted extensions — images + PDF
     image_exts = (".jpg", ".jpeg", ".png", ".webp", ".bmp", ".tiff", ".tif", ".heic", ".heif")
     allowed_extensions = (".pdf",) + image_exts
     
-    if not any(filename_lower.endswith(ext) for ext in allowed_extensions):
-        raise HTTPException(
-            status_code=422,
-            detail="Only PDF or image files (JPG, PNG, WEBP, BMP, TIFF, HEIC) are accepted"
-        )
-
-    # Enforce file size limit of 10MB
-    max_size = 10 * 1024 * 1024  # 10MB
-    file.file.seek(0, 2)
-    file_size = file.file.tell()
-    file.file.seek(0)
-    if file_size > max_size:
-        raise HTTPException(
-            status_code=413,
-            detail="File size exceeds the maximum limit of 10MB"
-        )
-
+    # Read file bytes
     file_bytes = await file.read()
+
+    # Perform multi-layer security validation
+    from backend.app.core.upload_security import validate_file_upload
+    try:
+        sanitized_filename = validate_file_upload(
+            file_bytes=file_bytes,
+            filename=file.filename,
+            max_size=10 * 1024 * 1024,  # 10MB
+            allowed_extensions=allowed_extensions
+        )
+    except ValueError as e:
+        raise HTTPException(
+            status_code=400,
+            detail=str(e)
+        )
+
+    file.filename = sanitized_filename
 
     # Convert any image format to PDF
     if any(filename_lower.endswith(ext) for ext in image_exts):
@@ -71,14 +81,26 @@ async def upload_report(
                 detail=f"Failed to convert image to PDF: {str(e)}"
             )
 
-    return report_service.upload_report(
-        db, patient_id, file_bytes, file.filename, current_user.id, background_tasks
-    )
+    try:
+        return report_service.upload_report(
+            db, patient_id, file_bytes, file.filename, current_user.id, background_tasks,
+            reason=reason, force=force
+        )
+    except ValueError as e:
+        msg = str(e)
+        if msg.startswith("DUPLICATE_REPORT:"):
+            raise HTTPException(status_code=409, detail=msg.split(":", 1)[1])
+        raise HTTPException(status_code=400, detail=msg)
 
 
 @router.get("/{patient_id}")
 def list_reports(patient_id: uuid.UUID, current_user=Depends(get_current_user),
                  db: Session = Depends(get_db)):
+    from backend.app.repositories import patient_repo
+    patient = patient_repo.get_by_id(db, patient_id)
+    if not patient:
+        raise HTTPException(status_code=404, detail="Patient not found")
+    check_patient_access(current_user, patient)
     return report_service.get_patient_reports(db, patient_id)
 
 
@@ -92,6 +114,12 @@ def download_report(report_id: uuid.UUID, current_user=Depends(get_current_user)
     if not os.path.exists(report.file_path):
         raise HTTPException(status_code=404, detail="Report file not found on disk")
     
+    from backend.app.repositories import patient_repo
+    patient = patient_repo.get_by_id(db, report.patient_id)
+    if not patient:
+        raise HTTPException(status_code=404, detail="Patient not found")
+    check_patient_access(current_user, patient)
+
     # Use Content-Disposition inline to prevent automatic download
     headers = {
         "Content-Disposition": f"inline; filename=\"{report.original_filename or 'report.pdf'}\""

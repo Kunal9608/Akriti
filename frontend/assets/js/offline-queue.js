@@ -75,17 +75,60 @@ const OfflineQueue = (() => {
     }
   }
 
-  function updateBanner(offline, count = 0) {
+  const channel = typeof BroadcastChannel !== 'undefined' ? new BroadcastChannel('akriti-network-status') : null;
+  let hideTimeout = null;
+
+  function broadcastState(state, count = 0, message = '') {
+    if (channel) {
+      channel.postMessage({ state, count, message });
+    }
+  }
+
+  function updateBanner(state, count = 0, customMsg = '') {
     if (!onlineBanner) onlineBanner = document.querySelector('.offline-banner');
     if (!onlineBanner) return;
-    if (offline) {
-      onlineBanner.textContent = count > 0
-        ? `Offline — ${count} action${count > 1 ? 's' : ''} queued`
-        : 'Offline — Changes will sync when connection is restored';
+
+    if (hideTimeout) {
+      clearTimeout(hideTimeout);
+      hideTimeout = null;
+    }
+
+    const isAddPatient = window.location.pathname.includes('add-patient');
+    onlineBanner.classList.remove('state-offline', 'state-syncing', 'state-success');
+
+    if (state === 'offline') {
+      onlineBanner.classList.add('state-offline');
+      onlineBanner.textContent = customMsg || (isAddPatient
+        ? '🟡 Offline: Saving draft locally...'
+        : (count > 0 ? `🟡 Offline — ${count} action${count > 1 ? 's' : ''} queued` : '🟡 Offline — Changes will sync when connection is restored'));
       onlineBanner.classList.add('show');
-    } else {
+    } else if (state === 'syncing') {
+      onlineBanner.classList.add('state-syncing');
+      onlineBanner.textContent = customMsg || `🔄 Syncing changes...`;
+      onlineBanner.classList.add('show');
+    } else if (state === 'success') {
+      onlineBanner.classList.add('state-success');
+      onlineBanner.textContent = customMsg || '🟢 Connected — All pending changes have been synchronized.';
+      onlineBanner.classList.add('show');
+
+      hideTimeout = setTimeout(() => {
+        onlineBanner.classList.remove('show');
+        broadcastState('dismiss');
+      }, 3000);
+    } else if (state === 'hide') {
       onlineBanner.classList.remove('show');
     }
+  }
+
+  if (channel) {
+    channel.onmessage = (event) => {
+      const { state, count, message } = event.data;
+      if (state === 'dismiss') {
+        if (onlineBanner) onlineBanner.classList.remove('show');
+      } else {
+        updateBanner(state, count, message);
+      }
+    };
   }
 
   // ── Sync ──────────────────────────────────────────────────────────────────
@@ -95,13 +138,27 @@ const OfflineQueue = (() => {
     if (!online) return;
 
     const items = await getAll();
-    if (!items.length) { updateBanner(false); return; }
+    if (!items.length) {
+      if (onlineBanner && onlineBanner.classList.contains('show')) {
+        updateBanner('success');
+        broadcastState('success');
+      } else {
+        updateBanner('hide');
+        broadcastState('hide');
+      }
+      return;
+    }
 
     syncInProgress = true;
     let synced = 0;
     let failed = 0;
 
-    for (const item of items) {
+    for (let i = 0; i < items.length; i++) {
+      const item = items[i];
+      const progressMsg = `🔄 Syncing changes (${i + 1}/${items.length})...`;
+      updateBanner('syncing', items.length - i, progressMsg);
+      broadcastState('syncing', items.length - i, progressMsg);
+
       try {
         const res = await fetch(item.endpoint, {
           method: item.method,
@@ -113,7 +170,6 @@ const OfflineQueue = (() => {
           body: JSON.stringify(item.payload),
         });
         if (res.ok || res.status === 409) {
-          // 409 = idempotent replay (already exists), treat as success
           await remove(item.id);
           synced++;
         } else {
@@ -129,8 +185,14 @@ const OfflineQueue = (() => {
     if (synced > 0 && typeof window.Toast !== 'undefined') {
       window.Toast.show(`${synced} offline action${synced > 1 ? 's' : ''} synced successfully`, 'success');
     }
+
     if (failed === 0) {
-      updateBanner(false);
+      updateBanner('success', 0, "🟢 Connected — All pending changes have been synchronized.");
+      broadcastState('success', 0, "🟢 Connected — All pending changes have been synchronized.");
+    } else {
+      const msg = `🟢 Connected — Sync completed. ${synced} synced, ${failed} failed.`;
+      updateBanner('offline', failed, msg);
+      broadcastState('offline', failed, msg);
     }
   }
 
@@ -142,7 +204,8 @@ const OfflineQueue = (() => {
       const online = await isOnline();
       const items = await getAll();
       if (!online) {
-        updateBanner(true, items.length);
+        updateBanner('offline', items.length);
+        broadcastState('offline', items.length);
       } else {
         await flush();
       }
@@ -164,7 +227,8 @@ const OfflineQueue = (() => {
     init();
   }
 
-  return { enqueue, flush, getAll };
+  return { enqueue, flush, getAll, isOnline };
 })();
 
 window.OfflineQueue = OfflineQueue;
+

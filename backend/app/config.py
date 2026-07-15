@@ -52,6 +52,11 @@ class Settings(BaseSettings):
     RECAPTCHA_SECRET_KEY: str = "6LeIxAcTAAAAAGG-vFI1TnFTxWGRtAUMuO_FnD4Q"
     ENABLE_RECAPTCHA: bool = False
 
+    # ClamAV Antivirus
+    ENABLE_CLAMAV: bool = False
+    CLAMAV_HOST: str = "localhost"
+    CLAMAV_PORT: int = 3310
+
     # Environment
     ENVIRONMENT: str = "development"
     HOST: str = "0.0.0.0"

@@ -370,7 +370,8 @@
 
     try {
       let res;
-      if (!navigator.onLine) {
+      const isOnline = await OfflineQueue.isOnline();
+      if (!isOnline) {
         // Queue offline
         await OfflineQueue.enqueue('/api/v1/attendance/recognize', 'POST', { image_data: frame }, idempotencyKey);
         setStatus('Offline', 'Check-in queued locally', false);
