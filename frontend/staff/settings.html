@@ -171,9 +171,9 @@
       { key: 'ip_address',   label: 'IP',        width: '130px', render: v => escapeHtml(v || '—') },
       { key: 'attempted_at', label: 'Time',      width: '160px', render: v => formatDateTime(v) },
     ],
-    fetchFn: async (params) => {
+    fetchFn: async (params, options = {}) => {
       const qs = new URLSearchParams({ page: params.page, page_size: params.page_size });
-      return await API.get(`/api/v1/login-history?${qs}`);
+      return await API.get(`/api/v1/login-history?${qs}`, { skipBackgroundRefresh: typeof options !== 'undefined' ? options.silent : false });
     },
     pageSize: 15,
     emptyMessage: 'No login history',

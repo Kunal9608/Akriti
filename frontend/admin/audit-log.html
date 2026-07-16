@@ -121,13 +121,13 @@
       { key: 'record_hash',  label: 'Hash',         width: '100px', render: v => `<span class="hash-cell" title="${escapeHtml(v||'')}">${v ? v.substring(0,12)+'...' : '—'}</span>` },
       { key: null,           label: '',             width: '60px',  render: (_, row) => `<button class="btn btn-sm btn-ghost" onclick="showDetail(${JSON.stringify(JSON.stringify(row)).replace(/"/g,'&quot;')})">View</button>` },
     ],
-    fetchFn: async (params) => {
+    fetchFn: async (params, options = {}) => {
       const qs = new URLSearchParams({ page: params.page, page_size: params.page_size,
         ...(params.date_from && { date_from: params.date_from }),
         ...(params.date_to   && { date_to:   params.date_to }),
         ...(params.action    && { action:    params.action }),
       });
-      return await API.get(`/api/v1/audit-logs?${qs}`);
+      return await API.get(`/api/v1/audit-logs?${qs}`, { skipBackgroundRefresh: typeof options !== 'undefined' ? options.silent : false });
     },
     pageSize: 30,
     emptyMessage: 'No audit events in this period',

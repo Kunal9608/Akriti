@@ -220,9 +220,9 @@
         </div>
       ` },
     ],
-    fetchFn: async (params) => {
+    fetchFn: async (params, options = {}) => {
       const qs = new URLSearchParams({ page: params.page, page_size: params.page_size, ...(params.q && {q:params.q}), ...(params.is_active !== undefined && params.is_active !== '' && {is_active:params.is_active}) });
-      return await API.get(`/api/v1/staff?${qs}`);
+      return await API.get(`/api/v1/staff?${qs}`, { skipBackgroundRefresh: typeof options !== 'undefined' ? options.silent : false });
     },
     pageSize: 20,
     emptyMessage: 'No staff members found',

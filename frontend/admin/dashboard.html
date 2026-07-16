@@ -212,7 +212,7 @@
       { key: 'amount_paid',  label: 'Paid',      width: '100px', render: v => `<span class="tabular">${formatCurrency(v)}</span>` },
       { key: 'created_at',   label: 'Date',      width: '120px', render: v => formatDate(v) },
     ],
-    fetchFn: async () => {
+    fetchFn: async (params, options = {}) => {
       const res = await API.get('/api/v1/patients?page=1&page_size=8');
       return { items: res.items || [], total: res.total || 0 };
     },

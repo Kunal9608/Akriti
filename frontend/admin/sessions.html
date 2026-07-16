@@ -78,7 +78,7 @@
         <button class="btn btn-sm btn-danger" onclick="revokeSession('${row.id}')" style="background:var(--color-error);border-color:var(--color-error);color:#fff">Revoke</button>
       ` }
     ],
-    fetchFn: async (params) => {
+    fetchFn: async (params, options = {}) => {
       // API returns a list of sessions, DataTable expects { items, total, page, page_size }
       const sessions = await API.get('/api/v1/sessions/all');
       // Sort sessions by login time descending

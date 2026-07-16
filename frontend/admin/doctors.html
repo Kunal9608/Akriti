@@ -129,7 +129,7 @@
         </div>
       ` },
     ],
-    fetchFn: async (params) => {
+    fetchFn: async (params, options = {}) => {
       const res = await API.get('/api/v1/doctors?include_inactive=true');
       const q = (params.q || '').toLowerCase().trim();
       const filtered = res.filter(d => 

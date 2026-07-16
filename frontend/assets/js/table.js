@@ -86,7 +86,7 @@ class DataTable {
     };
 
     try {
-      const result = await this.fetchFn(params);
+      const result = await this.fetchFn(params, options);
       this.items = result.items || [];
       this.total = result.total || 0;
       this._renderRows(this.items);

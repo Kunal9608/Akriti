@@ -220,14 +220,14 @@
       { key: 'amount',        label: 'Amount',     width: '110px', render: v => `<span class="tabular fw-600">${formatCurrency(v)}</span>` },
       { key: 'payment_mode',  label: 'Mode',       width: '100px', render: v => escapeHtml(v||'—') },
     ],
-    fetchFn: async (params) => {
+    fetchFn: async (params, options = {}) => {
       const qs = new URLSearchParams({ page: params.page, page_size: params.page_size,
         ...(params.q         && { q:         params.q }),
         ...(params.category  && { category:  params.category }),
         ...(params.date_from && { date_from: params.date_from }),
         ...(params.date_to   && { date_to:   params.date_to }),
       });
-      return await API.get(`/api/v1/finance/expenses?${qs}`);
+      return await API.get(`/api/v1/finance/expenses?${qs}`, { skipBackgroundRefresh: typeof options !== 'undefined' ? options.silent : false });
     },
     pageSize: 25,
     emptyMessage: 'No expenses recorded in this period',

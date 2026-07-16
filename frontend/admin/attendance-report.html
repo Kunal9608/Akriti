@@ -100,13 +100,13 @@
       { key: 'matched_confidence', label: 'Confidence', width: '100px', render: v => v ? `${(v*100).toFixed(0)}%` : '—' },
       { key: 'is_late',          label: 'Flags',        width: '100px', render: v => v ? `<span class="badge badge-warning">Late</span>` : '' },
     ],
-    fetchFn: async (params) => {
+    fetchFn: async (params, options = {}) => {
       const qs = new URLSearchParams({ page: params.page, page_size: params.page_size,
         ...(params.date_from && { date_from: params.date_from }),
         ...(params.date_to   && { date_to:   params.date_to }),
         ...(params.user_id   && { user_id:   params.user_id }),
       });
-      return await API.get(`/api/v1/attendance/report?${qs}`);
+      return await API.get(`/api/v1/attendance/report?${qs}`, { skipBackgroundRefresh: typeof options !== 'undefined' ? options.silent : false });
     },
     pageSize: 30,
     emptyMessage: 'No attendance records in this period',

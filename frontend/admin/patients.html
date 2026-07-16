@@ -499,7 +499,7 @@
         </div>
       ` },
     ],
-    fetchFn: async (params) => {
+    fetchFn: async (params, options = {}) => {
       const qs = new URLSearchParams({
         page: params.page, page_size: params.page_size,
         ...(params.q        && { q: params.q }),
@@ -507,7 +507,7 @@
         ...(params.date_from && { date_from: params.date_from }),
         ...(params.date_to   && { date_to:   params.date_to }),
       });
-      return await API.get(`/api/v1/patients?${qs}`);
+      return await API.get(`/api/v1/patients?${qs}`, { skipBackgroundRefresh: typeof options !== 'undefined' ? options.silent : false });
     },
     pageSize: 25,
     emptyMessage: 'No patients found matching your filters',

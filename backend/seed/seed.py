@@ -91,9 +91,11 @@ def seed():
     print("\nRunning seed script...")
     db = SessionLocal()
     try:
-        # Ensure pgvector extension and tables exist
-        enable_pgvector(db)
-        init_db()
+        # Prevent slow DDL execution on every startup in production
+        if os.getenv("FORCE_INIT_DB", "false").lower() == "true":
+            print("  [INFO] Running database initialization (DDL)...")
+            enable_pgvector(db)
+            init_db()
 
         # ── Admin account ──────────────────────────────────────────────────
         from backend.app.repositories.user_repo import normalize_email

@@ -189,6 +189,9 @@ const API = (() => {
     if (!mutating && window.CacheManager && options.cache !== false) {
        const cached = await window.CacheManager.get(requestKey);
        if (cached) {
+           if (options.skipBackgroundRefresh) {
+               return cached;
+           }
            _doNetworkFetch(method, path, body, options, requestKey, endpointKey, cached);
            return cached;
        }
