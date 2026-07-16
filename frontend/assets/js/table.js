@@ -188,6 +188,7 @@ function statusBadge(status) {
   const map = {
     'sample_collected': ['badge-info',    'Collected'],
     'under_process':    ['badge-warning', 'Processing'],
+    'partial_release':  ['badge-warning', 'Partial Release'],
     'report_ready':     ['badge-success', 'Report Ready'],
     'paid':             ['badge-success', 'Paid'],
     'partial':          ['badge-warning', 'Partial'],

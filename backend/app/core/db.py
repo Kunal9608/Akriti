@@ -89,7 +89,8 @@ def init_db():
     from backend.app.models import (  # noqa: F401 — import all models for metadata
         user, face_embedding, attendance_event, patient, patient_test,
         test, test_price_history, doctor, franchise, report, expense,
-        login_history, active_session, audit_log, otp_request
+        login_history, active_session, audit_log, otp_request,
+        test_parameter, patient_test_result
     )
     Base.metadata.create_all(bind=engine)
 
@@ -101,6 +102,7 @@ def init_db():
         conn.execute(text("ALTER TABLE doctors ADD COLUMN IF NOT EXISTS commission_pct NUMERIC(5, 2) DEFAULT 0.0;"))
         conn.execute(text("ALTER TABLE patients ADD COLUMN IF NOT EXISTS referred_doctor_commission_pct NUMERIC(5, 2) DEFAULT 0.0;"))
         conn.execute(text("ALTER TABLE patients ADD COLUMN IF NOT EXISTS referred_doctor_commission_amount NUMERIC(10, 2) DEFAULT 0.0;"))
+        conn.execute(text("ALTER TABLE reports ADD COLUMN IF NOT EXISTS source VARCHAR(20) DEFAULT 'manual';"))
         
         # Add franchise columns fallback
         conn.execute(text("ALTER TABLE patients ADD COLUMN IF NOT EXISTS franchise_name VARCHAR(100);"))
@@ -165,11 +167,15 @@ def init_db():
         conn.execute(text("CREATE INDEX IF NOT EXISTS idx_audit_logs_actor_time ON audit_logs (actor_user_id, occurred_at DESC);"))
         conn.execute(text("CREATE INDEX IF NOT EXISTS idx_audit_logs_action_time ON audit_logs (action, occurred_at DESC);"))
         conn.execute(text("CREATE INDEX IF NOT EXISTS idx_attendance_user_time ON attendance_events (user_id, event_time DESC);"))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS idx_test_parameters_test_id ON test_parameters (test_id, display_order);"))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS idx_patient_test_results_patient_id ON patient_test_results (patient_id);"))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS idx_patient_test_results_test_id ON patient_test_results (test_id);"))
         conn.commit()
         
         # PostgreSQL custom enum values fallback
         try:
             conn.execute(text("ALTER TYPE patient_status_enum ADD VALUE IF NOT EXISTS 'sent_to_franchise';"))
+            conn.execute(text("ALTER TYPE patient_status_enum ADD VALUE IF NOT EXISTS 'partial_release';"))
             conn.commit()
         except Exception:
             pass

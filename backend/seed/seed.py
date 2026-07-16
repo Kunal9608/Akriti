@@ -128,10 +128,10 @@ def seed():
             print(f"  [OK] Admin account verified: {admin_email}")
 
         # ── 65 Tests ────────────────────────────────────────────────────────
+        existing_test_names = {r[0] for r in db.query(Test.name).all()}
         inserted = 0
         for name, price, category in TESTS_SEED:
-            existing = db.query(Test).filter(Test.name == name).first()
-            if not existing:
+            if name not in existing_test_names:
                 test = Test(name=name, price=price, category=category)
                 db.add(test)
                 inserted += 1
@@ -145,6 +145,12 @@ def seed():
         # Backfill any missing staff codes
         from backend.app.services.staff_service import backfill_staff_codes
         backfill_staff_codes(db)
+
+        # Seed standard test parameters
+        from backend.seed.seed_parameters import seed_test_parameters
+        seeded_params_count = seed_test_parameters(db)
+        print(f"  [OK] Seeded parameters for {seeded_params_count} tests")
+
         print(f"  [OK] {inserted} tests inserted ({len(TESTS_SEED) - inserted} already existed)")
         print("\nSeed completed successfully!")
 

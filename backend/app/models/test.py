@@ -22,3 +22,4 @@ class Test(Base):
 
     patient_tests = relationship("PatientTest", back_populates="test")
     price_history = relationship("TestPriceHistory", back_populates="test", cascade="all, delete-orphan")
+    parameters = relationship("TestParameter", back_populates="test", cascade="all, delete-orphan", order_by="TestParameter.display_order.asc()")

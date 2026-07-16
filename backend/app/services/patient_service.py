@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 from backend.app.repositories import patient_repo, test_repo
 from backend.app.services import audit_service
 from backend.app.schemas.patient import PatientCreate, PatientUpdate
+from backend.app.models.patient import PatientStatusEnum
 
 
 def create_patient(db: Session, payload: PatientCreate, current_user_id: uuid.UUID,
@@ -198,6 +199,8 @@ def update_patient(db: Session, patient_id: uuid.UUID, payload: PatientUpdate,
 
     new_status = update_data.get("status")
     if new_status and new_status != patient.status:
+        if patient.status == PatientStatusEnum.report_ready or str(patient.status) == "report_ready":
+            raise ValueError("Status cannot be modified once the report is released (report_ready).")
         extra_info = {}
         if new_status == "sent_to_franchise":
             extra_info = {

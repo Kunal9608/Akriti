@@ -1,9 +1,9 @@
 """Report router."""
-from fastapi import APIRouter, Depends, UploadFile, File, HTTPException, BackgroundTasks, Form, Query
+from fastapi import APIRouter, Depends, UploadFile, File, HTTPException, BackgroundTasks, Form, Query, Body
 from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 from pathlib import Path
-from typing import Optional
+from typing import Optional, Any, List, Dict
 import uuid
 import os
 
@@ -21,6 +21,7 @@ async def upload_report(
     file: UploadFile = File(...),
     reason: Optional[str] = Form(None),
     force: bool = Query(False),
+    partial_release: bool = Query(False),
     current_user=Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
@@ -84,7 +85,7 @@ async def upload_report(
     try:
         return report_service.upload_report(
             db, patient_id, file_bytes, file.filename, current_user.id, background_tasks,
-            reason=reason, force=force
+            reason=reason, force=force, partial_release=partial_release
         )
     except ValueError as e:
         msg = str(e)
@@ -131,3 +132,135 @@ def download_report(report_id: uuid.UUID, current_user=Depends(get_current_user)
 def verify_report(report_id: uuid.UUID, h: str = None, db: Session = Depends(get_db)):
     """Public verification endpoint — no auth required."""
     return report_service.verify_report(db, report_id, h)
+
+
+@router.get("/{patient_id}/test-parameters")
+def get_patient_booked_test_parameters(
+    patient_id: uuid.UUID,
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user),
+):
+    """Fetch all test parameter definitions for tests booked by this patient."""
+    from backend.app.repositories import patient_repo, test_parameter_repo
+    from backend.app.schemas.test_parameter import TestParameterResponse
+    patient = patient_repo.get_by_id(db, patient_id)
+    if not patient:
+        raise HTTPException(status_code=404, detail="Patient not found")
+    check_patient_access(current_user, patient)
+
+    grouped_params = []
+    for pt in patient.patient_tests:
+        test_obj = pt.test
+        if not test_obj:
+            continue
+        params = test_parameter_repo.get_by_test_id(db, test_obj.id)
+        grouped_params.append({
+            "test_id": str(test_obj.id),
+            "test_name": test_obj.name,
+            "test_code": getattr(test_obj, "test_code", None) or "",
+            "parameters": [TestParameterResponse.model_validate(p) for p in params]
+        })
+    return grouped_params
+
+
+@router.get("/{patient_id}/test-results")
+def get_patient_test_results(
+    patient_id: uuid.UUID,
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user),
+):
+    """Fetch previously saved structured test results for this patient."""
+    from backend.app.repositories import patient_repo, test_parameter_repo
+    patient = patient_repo.get_by_id(db, patient_id)
+    if not patient:
+        raise HTTPException(status_code=404, detail="Patient not found")
+    check_patient_access(current_user, patient)
+
+    results = test_parameter_repo.get_patient_test_results(db, patient_id)
+    return [
+        {
+            "id": str(r.id),
+            "patient_id": str(r.patient_id),
+            "test_id": str(r.test_id),
+            "parameter_id": str(r.parameter_id),
+            "entered_value": r.entered_value,
+            "is_abnormal": r.is_abnormal,
+            "interpretation_note": r.interpretation_note,
+            "entered_by": str(r.entered_by),
+            "entered_at": r.entered_at.isoformat() if r.entered_at else None,
+        }
+        for r in results
+    ]
+
+
+@router.post("/{patient_id}/test-attachment/{test_id}")
+async def upload_test_attachment(
+    patient_id: uuid.UUID,
+    test_id: uuid.UUID,
+    file: UploadFile = File(...),
+    current_user=Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Upload an image or PDF attachment (e.g., X-Ray, USG, ECG scan) for a specific test during result entry."""
+    from backend.app.repositories import patient_repo
+    patient = patient_repo.get_by_id(db, patient_id)
+    if not patient:
+        raise HTTPException(status_code=404, detail="Patient not found")
+    check_patient_access(current_user, patient)
+
+    attach_dir = Path("uploads/attachments")
+    attach_dir.mkdir(parents=True, exist_ok=True)
+
+    file_bytes = await file.read()
+    if len(file_bytes) > 15 * 1024 * 1024:  # 15MB limit
+        raise HTTPException(status_code=400, detail="Attachment file size exceeds 15MB limit.")
+
+    import re
+    orig_base, orig_ext = os.path.splitext(file.filename)
+    sanitized_base = re.sub(r'[^a-zA-Z0-9_-]', '_', orig_base)
+    safe_name = f"{patient.patient_code}_{test_id.hex[:8]}_{uuid.uuid4().hex[:6]}_{sanitized_base}{orig_ext}"
+    file_path = attach_dir / safe_name
+    file_path.write_bytes(file_bytes)
+
+    return {
+        "status": "success",
+        "attachment_path": str(file_path),
+        "filename": file.filename
+    }
+
+
+@router.post("/{patient_id}/entry")
+def submit_report_entry(
+    patient_id: uuid.UUID,
+    payload: Any = Body(...),
+    partial_release: bool = Query(False),
+    background_tasks: BackgroundTasks = None,
+    current_user=Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """FR-2.2 (§2.4) — Submit structured test results and queue automated PDF generation."""
+    from backend.app.repositories import patient_repo
+    from backend.app.services import test_parameter_service
+    from backend.app.schemas.report_entry import ReportEntrySubmit
+
+    if background_tasks is None:
+        from fastapi import BackgroundTasks
+        background_tasks = BackgroundTasks()
+
+    patient = patient_repo.get_by_id(db, patient_id)
+    if not patient:
+        raise HTTPException(status_code=404, detail="Patient not found")
+    check_patient_access(current_user, patient)
+
+    # Parse payload
+    if isinstance(payload, dict):
+        submit_data = ReportEntrySubmit.model_validate(payload)
+    else:
+        submit_data = payload
+
+    try:
+        return test_parameter_service.submit_report_entry(
+            db, patient_id, submit_data, current_user.id, background_tasks, partial_release=partial_release
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))

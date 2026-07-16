@@ -1,7 +1,7 @@
 """Test catalog router."""
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Query, Body, HTTPException
 from sqlalchemy.orm import Session
-from typing import Optional
+from typing import Optional, Any, List, Dict
 import uuid
 
 from backend.app.core.db import get_db
@@ -104,6 +104,46 @@ def soft_delete_test(
     from backend.app.schemas.test import TestUpdate
     payload = TestUpdate(is_active=False)
     return test_service.update_test(db, test_id, payload, admin.id)
+
+
+@test_router.get("/{test_id}/parameters")
+def get_test_parameters(
+    test_id: uuid.UUID,
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user),
+):
+    from backend.app.services import test_parameter_service
+    from backend.app.schemas.test_parameter import TestParameterResponse
+    params = test_parameter_service.get_test_parameters(db, test_id)
+    return [TestParameterResponse.model_validate(p) for p in params]
+
+
+@test_router.post("/{test_id}/parameters")
+def save_test_parameters(
+    test_id: uuid.UUID,
+    payload: Any = Body(...),
+    admin=Depends(require_admin),
+    db: Session = Depends(get_db),
+):
+    from backend.app.schemas.test_parameter import TestParameterBulkSave, TestParameterResponse
+    from backend.app.services import test_parameter_service
+    if isinstance(payload, dict):
+        bulk_save = TestParameterBulkSave.model_validate(payload)
+    else:
+        bulk_save = payload
+    params = test_parameter_service.save_test_parameters(db, test_id, bulk_save, admin.id)
+    return [TestParameterResponse.model_validate(p) for p in params]
+
+
+@test_router.post("/seed-parameters")
+def seed_parameters_endpoint(
+    admin=Depends(require_admin),
+    db: Session = Depends(get_db),
+):
+    """Admin endpoint to trigger pre-population of test parameters for standard tests."""
+    from backend.seed.seed_parameters import seed_test_parameters
+    count = seed_test_parameters(db)
+    return {"status": "ok", "seeded_tests_count": count}
 
 
 # --- Doctors ---

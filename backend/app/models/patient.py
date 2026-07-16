@@ -28,6 +28,7 @@ class PatientStatusEnum(str, enum.Enum):
     sample_collected = "sample_collected"
     sent_to_franchise = "sent_to_franchise"
     under_process = "under_process"
+    partial_release = "partial_release"
     report_ready = "report_ready"
 
 
@@ -99,3 +100,4 @@ class Patient(Base):
     patient_tests = relationship("PatientTest", back_populates="patient", cascade="all, delete-orphan")
     reports = relationship("Report", back_populates="patient")
     status_history = relationship("PatientStatusHistory", back_populates="patient", cascade="all, delete-orphan", order_by="PatientStatusHistory.updated_at.asc()")
+    test_results = relationship("PatientTestResult", back_populates="patient", cascade="all, delete-orphan")

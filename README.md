@@ -16,7 +16,7 @@ A premium, professional, and secure Pathology Laboratory Management System desig
 *   **Test Catalog:** Fully pre-seeded catalog with 65 standard diagnostic tests.
 *   **Sample Tracking:** Clear stage indicators (Pending, Sample Collected, In Lab, Completed).
 *   **Dynamic PDF Reports:** High-quality PDF report generation using **WeasyPrint** and **ReportLab** with digital signature verification.
-*   **Version Control & Logs:** Strict report version control with immutable logs capturing every edit and download.
+*   **Version Control & Logs:** Strict report version control with immutable logs capturing every edit and download. Allows for partial report releases (Partial Release Status).
 
 ### 3. Face Recognition Attendance Kiosk
 *   **Biometric Kiosk:** Real-time face recognition attendance checking (Check-In / Check-Out) for lab staff.
@@ -38,7 +38,7 @@ A premium, professional, and secure Pathology Laboratory Management System desig
 *   **Frontend:** Vanilla HTML5, CSS3, ES6+ Javascript (no heavy frameworks)
 *   **Design System:** Cream Vanilla (`#EFE6DD`) & Cherry Cola (`#9A0002`) color palette, Fraunces Display Font (titles), Inter Text Font (UI copy), Custom Toasts/Modals, and skeleton loading states.
 *   **PDF Generation:** WeasyPrint (HTML-to-PDF compiler), ReportLab
-*   **Server/Deployment:** Nginx, Systemd, Ubuntu Linux
+*   **Server/Deployment:** Nginx, Systemd, Ubuntu Linux, Docker
 
 ---
 
@@ -66,6 +66,7 @@ A premium, professional, and secure Pathology Laboratory Management System desig
 │   ├── index.html              # Main Landing / Login page
 │   ├── attendance-kiosk.html   # Face Recognition Kiosk screen
 │   └── manifest.json           # Progressive Web App (PWA) configuration
+├── docker-compose.yml          # Container configuration and volume mounts
 ├── main.py                     # Single Entry Point (Bootstrap checks, auto-migrations, Uvicorn)
 ├── requirements.txt            # Python dependencies
 ├── .env.example                # Template for environment configuration
@@ -120,17 +121,18 @@ Make sure you have the following installed on your machine:
     python main.py
     ```
 
+---
 
-### 🐋 Running with Docker (Alternative Setup)
+## 🐋 Running with Docker (Recommended)
 
-If you have Docker and Docker Compose installed, you can spin up the entire application stack (FastAPI web server, PostgreSQL database with `pgvector`, and Redis) with a single command.
+If you have Docker and Docker Compose installed, you can spin up the entire application stack (FastAPI web server, PostgreSQL database with `pgvector`, and Redis) with a single command. The application will dynamically mount the host code directory as a volume (`.:/app`) to reflect immediate changes during active development.
 
 1. **Prerequisites:**
    Make sure you have Docker and Docker Compose installed on your host system.
 
 2. **Run the application stack:**
    ```bash
-   docker compose up --build
+   docker compose up --build -d
    ```
    This will:
    * Build the FastAPI web application image (including compiling system dependencies for WeasyPrint).
@@ -140,10 +142,14 @@ If you have Docker and Docker Compose installed, you can spin up the entire appl
 3. **Access the services:**
    * **Main Web App / Kiosk:** [http://localhost:8000](http://localhost:8000)
    * **Swagger API Docs:** [http://localhost:8000/docs](http://localhost:8000/docs)
-   * **Local Database:** `localhost:5432` (Username: `postgres`, Password: `postgres`, DB Name: `akriti_lab`)
-   * **Local Redis:** `localhost:6379`
 
-4. **Stop the application:**
+4. **Restarting the Stack after Code Changes:**
+   Since the `docker-compose.yml` uses volume mounts for code (`.:/app`), changes to HTML/CSS/JS reflect immediately. However, if backend python files change, you need to restart the application container to pick up the reload:
+   ```bash
+   docker-compose restart web
+   ```
+
+5. **Stop the application:**
    ```bash
    docker compose down
    ```
@@ -162,7 +168,7 @@ When deploying to a live VPS (e.g., Hostinger KVM 2 / Ubuntu 24.04 LTS):
 3.  **Security:**
     *   Obtain a free SSL Certificate from **Let's Encrypt (Certbot)** for HTTPS.
     *   Ensure PostgreSQL roles are configured correctly for the immutable audit logs.
-4.  **Process Management:** Run the application via **systemd** service units to keep it alive through crashes and system reboots.
+4.  **Process Management:** Run the application via **systemd** service units or **Docker Compose** with Restart Policies (`restart: always`) to keep it alive through crashes and system reboots.
 
 ---
 

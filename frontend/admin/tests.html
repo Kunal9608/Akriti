@@ -112,6 +112,56 @@
   </div>
 </div>
 
+<!-- Test Parameters Modal -->
+<div class="modal-backdrop" id="parameters-modal">
+  <div class="modal" style="max-width:880px;width:96%" role="dialog" aria-modal="true" aria-labelledby="params-modal-title">
+    <div class="modal-header" style="border-bottom:1px solid var(--color-border);padding:16px 20px">
+      <div>
+        <h2 class="modal-title" id="params-modal-title" style="font-size:18px;color:var(--color-ink)">Manage Test Parameters</h2>
+        <p style="font-size:12px;color:var(--color-ink-muted);margin:2px 0 0">Configure structured report format, reference ranges, and image/PDF attachment support.</p>
+      </div>
+      <button class="modal-close" onclick="Modal.close('parameters-modal')" aria-label="Close">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <div class="modal-body" style="max-height:65vh;overflow-y:auto;padding:20px">
+      <div style="background:linear-gradient(135deg, var(--color-cherry-cola-tint-10) 0%, var(--color-bg) 100%);padding:12px 16px;border-radius:var(--radius-md);border:1px solid var(--color-border);margin-bottom:18px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px">
+        <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
+          <span style="font-size:12px;font-weight:700;color:var(--color-primary)">⚡ Quick Presets:</span>
+          <button type="button" class="btn btn-xs btn-ghost" onclick="applyParameterPreset('numeric_basic')">+ Numeric Grid</button>
+          <button type="button" class="btn btn-xs btn-ghost" onclick="applyParameterPreset('imaging')">+ Imaging / Descriptive (X-Ray, USG, ECG)</button>
+          <button type="button" class="btn btn-xs btn-ghost" onclick="applyParameterPreset('serology')">+ Serology (Pos/Neg)</button>
+        </div>
+        <button type="button" class="btn btn-xs btn-secondary" onclick="seedStandardParameters()"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:4px"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg> Auto-Seed 65 Standard Indian Tests</button>
+      </div>
+
+      <table class="data-table" style="width:100%;border-collapse:collapse;margin-bottom:14px;font-size:12px">
+        <thead>
+          <tr style="border-bottom:2px solid var(--color-border);color:var(--color-ink-muted);text-transform:uppercase">
+            <th style="padding:8px 4px;width:24%;text-align:left">Parameter Name *</th>
+            <th style="padding:8px 4px;width:15%;text-align:left">Input Type</th>
+            <th style="padding:8px 4px;width:12%;text-align:left">Unit</th>
+            <th style="padding:8px 4px;width:28%;text-align:left">Reference Range / Options</th>
+            <th style="padding:8px 4px;width:12%;text-align:left">Gender</th>
+            <th style="padding:8px 4px;width:6%;text-align:center">Order</th>
+            <th style="padding:8px 4px;width:3%"></th>
+          </tr>
+        </thead>
+        <tbody id="parameters-table-body">
+        </tbody>
+      </table>
+      <button type="button" class="btn btn-sm btn-ghost" onclick="addParameterRow()"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:4px"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Add Parameter Row</button>
+    </div>
+    <div class="modal-footer" style="padding:16px 20px;border-top:1px solid var(--color-border);display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px">
+      <span style="font-size:11px;color:var(--color-ink-muted)">💡 Imaging/descriptive tests allow image/PDF file attachments during report generation.</span>
+      <div style="display:flex;gap:8px">
+        <button type="button" class="btn btn-ghost" onclick="Modal.close('parameters-modal')">Cancel</button>
+        <button type="button" class="btn btn-primary" id="save-parameters-btn">Save Parameters</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <div id="toast-container"></div>
 
 <script src="/assets/js/toast.js"></script>
@@ -134,9 +184,10 @@
       { key: 'description',  label: 'Description',  render: v => escapeHtml(v || '—') },
       { key: 'price',        label: 'Price',        width: '100px', render: v => `<span class="tabular fw-600">${formatCurrency(v)}</span>` },
       { key: 'is_active',    label: 'Status',       width: '90px',  render: v => v ? `<span class="badge badge-success">Active</span>` : `<span class="badge badge-neutral">Inactive</span>` },
-      { key: null,           label: 'Actions',      width: '220px', render: (_, row) => `
-        <div style="display:flex;gap:5px">
-          <button class="btn btn-sm btn-ghost" onclick="openEdit('${row.id}')">Edit Price</button>
+      { key: null,           label: 'Actions',      width: '280px', render: (_, row) => `
+        <div style="display:flex;gap:5px;flex-wrap:wrap">
+          <button class="btn btn-sm btn-secondary" onclick="openManageParameters('${row.id}', '${escapeHtml(row.name)}')">Parameters</button>
+          <button class="btn btn-sm btn-ghost" onclick="openEdit('${row.id}')">Price</button>
           <button class="btn btn-sm btn-ghost" onclick="showPriceHistory('${row.id}','${escapeHtml(row.name)}')">History</button>
           ${row.is_active ? `<button class="btn btn-sm btn-danger" onclick="softDelete('${row.id}','${escapeHtml(row.name)}')">Remove</button>` : ''}
         </div>
@@ -240,6 +291,153 @@
   };
 
   document.getElementById('ph-close').addEventListener('click', () => Modal.close('price-history-modal'));
+
+  let currentParamTestId = null;
+
+  window.openManageParameters = async function(testId, testName) {
+    currentParamTestId = testId;
+    document.getElementById('params-modal-title').textContent = `Manage Parameters — ${testName}`;
+    const tbody = document.getElementById('parameters-table-body');
+    tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;padding:20px"><div class="skel" style="height:30px;width:100%"></div></td></tr>`;
+    Modal.open('parameters-modal');
+
+    try {
+      const res = await API.get(`/api/v1/tests/${testId}/parameters`);
+      tbody.innerHTML = '';
+      const params = res.parameters || [];
+      if (params.length === 0) {
+        addParameterRow({ display_order: 1 });
+      } else {
+        params.forEach(p => addParameterRow(p));
+      }
+    } catch (e) {
+      tbody.innerHTML = '';
+      Toast.show('Failed to load test parameters', 'error');
+      addParameterRow({ display_order: 1 });
+    }
+  };
+
+  window.addParameterRow = function(p = {}) {
+    const tbody = document.getElementById('parameters-table-body');
+    const tr = document.createElement('tr');
+    tr.style.borderBottom = '1px solid var(--color-border)';
+    const orderNum = p.display_order || (tbody.children.length + 1);
+    const inputType = p.input_type || 'numeric';
+    const gender = p.gender || 'both';
+
+    tr.innerHTML = `
+      <td style="padding:6px 4px">
+        <input type="text" class="form-input param-name" style="padding:4px 8px;font-size:12px" placeholder="e.g. Hemoglobin" value="${escapeHtml(p.parameter_name || '')}" required>
+      </td>
+      <td style="padding:6px 4px">
+        <select class="form-select param-type" style="padding:4px 8px;font-size:12px">
+          <option value="numeric" ${inputType === 'numeric' ? 'selected' : ''}>Numeric</option>
+          <option value="text" ${inputType === 'text' ? 'selected' : ''}>Text / Short</option>
+          <option value="multiline" ${inputType === 'multiline' ? 'selected' : ''}>Multiline / Descriptive</option>
+          <option value="select" ${inputType === 'select' ? 'selected' : ''}>Dropdown Select</option>
+        </select>
+      </td>
+      <td style="padding:6px 4px">
+        <input type="text" class="form-input param-unit" style="padding:4px 8px;font-size:12px" placeholder="e.g. g/dL" value="${escapeHtml(p.unit || '')}">
+      </td>
+      <td style="padding:6px 4px">
+        <input type="text" class="form-input param-ref" style="padding:4px 8px;font-size:12px" placeholder="e.g. 11.5 - 16.5 or Pos,Neg" value="${escapeHtml(p.reference_text || (p.reference_low && p.reference_high ? p.reference_low + ' - ' + p.reference_high : ''))}">
+      </td>
+      <td style="padding:6px 4px">
+        <select class="form-select param-gender" style="padding:4px 8px;font-size:12px">
+          <option value="both" ${gender === 'both' ? 'selected' : ''}>Both</option>
+          <option value="male" ${gender === 'male' ? 'selected' : ''}>Male</option>
+          <option value="female" ${gender === 'female' ? 'selected' : ''}>Female</option>
+        </select>
+      </td>
+      <td style="padding:6px 4px;text-align:center">
+        <input type="number" class="form-input param-order" style="padding:4px;font-size:12px;text-align:center;width:50px" value="${orderNum}">
+      </td>
+      <td style="padding:6px 4px;text-align:center">
+        <button type="button" class="btn btn-xs btn-ghost text-danger" onclick="this.closest('tr').remove()" title="Remove row">✕</button>
+      </td>
+    `;
+    tbody.appendChild(tr);
+  };
+
+  window.applyParameterPreset = function(preset) {
+    const tbody = document.getElementById('parameters-table-body');
+    if (preset === 'numeric_basic') {
+      addParameterRow({ parameter_name: 'Measured Value', input_type: 'numeric', display_order: tbody.children.length + 1 });
+    } else if (preset === 'imaging') {
+      addParameterRow({ parameter_name: 'Findings / Clinical Observations', input_type: 'multiline', display_order: tbody.children.length + 1 });
+      addParameterRow({ parameter_name: 'Impression / Conclusion', input_type: 'multiline', display_order: tbody.children.length + 2 });
+    } else if (preset === 'serology') {
+      addParameterRow({ parameter_name: 'Result / Interpretation', input_type: 'select', reference_text: 'Negative,Positive,Equivocal', display_order: tbody.children.length + 1 });
+    }
+  };
+
+  window.seedStandardParameters = async function() {
+    if (!confirm("This will auto-populate parameters and reference ranges for all 65 standard Indian test catalogs if they don't have parameters yet. Continue?")) return;
+    try {
+      const btn = document.querySelector('button[onclick="seedStandardParameters()"]');
+      if (btn) btn.disabled = true;
+      Toast.show('Auto-seeding standard test catalogs...', 'info');
+      const res = await API.post('/api/v1/tests/seed-standard-catalog', {});
+      Toast.show(`Successfully seeded ${res.seeded_count || 'all'} standard tests!`, 'success');
+      if (currentParamTestId) {
+        const testRow = table.data.find(t => t.id === currentParamTestId);
+        if (testRow) openManageParameters(currentParamTestId, testRow.name);
+      }
+      table.load();
+    } catch (e) {
+      Toast.show('Failed to auto-seed standard catalog: ' + (e.message || e), 'error');
+    } finally {
+      const btn = document.querySelector('button[onclick="seedStandardParameters()"]');
+      if (btn) btn.disabled = false;
+    }
+  };
+
+  document.getElementById('save-parameters-btn').addEventListener('click', async () => {
+    if (!currentParamTestId) return;
+    const tbody = document.getElementById('parameters-table-body');
+    const rows = Array.from(tbody.querySelectorAll('tr'));
+    const parameters = [];
+
+    for (const tr of rows) {
+      const name = tr.querySelector('.param-name').value.trim();
+      if (!name) {
+        Toast.show('Parameter Name is required for all rows.', 'error');
+        tr.querySelector('.param-name').focus();
+        return;
+      }
+      const type = tr.querySelector('.param-type').value;
+      const unit = tr.querySelector('.param-unit').value.trim();
+      const ref = tr.querySelector('.param-ref').value.trim();
+      const gender = tr.querySelector('.param-gender').value;
+      const order = parseInt(tr.querySelector('.param-order').value, 10) || 1;
+
+      parameters.push({
+        parameter_name: name,
+        input_type: type,
+        unit: unit || null,
+        reference_text: ref || null,
+        gender: gender,
+        display_order: order
+      });
+    }
+
+    try {
+      const saveBtn = document.getElementById('save-parameters-btn');
+      saveBtn.disabled = true;
+      saveBtn.textContent = 'Saving...';
+      await API.post(`/api/v1/tests/${currentParamTestId}/parameters`, { parameters });
+      Toast.show('Test parameters saved successfully!', 'success');
+      Modal.close('parameters-modal');
+    } catch (e) {
+      Toast.show('Failed to save parameters: ' + (e.message || e), 'error');
+    } finally {
+      const saveBtn = document.getElementById('save-parameters-btn');
+      saveBtn.disabled = false;
+      saveBtn.textContent = 'Save Parameters';
+    }
+  });
+
 })();
 </script>
 </body>

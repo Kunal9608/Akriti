@@ -20,6 +20,7 @@ class Report(Base):
     signature_applied_at = Column(DateTime(timezone=True), nullable=True)
     verification_hash = Column(String(128), nullable=True)
     version = Column(Integer, default=1)
+    source = Column(String(20), default="manual")  # 'manual' vs 'auto'
     uploaded_by = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False, index=True)
     uploaded_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
     is_latest = Column(Boolean, default=True)

@@ -19,7 +19,8 @@ REPORTS_DIR.mkdir(parents=True, exist_ok=True)
 
 def upload_report(db: Session, patient_id: uuid.UUID, file_bytes: bytes,
                   filename: str, uploader_id: uuid.UUID, background_tasks,
-                  reason: Optional[str] = None, force: bool = False) -> dict:
+                  reason: Optional[str] = None, force: bool = False, source: str = "manual",
+                  partial_release: bool = False) -> dict:
     """FR-7.1 — Upload report PDF, compute hash, update patient status."""
     patient = patient_repo.get_by_id(db, patient_id)
     if not patient:
@@ -64,6 +65,7 @@ def upload_report(db: Session, patient_id: uuid.UUID, file_bytes: bytes,
         signed=False,
         verification_hash=verification_hash,
         version=version,
+        source=source,
         uploaded_by=uploader_id,
         is_latest=True,
     )
@@ -71,13 +73,14 @@ def upload_report(db: Session, patient_id: uuid.UUID, file_bytes: bytes,
     db.flush()
 
     # Update patient status
-    patient_repo.update_patient(db, patient_id, status=PatientStatusEnum.report_ready)
+    target_status = PatientStatusEnum.partial_release if partial_release else PatientStatusEnum.report_ready
+    patient_repo.update_patient(db, patient_id, status=target_status)
 
     # Log report upload in patient status history
     from backend.app.models.patient_status_history import PatientStatusHistory
     history = PatientStatusHistory(
         patient_id=patient_id,
-        status="report_ready",
+        status=target_status.value if hasattr(target_status, 'value') else str(target_status),
         updated_by=uploader_id,
         extra_info={"version": version, "filename": filename, "reason": reason}
     )
@@ -129,6 +132,7 @@ def get_patient_reports(db: Session, patient_id: uuid.UUID) -> list:
             "signed": r.signed,
             "verification_hash": r.verification_hash,
             "is_latest": r.is_latest,
+            "source": getattr(r, "source", "manual") or "manual",
             "uploaded_at": r.uploaded_at.isoformat() if r.uploaded_at else None,
             "uploaded_by_name": r.uploader.name if r.uploader else "Unknown",
         }
@@ -152,3 +156,68 @@ def verify_report(db: Session, report_id: uuid.UUID, short_hash: Optional[str] =
         "issued_on": report.uploaded_at.strftime("%d %B %Y") if report.uploaded_at else "Unknown",
         "message": "Verified authentic — issued by Akriti Diagnostics Center",
     }
+
+
+def generate_and_save_structured_report(db: Session, patient_id: uuid.UUID, uploader_id: uuid.UUID, test_notes_map: Optional[dict] = None, partial_release: bool = False) -> dict:
+    """Generate official PDF from entered patient_test_results and save as new version with source='auto'."""
+    from backend.app.models.patient_test_result import PatientTestResult
+    from backend.app.services.structured_report_pdf import generate_structured_report_pdf
+
+    patient = patient_repo.get_by_id(db, patient_id)
+    if not patient:
+        raise ValueError("Patient not found")
+
+    if not test_notes_map:
+        test_notes_map = {}
+
+    booked_tests_data = []
+    for pt in patient.patient_tests:
+        test_obj = pt.test
+        if not test_obj:
+            continue
+
+        results = db.query(PatientTestResult).filter(
+            PatientTestResult.patient_id == patient_id,
+            PatientTestResult.test_id == test_obj.id
+        ).all()
+
+        params_list = []
+        for r in results:
+            param = r.parameter
+            if not param:
+                continue
+            ref_str = param.reference_text
+            if not ref_str and param.reference_low is not None and param.reference_high is not None:
+                ref_str = f"{param.reference_low} - {param.reference_high}"
+            params_list.append({
+                "name": param.parameter_name,
+                "value": r.entered_value,
+                "unit": param.unit or "",
+                "reference": ref_str or "",
+                "is_abnormal": r.is_abnormal,
+                "display_order": param.display_order
+            })
+
+        params_list.sort(key=lambda x: x["display_order"])
+        booked_tests_data.append({
+            "test_name": test_obj.name,
+            "interpretation_note": test_notes_map.get(str(test_obj.id), ""),
+            "parameters": params_list
+        })
+
+    pdf_bytes = generate_structured_report_pdf(patient, booked_tests_data)
+    filename = f"Report_{patient.patient_code}_Structured.pdf"
+
+    # Use a dummy BackgroundTasks instance or direct execution since we are already inside background task or sync call
+    class DummyBackgroundTasks:
+        def add_task(self, func, *args, **kwargs):
+            try:
+                func(*args, **kwargs)
+            except Exception as e:
+                import logging
+                logging.getLogger("akriti.reports").error(f"Failed notification dispatch: {e}")
+
+    return upload_report(
+        db, patient_id, pdf_bytes, filename, uploader_id, DummyBackgroundTasks(),
+        reason="Automated structured report generation", force=True, source="auto", partial_release=partial_release
+    )
