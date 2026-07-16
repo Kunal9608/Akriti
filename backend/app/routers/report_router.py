@@ -47,7 +47,7 @@ def upload_report(
         sanitized_filename = validate_file_upload(
             file_bytes=file_bytes,
             filename=file.filename,
-            max_size=10 * 1024 * 1024,  # 10MB
+            max_size=3 * 1024 * 1024,  # 3MB limit for report uploads
             allowed_extensions=allowed_extensions
         )
     except ValueError as e:
@@ -71,9 +71,24 @@ def upload_report(
                 pass
             if img.mode not in ("RGB", "L"):
                 img = img.convert("RGB")
+            
+            # Step 1: Compress to ensure PDF stays under 2.5MB
+            max_dim = 1200
+            if img.width > max_dim or img.height > max_dim:
+                img.thumbnail((max_dim, max_dim), Image.Resampling.LANCZOS)
+                
             pdf_io = io.BytesIO()
-            img.save(pdf_io, format="PDF")
-            return pdf_io.getvalue()
+            img.save(pdf_io, format="PDF", resolution=72.0)
+            output_bytes = pdf_io.getvalue()
+            
+            # Step 2: Aggressive compression if it's still > 2.5MB
+            if len(output_bytes) > 2.5 * 1024 * 1024:
+                img.thumbnail((800, 800), Image.Resampling.LANCZOS)
+                pdf_io = io.BytesIO()
+                img.save(pdf_io, format="PDF", resolution=72.0)
+                output_bytes = pdf_io.getvalue()
+                
+            return output_bytes
 
         try:
             file_bytes = _convert_to_pdf(file_bytes)
@@ -116,6 +131,31 @@ def download_report(report_id: uuid.UUID, current_user=Depends(get_current_user)
     report = db.query(Report).filter(Report.id == report_id).first()
     if not report:
         raise HTTPException(status_code=404, detail="Report not found")
+    
+    from backend.app.config import settings
+    from fastapi.responses import Response, FileResponse
+    
+    headers = {
+        "Content-Disposition": f"inline; filename=\"{report.original_filename or 'report.pdf'}\""
+    }
+
+    if report.file_path.startswith("supabase:"):
+        parts = report.file_path.replace("supabase:", "").split("/", 1)
+        if len(parts) != 2:
+            raise HTTPException(status_code=500, detail="Invalid Supabase storage path")
+        bucket_name, file_path_in_bucket = parts
+        
+        if not settings.SUPABASE_URL or not settings.SUPABASE_KEY:
+            raise HTTPException(status_code=500, detail="Supabase configuration missing")
+            
+        from supabase import create_client, Client
+        supabase: Client = create_client(settings.SUPABASE_URL, settings.SUPABASE_KEY)
+        try:
+            res = supabase.storage.from_(bucket_name).download(file_path_in_bucket)
+            return Response(content=res, media_type="application/pdf", headers=headers)
+        except Exception as e:
+            raise HTTPException(status_code=404, detail="Report file not found in Supabase Storage")
+
     if not os.path.exists(report.file_path):
         raise HTTPException(status_code=404, detail="Report file not found on disk")
     
@@ -125,10 +165,6 @@ def download_report(report_id: uuid.UUID, current_user=Depends(get_current_user)
         raise HTTPException(status_code=404, detail="Patient not found")
     check_patient_access(current_user, patient)
 
-    # Use Content-Disposition inline to prevent automatic download
-    headers = {
-        "Content-Disposition": f"inline; filename=\"{report.original_filename or 'report.pdf'}\""
-    }
     return FileResponse(report.file_path, media_type="application/pdf", headers=headers)
 
 
@@ -220,12 +256,31 @@ async def upload_test_attachment(
         raise HTTPException(status_code=400, detail="Attachment file size exceeds 15MB limit.")
 
     safe_name = report_service.generate_safe_filename(file.filename, f"{patient.patient_code}_{test_id.hex[:8]}")
-    file_path = attach_dir / safe_name
-    file_path.write_bytes(file_bytes)
+    
+    from backend.app.config import settings
+    if settings.STORAGE_PROVIDER.lower() == "supabase":
+        from supabase import create_client, Client
+        if not settings.SUPABASE_URL or not settings.SUPABASE_KEY:
+            raise HTTPException(status_code=500, detail="Supabase URL or Key is not configured.")
+        supabase: Client = create_client(settings.SUPABASE_URL, settings.SUPABASE_KEY)
+        content_type = file.content_type or "application/octet-stream"
+        try:
+            supabase.storage.from_("reports").upload(
+                path=f"attachments/{safe_name}",
+                file=file_bytes,
+                file_options={"content-type": content_type}
+            )
+            db_file_path = f"supabase:reports/attachments/{safe_name}"
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"Failed to upload attachment to Supabase: {e}")
+    else:
+        file_path = attach_dir / safe_name
+        file_path.write_bytes(file_bytes)
+        db_file_path = str(file_path)
 
     return {
         "status": "success",
-        "attachment_path": str(file_path),
+        "attachment_path": db_file_path,
         "filename": file.filename
     }
 

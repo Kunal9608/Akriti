@@ -26,3 +26,4 @@ python-dateutil==2.9.0
 cryptography==43.0.1
 starlette==0.41.3
 g4f==7.8.9
+supabase==2.4.3

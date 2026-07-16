@@ -56,16 +56,35 @@ def upload_report(db: Session, patient_id: uuid.UUID, file_bytes: bytes,
 
     safe_filename = generate_safe_filename(filename, f"{patient.patient_code}_v{version}")
     
-    file_path = REPORTS_DIR / safe_filename
-    file_path.write_bytes(file_bytes)
-    try:
-        os.chmod(file_path, 0o644) # Read/write for owner, read-only for others (non-executable)
-    except Exception:
-        pass
+    from backend.app.config import settings
+    if settings.STORAGE_PROVIDER.lower() == "supabase":
+        if not settings.SUPABASE_URL or not settings.SUPABASE_KEY:
+            raise ValueError("Supabase URL or Key is not configured in .env")
+        try:
+            from supabase import create_client, Client
+            supabase: Client = create_client(settings.SUPABASE_URL, settings.SUPABASE_KEY)
+            res = supabase.storage.from_("reports").upload(
+                path=safe_filename,
+                file=file_bytes,
+                file_options={"content-type": "application/pdf"}
+            )
+            db_file_path = f"supabase:reports/{safe_filename}"
+        except Exception as e:
+            import logging
+            logging.getLogger("akriti.reports").error(f"Failed to upload to Supabase: {e}")
+            raise ValueError(f"Storage Error: Failed to upload file to Supabase. Ensure bucket 'reports' exists. Detail: {e}")
+    else:
+        file_path = REPORTS_DIR / safe_filename
+        file_path.write_bytes(file_bytes)
+        try:
+            os.chmod(file_path, 0o644) # Read/write for owner, read-only for others (non-executable)
+        except Exception:
+            pass
+        db_file_path = str(file_path)
 
     report = Report(
         patient_id=patient_id,
-        file_path=str(file_path),
+        file_path=db_file_path,
         original_filename=filename,
         signed=False,
         verification_hash=verification_hash,

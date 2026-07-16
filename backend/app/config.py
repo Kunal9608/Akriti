@@ -62,6 +62,11 @@ class Settings(BaseSettings):
     HOST: str = "0.0.0.0"
     PORT: int = 8000
 
+    # Storage Settings
+    STORAGE_PROVIDER: str = "local" # 'local' or 'supabase'
+    SUPABASE_URL: str = ""
+    SUPABASE_KEY: str = ""
+
     # CORS
     ALLOWED_ORIGINS: str = "http://localhost:8000,http://127.0.0.1:8000"
 
