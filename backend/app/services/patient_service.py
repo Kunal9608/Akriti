@@ -10,6 +10,32 @@ from backend.app.services import audit_service
 from backend.app.schemas.patient import PatientCreate, PatientUpdate
 from backend.app.models.patient import PatientStatusEnum
 
+def _check_duplicates(db: Session, mobile: str, sample_date: date, test_ids: List[uuid.UUID], exclude_patient_id: Optional[uuid.UUID] = None):
+    from backend.app.models.patient import Patient
+    from backend.app.models.patient_test import PatientTest
+    from backend.app.models.test import Test
+
+    query = db.query(Patient).filter(
+        Patient.mobile == mobile,
+        Patient.sample_date == sample_date,
+        Patient.deleted_at.is_(None)
+    )
+    if exclude_patient_id:
+        query = query.filter(Patient.id != exclude_patient_id)
+
+    existing_patients = query.all()
+    if existing_patients:
+        existing_patient_ids = [p.id for p in existing_patients]
+        duplicates = db.query(PatientTest).filter(
+            PatientTest.patient_id.in_(existing_patient_ids),
+            PatientTest.test_id.in_(test_ids)
+        ).all()
+        if duplicates:
+            dup_test_ids = [d.test_id for d in duplicates]
+            dup_tests = db.query(Test).filter(Test.id.in_(dup_test_ids)).all()
+            dup_names = ", ".join([t.name for t in dup_tests])
+            raise ValueError(f"Patient with mobile {mobile} has already booked test(s) ({dup_names}) on this day")
+
 
 def create_patient(db: Session, payload: PatientCreate, current_user_id: uuid.UUID,
                    idempotency_key: Optional[str] = None) -> dict:
@@ -27,26 +53,7 @@ def create_patient(db: Session, payload: PatientCreate, current_user_id: uuid.UU
 
     # Check same-day same-test duplicates for the patient (by contact number)
     sample_date = payload.sample_date or date.today()
-    from backend.app.models.patient import Patient
-    from backend.app.models.patient_test import PatientTest
-    from backend.app.models.test import Test
-    
-    existing_patients = db.query(Patient).filter(
-        Patient.mobile == payload.mobile,
-        Patient.sample_date == sample_date,
-        Patient.deleted_at.is_(None)
-    ).all()
-    if existing_patients:
-        existing_patient_ids = [p.id for p in existing_patients]
-        duplicates = db.query(PatientTest).filter(
-            PatientTest.patient_id.in_(existing_patient_ids),
-            PatientTest.test_id.in_(payload.test_ids)
-        ).all()
-        if duplicates:
-            dup_test_ids = [d.test_id for d in duplicates]
-            dup_tests = db.query(Test).filter(Test.id.in_(dup_test_ids)).all()
-            dup_names = ", ".join([t.name for t in dup_tests])
-            raise ValueError(f"Patient with mobile {payload.mobile} has already booked test(s) ({dup_names}) on this day")
+    _check_duplicates(db, payload.mobile, sample_date, payload.test_ids)
 
     total_amount = sum(price_map.values())
     amount_paid = float(payload.amount_paid or 0)
@@ -136,27 +143,7 @@ def update_patient(db: Session, patient_id: uuid.UUID, payload: PatientUpdate,
     new_test_ids = payload.test_ids if payload.test_ids is not None else [t.id for t in patient.patient_tests]
 
     if payload.mobile is not None or payload.sample_date is not None or payload.test_ids is not None:
-        from backend.app.models.patient import Patient
-        from backend.app.models.patient_test import PatientTest
-        from backend.app.models.test import Test
-
-        existing_patients = db.query(Patient).filter(
-            Patient.mobile == new_mobile,
-            Patient.sample_date == new_sample_date,
-            Patient.id != patient.id,
-            Patient.deleted_at.is_(None)
-        ).all()
-        if existing_patients:
-            existing_patient_ids = [p.id for p in existing_patients]
-            duplicates = db.query(PatientTest).filter(
-                PatientTest.patient_id.in_(existing_patient_ids),
-                PatientTest.test_id.in_(new_test_ids)
-            ).all()
-            if duplicates:
-                dup_test_ids = [d.test_id for d in duplicates]
-                dup_tests = db.query(Test).filter(Test.id.in_(dup_test_ids)).all()
-                dup_names = ", ".join([t.name for t in dup_tests])
-                raise ValueError(f"Patient with mobile {new_mobile} has already booked test(s) ({dup_names}) on this day")
+        _check_duplicates(db, new_mobile, new_sample_date, new_test_ids, exclude_patient_id=patient.id)
 
     # If tests changed, recompute total
     if "test_ids" in update_data:
@@ -308,8 +295,7 @@ def _patient_to_dict(db: Session, patient, include_history: bool = False) -> dic
 
     history_list = None
     if include_history:
-        from backend.app.models.patient_status_history import PatientStatusHistory
-        histories = db.query(PatientStatusHistory).filter(PatientStatusHistory.patient_id == patient.id).order_by(PatientStatusHistory.updated_at.asc()).all()
+        histories = patient.status_history or []
         history_list = []
         for h in histories:
             history_list.append({

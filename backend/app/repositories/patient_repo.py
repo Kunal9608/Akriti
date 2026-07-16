@@ -9,6 +9,7 @@ from backend.app.models.patient import Patient, PatientStatusEnum
 from backend.app.models.patient_test import PatientTest
 from backend.app.models.test import Test
 from backend.app.models.doctor import Doctor
+from backend.app.models.patient_status_history import PatientStatusHistory
 
 
 def create_patient(db: Session, **kwargs) -> Patient:
@@ -24,7 +25,6 @@ def add_patient_test(db: Session, patient_id: uuid.UUID, test_id: uuid.UUID, pri
     db.flush()
     return pt
 
-
 def get_by_id(db: Session, patient_id: uuid.UUID) -> Optional[Patient]:
     return (
         db.query(Patient)
@@ -32,6 +32,8 @@ def get_by_id(db: Session, patient_id: uuid.UUID) -> Optional[Patient]:
             selectinload(Patient.patient_tests).joinedload(PatientTest.test),
             joinedload(Patient.doctor),
             joinedload(Patient.collector),
+            selectinload(Patient.reports),
+            selectinload(Patient.status_history).joinedload(PatientStatusHistory.updater),
         )
         .filter(Patient.id == patient_id, Patient.deleted_at.is_(None))
         .first()
@@ -53,13 +55,13 @@ def list_patients(
     page: int = 1,
     page_size: int = 20,
 ) -> Tuple[List[Patient], int]:
-    # 1. Base query for data (with selectinload for collection to avoid cartesian/LIMIT mismatch)
     query = (
         db.query(Patient)
         .options(
             selectinload(Patient.patient_tests).joinedload(PatientTest.test),
             joinedload(Patient.doctor),
             joinedload(Patient.collector),
+            selectinload(Patient.reports),
         )
         .filter(Patient.deleted_at.is_(None))
     )

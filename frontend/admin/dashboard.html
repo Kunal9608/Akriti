@@ -89,6 +89,7 @@
 
 <script src="/assets/js/toast.js"></script>
 <script src="/assets/js/modal.js"></script>
+<script src="/assets/js/cache-manager.js"></script>
 <script src="/assets/js/api-client.js"></script>
 <script src="/assets/js/table.js"></script>
 <script src="/assets/js/offline-queue.js"></script>
@@ -108,8 +109,7 @@
     `;
   }
 
-  try {
-    const stats = await API.get('/api/v1/finance/dashboard');
+  function renderKPIs(stats) {
     document.getElementById('kpi-grid').innerHTML =
       kpiCard('Today Revenue',      formatCurrency(stats.today_revenue),   'Cash + QR') +
       kpiCard('Today Patients',     stats.today_patients,                   'Registered today') +
@@ -118,6 +118,13 @@
       kpiCard('Monthly Revenue',    formatCurrency(stats.monthly_revenue),  'This month') +
       kpiCard('Doctor Commissions', formatCurrency(stats.monthly_doctor_commissions), 'This month') +
       kpiCard('Monthly Profit',     formatCurrency(stats.monthly_profit),   'Net profit');
+  }
+
+  window.addEventListener('cache-updated:/api/v1/finance/dashboard', e => renderKPIs(e.detail.data));
+
+  try {
+    const stats = await API.get('/api/v1/finance/dashboard');
+    if (stats) renderKPIs(stats);
   } catch {
     document.getElementById('kpi-grid').innerHTML = `<div class="text-muted text-sm" style="grid-column:1/-1;padding:20px">Failed to load KPIs</div>`;
   }

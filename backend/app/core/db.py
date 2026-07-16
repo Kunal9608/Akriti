@@ -29,13 +29,15 @@ engine_kwargs = {
 
 if not is_sqlite:
     engine_kwargs.update({
-        "pool_size": 15,
-        "max_overflow": 30,
+        "pool_size": 20,
+        "max_overflow": 40,
         "pool_timeout": 30,
         "pool_recycle": 1800,  # Recycle every 30m to prevent stale sockets/leaks on Supabase
         "pool_pre_ping": True,
+        "pool_use_lifo": True, # Reuse most recently used connections first to allow idle connections to be closed
         "connect_args": {
-            "options": "-c statement_timeout=15000 -c lock_timeout=5000"
+            # Statement timeout: 15s, Lock timeout: 5s, Idle in transaction timeout: 30s
+            "options": "-c statement_timeout=15000 -c lock_timeout=5000 -c idle_in_transaction_session_timeout=30000"
         }
     })
 else:
@@ -143,6 +145,15 @@ def init_db():
             except Exception:
                 conn.rollback()
                 conn.execute(text("CREATE INDEX IF NOT EXISTS idx_tests_name_lower ON tests (lower(name));"))
+            
+            # Additional covering indexes for Scale (10M+ rows)
+            # Index for 'amount_due' calculation in get_today_stats (avoids full table scan)
+            conn.execute(text("CREATE INDEX IF NOT EXISTS idx_patients_amount_due ON patients (created_at DESC) WHERE deleted_at IS NULL AND amount_paid < (total_amount - discount_amount);"))
+            # Prefix search indexes for code and mobile
+            conn.execute(text("CREATE INDEX IF NOT EXISTS idx_patient_code_prefix ON patients (patient_code varchar_pattern_ops) WHERE deleted_at IS NULL;"))
+            conn.execute(text("CREATE INDEX IF NOT EXISTS idx_patients_mobile_prefix ON patients (mobile varchar_pattern_ops) WHERE deleted_at IS NULL;"))
+            # Index for payment split aggregations
+            conn.execute(text("CREATE INDEX IF NOT EXISTS idx_patients_payment_split ON patients (payment_mode, created_at DESC) WHERE deleted_at IS NULL;"))
             
             conn.execute(text("CREATE INDEX IF NOT EXISTS idx_users_staff_active ON users (created_at DESC) WHERE role = 'staff';"))
         else:

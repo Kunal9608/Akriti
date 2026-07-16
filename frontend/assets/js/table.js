@@ -71,10 +71,12 @@ class DataTable {
     `).join('');
   }
 
-  async load(extraFilters = {}) {
+  async load(extraFilters = {}, options = {}) {
     if (this.loading) return;
     this.loading = true;
-    this.tbody.innerHTML = this._skeletonRows(6);
+    if (!options.silent) {
+      this.tbody.innerHTML = this._skeletonRows(6);
+    }
 
     const params = {
       page: this.page,

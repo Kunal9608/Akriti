@@ -33,14 +33,20 @@ const API = (() => {
     return res.ok;
   }
 
-  async function request(method, path, body = null, options = {}) {
-    const mutating = ['POST', 'PATCH', 'PUT', 'DELETE'].includes(method.toUpperCase());
+  const activeRequests = new Map();
+  const failureCounters = new Map(); // key -> { count, resetAt }
+
+  async function _doNetworkFetch(method, path, body, options, requestKey, endpointKey, cachedData) {
+    if (cachedData && activeRequests.has(requestKey)) {
+      return activeRequests.get(requestKey);
+    }
 
     const headers = {
       'Content-Type': 'application/json',
       ...(options.headers || {}),
     };
 
+    const mutating = ['POST', 'PATCH', 'PUT', 'DELETE'].includes(method.toUpperCase());
     if (mutating && !options.skipIdempotency) {
       headers['Idempotency-Key'] = options.idempotencyKey || uuidv4();
     }
@@ -55,73 +61,146 @@ const API = (() => {
       init.body = JSON.stringify(body);
     }
 
-    let res;
-    try {
-      res = await fetch(path, init);
-    } catch (err) {
-      const isOnline = navigator.onLine !== false;
-      const errorMsg = isOnline ? 'Server is unreachable' : 'No internet connection';
-      if (!options.silent) {
-        if (typeof window.Toast !== 'undefined') {
-          window.Toast.show(errorMsg, 'error');
-        }
-      }
-      throw new Error(errorMsg);
-    }
-
-    // 401 → try refresh once
-    if (res.status === 401 && !options._retry) {
-      if (isRefreshing) {
-        await new Promise((resolve, reject) => refreshWaiters.push({ resolve, reject }));
-        return request(method, path, body, { ...options, _retry: true });
-      }
-      isRefreshing = true;
+    const reqPromise = (async () => {
+      let res;
       try {
-        await refreshToken();
-        refreshWaiters.forEach(w => w.resolve());
+        res = await fetch(path, init);
       } catch (err) {
-        refreshWaiters.forEach(w => w.reject(err));
+        const isOnline = navigator.onLine !== false;
+        const errorMsg = isOnline ? 'Server is unreachable' : 'No internet connection';
+        if (!options.silent) {
+          if (typeof window.Toast !== 'undefined') {
+            window.Toast.show(errorMsg, 'error');
+          }
+        }
+        throw new Error(errorMsg);
+      }
+
+      // 401 → try refresh once
+      if (res.status === 401 && !options._retry) {
+        if (isRefreshing) {
+          await new Promise((resolve, reject) => refreshWaiters.push({ resolve, reject }));
+          return _doNetworkFetch(method, path, body, { ...options, _retry: true }, requestKey, endpointKey, cachedData);
+        }
+        isRefreshing = true;
+        try {
+          await refreshToken();
+          refreshWaiters.forEach(w => w.resolve());
+        } catch (err) {
+          refreshWaiters.forEach(w => w.reject(err));
+          refreshWaiters = [];
+          isRefreshing = false;
+          if (!window.location.pathname.endsWith('/index.html') && window.location.pathname !== '/') {
+              window.location.href = '/index.html';
+          }
+          throw err;
+        }
         refreshWaiters = [];
         isRefreshing = false;
-        // Redirect to login if not already there
-        if (!window.location.pathname.endsWith('/index.html') && window.location.pathname !== '/') {
-            window.location.href = '/index.html';
+        return _doNetworkFetch(method, path, body, { ...options, _retry: true }, requestKey, endpointKey, cachedData);
+      }
+
+      if (!res.ok) {
+        let failState = failureCounters.get(endpointKey) || { count: 0, resetAt: 0 };
+        failState.count++;
+        if (failState.count >= 5) {
+          failState.resetAt = Date.now() + 120000;
         }
+        failureCounters.set(endpointKey, failState);
+
+        let errData = {};
+        try { errData = await res.json(); } catch (_) {}
+        
+        let msg = errData?.detail || errData?.message || `Request failed (${res.status})`;
+        if (typeof msg === 'object' && msg !== null) {
+          if (Array.isArray(msg)) {
+            msg = msg.map(e => e.msg || e.message || JSON.stringify(e)).join(', ');
+          } else {
+            msg = msg.message || msg.detail || JSON.stringify(msg);
+          }
+        }
+
+        if (!options.silent) {
+          if (typeof window.Toast !== 'undefined') {
+            window.Toast.show(msg, 'error');
+          }
+        }
+        const err = new Error(msg);
+        err.status = res.status;
+        err.data = errData;
         throw err;
       }
-      refreshWaiters = [];
-      isRefreshing = false;
-      return request(method, path, body, { ...options, _retry: true });
-    }
 
-    if (!res.ok) {
-      let errData = {};
-      try { errData = await res.json(); } catch (_) {}
-      
-      let msg = errData?.detail || errData?.message || `Request failed (${res.status})`;
-      if (typeof msg === 'object' && msg !== null) {
-        if (Array.isArray(msg)) {
-          msg = msg.map(e => e.msg || e.message || JSON.stringify(e)).join(', ');
-        } else {
-          msg = msg.message || msg.detail || JSON.stringify(msg);
-        }
+      failureCounters.delete(endpointKey);
+
+      if (res.status === 204) return null;
+
+      const freshData = await res.json();
+
+      if (!mutating && window.CacheManager && options.cache !== false) {
+          if (cachedData) {
+              if (JSON.stringify(freshData) !== JSON.stringify(cachedData)) {
+                  await window.CacheManager.set(requestKey, freshData);
+                  window.dispatchEvent(new CustomEvent(`cache-updated:${path.split('?')[0]}`, { detail: { data: freshData, path } }));
+              }
+          } else {
+              await window.CacheManager.set(requestKey, freshData);
+          }
       }
 
-      if (!options.silent) {
-        if (typeof window.Toast !== 'undefined') {
-          window.Toast.show(msg, 'error');
-        }
-      }
-      const err = new Error(msg);
-      err.status = res.status;
-      err.data = errData;
-      throw err;
+      return freshData;
+    })();
+
+    if (cachedData) {
+        activeRequests.set(requestKey, reqPromise);
+        reqPromise.catch(() => {}).finally(() => activeRequests.delete(requestKey));
     }
 
-    // 204 No Content
-    if (res.status === 204) return null;
+    return reqPromise;
+  }
 
-    return res.json();
+  async function request(method, path, body = null, options = {}) {
+    const mutating = ['POST', 'PATCH', 'PUT', 'DELETE'].includes(method.toUpperCase());
+    const endpointKey = `${method.toUpperCase()}:${path}`;
+    const requestKey = `${endpointKey}:${body ? JSON.stringify(body) : ''}`;
+    
+    const failState = failureCounters.get(endpointKey);
+    if (failState && failState.resetAt > Date.now()) {
+      const remainingSeconds = Math.ceil((failState.resetAt - Date.now()) / 1000);
+      if (!options.silent && typeof window.Toast !== 'undefined') {
+        window.Toast.show(`Too many failed attempts. Please try again in ${remainingSeconds}s`, "error");
+      }
+      return new Promise(() => {});
+    }
+
+    if (mutating && window.CacheManager && !options.skipCache) {
+       window.CacheManager.invalidate(path.split('?')[0]);
+    }
+
+    if (activeRequests.has(requestKey)) {
+        if (mutating && !options.allowConcurrent) {
+            console.warn("Blocked duplicate concurrent mutation:", requestKey);
+            return new Promise(() => {});
+        } else if (!mutating) {
+            return activeRequests.get(requestKey);
+        }
+    }
+
+    if (!mutating && window.CacheManager && options.cache !== false) {
+       const cached = await window.CacheManager.get(requestKey);
+       if (cached) {
+           _doNetworkFetch(method, path, body, options, requestKey, endpointKey, cached);
+           return cached;
+       }
+    }
+
+    const promise = _doNetworkFetch(method, path, body, options, requestKey, endpointKey, null);
+    activeRequests.set(requestKey, promise);
+    try {
+        return await promise;
+    } finally {
+        activeRequests.delete(requestKey);
+    }
   }
 
   return {

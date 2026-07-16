@@ -10,12 +10,13 @@ import os
 from backend.app.core.db import get_db
 from backend.app.dependencies import get_current_user, check_patient_access
 from backend.app.services import report_service
+from starlette.concurrency import run_in_threadpool
 
 router = APIRouter(prefix="/reports", tags=["reports"])
 
 
 @router.post("/{patient_id}", status_code=201)
-async def upload_report(
+def upload_report(
     patient_id: uuid.UUID,
     background_tasks: BackgroundTasks,
     file: UploadFile = File(...),
@@ -37,8 +38,8 @@ async def upload_report(
     image_exts = (".jpg", ".jpeg", ".png", ".webp", ".bmp", ".tiff", ".tif", ".heic", ".heif")
     allowed_extensions = (".pdf",) + image_exts
     
-    # Read file bytes
-    file_bytes = await file.read()
+    # Read file bytes synchronously
+    file_bytes = file.file.read()
 
     # Perform multi-layer security validation
     from backend.app.core.upload_security import validate_file_upload
@@ -61,19 +62,21 @@ async def upload_report(
     if any(filename_lower.endswith(ext) for ext in image_exts):
         from PIL import Image
         import io
-        try:
-            image = Image.open(io.BytesIO(file_bytes))
-            # Handle animated GIF/WEBP — take first frame
+        
+        def _convert_to_pdf(f_bytes):
+            img = Image.open(io.BytesIO(f_bytes))
             try:
-                image.seek(0)
+                img.seek(0)
             except (EOFError, AttributeError):
                 pass
-            # Convert to RGB for PDF compatibility
-            if image.mode not in ("RGB", "L"):
-                image = image.convert("RGB")
+            if img.mode not in ("RGB", "L"):
+                img = img.convert("RGB")
             pdf_io = io.BytesIO()
-            image.save(pdf_io, format="PDF")
-            file_bytes = pdf_io.getvalue()
+            img.save(pdf_io, format="PDF")
+            return pdf_io.getvalue()
+
+        try:
+            file_bytes = _convert_to_pdf(file_bytes)
             base_name = os.path.splitext(file.filename)[0]
             file.filename = f"{base_name}.pdf"
         except Exception as e:
@@ -92,6 +95,7 @@ async def upload_report(
         if msg.startswith("DUPLICATE_REPORT:"):
             raise HTTPException(status_code=409, detail=msg.split(":", 1)[1])
         raise HTTPException(status_code=400, detail=msg)
+
 
 
 @router.get("/{patient_id}")
@@ -215,10 +219,7 @@ async def upload_test_attachment(
     if len(file_bytes) > 15 * 1024 * 1024:  # 15MB limit
         raise HTTPException(status_code=400, detail="Attachment file size exceeds 15MB limit.")
 
-    import re
-    orig_base, orig_ext = os.path.splitext(file.filename)
-    sanitized_base = re.sub(r'[^a-zA-Z0-9_-]', '_', orig_base)
-    safe_name = f"{patient.patient_code}_{test_id.hex[:8]}_{uuid.uuid4().hex[:6]}_{sanitized_base}{orig_ext}"
+    safe_name = report_service.generate_safe_filename(file.filename, f"{patient.patient_code}_{test_id.hex[:8]}")
     file_path = attach_dir / safe_name
     file_path.write_bytes(file_bytes)
 

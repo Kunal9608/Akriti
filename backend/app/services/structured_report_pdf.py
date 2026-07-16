@@ -3,6 +3,7 @@ Structured Report PDF Generator matching Akriti Diagnostics Center required layo
 Uses ReportLab to ensure pixel-perfect rendering across all platforms without GTK DLL dependencies.
 """
 import io
+import os
 from datetime import datetime
 from reportlab.lib.pagesizes import A4
 from reportlab.lib import colors

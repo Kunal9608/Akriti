@@ -411,6 +411,7 @@
 
 <script src="/assets/js/toast.js"></script>
 <script src="/assets/js/modal.js"></script>
+<script src="/assets/js/cache-manager.js"></script>
 <script src="/assets/js/api-client.js"></script>
 <script src="/assets/js/table.js"></script>
 <script src="/assets/js/offline-queue.js"></script>
@@ -512,6 +513,10 @@
     emptyMessage: 'No patients found matching your filters',
   });
   table.load();
+
+  window.addEventListener('cache-updated:/api/v1/patients', () => {
+    table.load({}, { silent: true });
+  });
 
   // ── Filters ───────────────────────────────────────────────────────────────
   let searchTimer;

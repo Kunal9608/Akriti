@@ -17,6 +17,15 @@ REPORTS_DIR = Path("uploads/reports")
 REPORTS_DIR.mkdir(parents=True, exist_ok=True)
 
 
+def generate_safe_filename(original_filename: str, prefix: str) -> str:
+    import re
+    import os
+    import uuid
+    orig_base, orig_ext = os.path.splitext(original_filename)
+    sanitized_base = re.sub(r'[^a-zA-Z0-9_-]', '_', orig_base)
+    return f"{prefix}_{uuid.uuid4().hex[:8]}_{sanitized_base}{orig_ext}"
+
+
 def upload_report(db: Session, patient_id: uuid.UUID, file_bytes: bytes,
                   filename: str, uploader_id: uuid.UUID, background_tasks,
                   reason: Optional[str] = None, force: bool = False, source: str = "manual",
@@ -45,11 +54,7 @@ def upload_report(db: Session, patient_id: uuid.UUID, file_bytes: bytes,
     # Get version number
     version = db.query(Report).filter(Report.patient_id == patient_id).count() + 1
 
-    # Store file outside web root using a randomized unique filename format
-    import re
-    orig_base, orig_ext = os.path.splitext(filename)
-    sanitized_base = re.sub(r'[^a-zA-Z0-9_-]', '_', orig_base)
-    safe_filename = f"{patient.patient_code}_v{version}_{uuid.uuid4().hex}_{sanitized_base}{orig_ext}"
+    safe_filename = generate_safe_filename(filename, f"{patient.patient_code}_v{version}")
     
     file_path = REPORTS_DIR / safe_filename
     file_path.write_bytes(file_bytes)
@@ -170,16 +175,28 @@ def generate_and_save_structured_report(db: Session, patient_id: uuid.UUID, uplo
     if not test_notes_map:
         test_notes_map = {}
 
+    from backend.app.models.patient_test_result import PatientTestResult
+    from sqlalchemy.orm import joinedload
+    from collections import defaultdict
+    
+    # Eagerly load all test results and their parameters in a single query (fixes N+1)
+    all_results = db.query(PatientTestResult).options(
+        joinedload(PatientTestResult.parameter)
+    ).filter(
+        PatientTestResult.patient_id == patient_id
+    ).all()
+    
+    results_by_test = defaultdict(list)
+    for r in all_results:
+        results_by_test[r.test_id].append(r)
+
     booked_tests_data = []
     for pt in patient.patient_tests:
         test_obj = pt.test
         if not test_obj:
             continue
 
-        results = db.query(PatientTestResult).filter(
-            PatientTestResult.patient_id == patient_id,
-            PatientTestResult.test_id == test_obj.id
-        ).all()
+        results = results_by_test.get(test_obj.id, [])
 
         params_list = []
         for r in results:
