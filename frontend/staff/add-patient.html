@@ -361,7 +361,12 @@
   // ── Live Net Payable Calculation ──────────────────────────────────────────
   function updateNetPayable() {
     const total    = parseFloat(document.getElementById('total-amount-hidden').value) || 0;
-    const discount = parseFloat(document.getElementById('discount-amount').value) || 0;
+    const discountInput = document.getElementById('discount-amount');
+    let discount = parseFloat(discountInput.value) || 0;
+    if (discount > total) {
+      discount = total;
+      discountInput.value = discount;
+    }
     const net      = Math.max(0, total - discount);
     const el = document.getElementById('net-payable-display');
     if (el) el.textContent = '₹' + net.toLocaleString('en-IN', { minimumFractionDigits: 0 });

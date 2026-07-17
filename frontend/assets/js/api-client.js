@@ -14,8 +14,7 @@
  */
 
 const API = (() => {
-  let isRefreshing = false;
-  let refreshWaiters = [];
+  let refreshPromise = null;
 
   function uuidv4() {
     return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
@@ -31,6 +30,35 @@ const API = (() => {
     });
     if (!res.ok) throw new Error('Session expired');
     return res.ok;
+  }
+
+  function isLoginPage() {
+    const path = window.location.pathname.replace(/\/$/, "");
+    return path === "" || path === "/index.html" || path === "/index" || path.endsWith("/index.html") || path.endsWith("/index");
+  }
+
+  async function clearLocalAuthState({ skipLogoutCall = false } = {}) {
+    localStorage.removeItem('akriti_current_user');
+    localStorage.removeItem('akriti_tests_cache');
+    if (window.CacheManager) {
+      try {
+        await window.CacheManager.invalidate('.*');
+      } catch (e) {
+        console.error("CacheManager invalidation failed:", e);
+      }
+    }
+    if (!skipLogoutCall) {
+      try {
+        await fetch('/api/v1/auth/logout', {
+          method: 'POST',
+          credentials: 'include'
+        });
+      } catch (e) {
+        console.error("Logout request failed:", e);
+      }
+    }
+    document.cookie = "access_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=strict";
+    document.cookie = "refresh_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=strict";
   }
 
   const activeRequests = new Map();
@@ -77,26 +105,40 @@ const API = (() => {
       }
 
       // 401 → try refresh once
-      if (res.status === 401 && !options._retry) {
-        if (isRefreshing) {
-          await new Promise((resolve, reject) => refreshWaiters.push({ resolve, reject }));
-          return _doNetworkFetch(method, path, body, { ...options, _retry: true }, requestKey, endpointKey, cachedData);
+      if (res.status === 401) {
+        if (isLoginPage()) {
+          await clearLocalAuthState({ skipLogoutCall: true });
+          throw new Error('Unauthorized (on login page)');
         }
-        isRefreshing = true;
+
+        if (options._retry) {
+          await clearLocalAuthState();
+          if (!isLoginPage()) {
+            window.location.href = '/index.html';
+          }
+          throw new Error('Unauthorized');
+        }
+
+        if (!refreshPromise) {
+          refreshPromise = (async () => {
+            try {
+              await refreshToken();
+            } finally {
+              refreshPromise = null;
+            }
+          })();
+        }
+
         try {
-          await refreshToken();
-          refreshWaiters.forEach(w => w.resolve());
+          await refreshPromise;
         } catch (err) {
-          refreshWaiters.forEach(w => w.reject(err));
-          refreshWaiters = [];
-          isRefreshing = false;
-          if (!window.location.pathname.endsWith('/index.html') && window.location.pathname !== '/') {
-              window.location.href = '/index.html';
+          await clearLocalAuthState();
+          if (!isLoginPage()) {
+            window.location.href = '/index.html';
           }
           throw err;
         }
-        refreshWaiters = [];
-        isRefreshing = false;
+
         return _doNetworkFetch(method, path, body, { ...options, _retry: true }, requestKey, endpointKey, cachedData);
       }
 
@@ -206,16 +248,17 @@ const API = (() => {
     }
   }
 
-  return {
-    get:    (path, opts)         => request('GET',    path, null, opts),
-    post:   (path, body, opts)   => request('POST',   path, body, opts),
-    patch:  (path, body, opts)   => request('PATCH',  path, body, opts),
-    put:    (path, body, opts)   => request('PUT',    path, body, opts),
-    delete: (path, opts)         => request('DELETE', path, null, opts),
-    // Raw request with full control
-    raw:    (method, path, body, opts) => request(method, path, body, opts),
-    uuidv4,
-  };
-})();
+    return {
+      get:    (path, opts)         => request('GET',    path, null, opts),
+      post:   (path, body, opts)   => request('POST',   path, body, opts),
+      patch:  (path, body, opts)   => request('PATCH',  path, body, opts),
+      put:    (path, body, opts)   => request('PUT',    path, body, opts),
+      delete: (path, opts)         => request('DELETE', path, null, opts),
+      // Raw request with full control
+      raw:    (method, path, body, opts) => request(method, path, body, opts),
+      uuidv4,
+      clearLocalAuthState,
+    };
+  })();
 
 window.API = API;

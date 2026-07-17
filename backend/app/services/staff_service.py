@@ -166,6 +166,8 @@ def list_staff(
     page: int = 1,
     page_size: int = 20,
 ):
+    if q:
+        page_size = 3
     items, total = user_repo.get_staff_paginated(
         db, include_inactive=include_inactive, q=q, is_active=is_active,
         page=page, page_size=page_size,

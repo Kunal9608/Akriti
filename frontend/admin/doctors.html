@@ -130,19 +130,15 @@
       ` },
     ],
     fetchFn: async (params, options = {}) => {
-      const res = await API.get('/api/v1/doctors?include_inactive=true');
-      const q = (params.q || '').toLowerCase().trim();
-      const filtered = res.filter(d => 
-        !q || 
-        d.name.toLowerCase().includes(q) || 
-        (d.clinic_name && d.clinic_name.toLowerCase().includes(q))
-      );
-      return {
-        items: filtered,
-        total: filtered.length
-      };
+      const qs = new URLSearchParams({
+        page: params.page,
+        page_size: params.pageSize || params.page_size || 20,
+        include_inactive: 'true',
+        ...(params.q && { q: params.q })
+      });
+      return await API.get(`/api/v1/doctors?${qs}`, { skipBackgroundRefresh: typeof options !== 'undefined' ? options.silent : false });
     },
-    pageSize: 30,
+    pageSize: 20,
     emptyMessage: 'No doctors registered',
   });
   table.load();

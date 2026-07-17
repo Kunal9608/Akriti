@@ -76,6 +76,36 @@ def get_all_doctors(db: Session, include_inactive: bool = False) -> List[dict]:
     ]
 
 
+def get_doctors_paginated(
+    db: Session,
+    include_inactive: bool = False,
+    q: Optional[str] = None,
+    page: int = 1,
+    page_size: int = 20,
+) -> dict:
+    if q:
+        page_size = 3
+    items, total = test_repo.get_doctors_paginated(db, include_inactive, q, page, page_size)
+    total_pages = (total + page_size - 1) // page_size
+    return {
+        "items": [
+            {
+                "id": str(d.id),
+                "name": d.name,
+                "clinic_name": d.clinic_name,
+                "commission_pct": float(d.commission_pct),
+                "is_active": d.is_active,
+            }
+            for d in items
+        ],
+        "total": total,
+        "page": page,
+        "page_size": page_size,
+        "total_pages": total_pages,
+    }
+
+
+
 def create_doctor(db: Session, name: str, clinic_name: Optional[str],
                   commission_pct: float, actor_id: uuid.UUID) -> dict:
     doc = test_repo.create_doctor(db, name, clinic_name, commission_pct)

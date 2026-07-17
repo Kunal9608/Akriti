@@ -1,6 +1,6 @@
 import io
 from datetime import datetime
-from reportlab.lib.pagesizes import a4
+from reportlab.lib.pagesizes import A4
 from reportlab.lib import colors
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Table, TableStyle
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
@@ -10,7 +10,7 @@ def generate_patients_pdf(patients) -> bytes:
     # Margins: 0.5 inch (36 points)
     doc = SimpleDocTemplate(
         buffer,
-        pagesize=a4,
+        pagesize=A4,
         leftMargin=36,
         rightMargin=36,
         topMargin=36,

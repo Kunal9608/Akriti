@@ -140,6 +140,15 @@
 <script src="/assets/js/api-client.js"></script>
 <script>
 (async function() {
+  // ── Check Logout Reason ──────────────────────────────────────────────────
+  const logoutReason = localStorage.getItem('akriti_logout_reason');
+  if (logoutReason === 'inactivity') {
+    localStorage.removeItem('akriti_logout_reason');
+    if (typeof Toast !== 'undefined') {
+      Toast.show("Session expired due to inactivity — please log in again", "info", 5000);
+    }
+  }
+
   // ── Google reCAPTCHA v3 Setup ──────────────────────────────────────────────
   let recaptchaKey = null;
   let recaptchaEnabled = false;
@@ -381,7 +390,7 @@
 
   // ── If already logged in, redirect ───────────────────────────────────────
   try {
-    const me = await API.get('/api/v1/auth/me', { silent: true });
+    const me = await API.get('/api/v1/auth/me', { silent: true, cache: false });
     if (me && me.role) redirect(me.role);
   } catch (_) {}
 })();

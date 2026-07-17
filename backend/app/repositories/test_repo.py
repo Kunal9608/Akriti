@@ -108,6 +108,27 @@ def get_all_doctors(db: Session, include_inactive: bool = False) -> List[Doctor]
     return q.order_by(Doctor.name).all()
 
 
+def get_doctors_paginated(
+    db: Session,
+    include_inactive: bool = False,
+    q: Optional[str] = None,
+    page: int = 1,
+    page_size: int = 20,
+) -> Tuple[List[Doctor], int]:
+    query = db.query(Doctor)
+    if not include_inactive:
+        query = query.filter(Doctor.is_active == True)
+    if q:
+        search = f"%{q.strip()}%"
+        query = query.filter(
+            Doctor.name.ilike(search) | Doctor.clinic_name.ilike(search)
+        )
+    total = query.count()
+    items = query.order_by(Doctor.name).offset((page - 1) * page_size).limit(page_size).all()
+    return items, total
+
+
+
 def get_doctor_by_id(db: Session, doctor_id: uuid.UUID) -> Optional[Doctor]:
     return db.query(Doctor).filter(Doctor.id == doctor_id).first()
 

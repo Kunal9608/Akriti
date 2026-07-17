@@ -314,7 +314,7 @@ def delete_everything(
                 Patient.created_at >= cutoff,
                 Patient.deleted_at.is_(None)
             )
-        ).order_by(Patient.created_at.desc()).all()
+        ).order_by(Patient.created_at.desc()).limit(50).all()
         
         # 4. Generate backup PDF
         try:

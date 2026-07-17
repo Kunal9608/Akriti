@@ -150,9 +150,15 @@ def seed_parameters_endpoint(
 doctor_router = APIRouter(prefix="/doctors")
 
 @doctor_router.get("")
-def list_doctors(include_inactive: bool = Query(False), db: Session = Depends(get_db),
-                 current_user=Depends(get_current_user)):
-    return test_service.get_all_doctors(db, include_inactive)
+def list_doctors(
+    include_inactive: bool = Query(False),
+    q: Optional[str] = Query(None),
+    page: int = Query(1, ge=1),
+    page_size: int = Query(20, ge=1, le=1000),
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user)
+):
+    return test_service.get_doctors_paginated(db, include_inactive, q, page, page_size)
 
 
 @doctor_router.post("", status_code=201)

@@ -264,6 +264,8 @@ def list_patients(db: Session, current_user, **kwargs) -> dict:
 
     page = kwargs.pop("page", 1)
     page_size = min(kwargs.pop("page_size", 20), 100)
+    if kwargs.get("q"):
+        page_size = 3
 
     items, total = patient_repo.list_patients(db, page=page, page_size=page_size, **kwargs)
     total_pages = (total + page_size - 1) // page_size

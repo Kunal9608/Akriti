@@ -509,7 +509,7 @@
       });
       return await API.get(`/api/v1/patients?${qs}`, { skipBackgroundRefresh: typeof options !== 'undefined' ? options.silent : false });
     },
-    pageSize: 25,
+    pageSize: 20,
     emptyMessage: 'No patients found matching your filters',
   });
   table.load();

@@ -230,11 +230,49 @@ const Shell = (() => {
     document.body.innerHTML = html;
   }
 
+  let inactivityTimer = null;
+  const INACTIVITY_TIMEOUT = 30 * 60 * 1000; // 30 minutes in ms
+
+  function startInactivityTimer() {
+    resetInactivityTimer();
+    const events = ['mousemove', 'click', 'keypress', 'touchstart'];
+    events.forEach(evt => {
+      document.addEventListener(evt, resetInactivityTimer, { passive: true });
+    });
+  }
+
+  function resetInactivityTimer() {
+    if (inactivityTimer) {
+      clearTimeout(inactivityTimer);
+    }
+    inactivityTimer = setTimeout(triggerInactivityLogout, INACTIVITY_TIMEOUT);
+  }
+
+  async function triggerInactivityLogout() {
+    const events = ['mousemove', 'click', 'keypress', 'touchstart'];
+    events.forEach(evt => {
+      document.removeEventListener(evt, resetInactivityTimer);
+    });
+    localStorage.setItem('akriti_logout_reason', 'inactivity');
+    if (window.API && typeof window.API.clearLocalAuthState === 'function') {
+      await window.API.clearLocalAuthState();
+    } else {
+      localStorage.removeItem('akriti_current_user');
+      localStorage.removeItem('akriti_tests_cache');
+      document.cookie = "access_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=strict";
+      document.cookie = "refresh_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=strict";
+      try {
+        await fetch('/api/v1/auth/logout', { method: 'POST', credentials: 'include' });
+      } catch (_) {}
+    }
+    window.location.href = '/';
+  }
+
   async function init({ role = 'admin', pageTitle = '', searchable = false } = {}) {
     // Auth check
     let me;
     try {
-      me = await API.get('/api/v1/auth/me', { silent: true });
+      me = await API.get('/api/v1/auth/me', { silent: true, cache: false });
       localStorage.setItem('akriti_current_user', JSON.stringify(me));
       // Proactively pre-cache test catalog for offline add-patient forms
       API.get('/api/v1/tests?page_size=200', { silent: true }).then(res => {
@@ -491,6 +529,7 @@ const Shell = (() => {
 
     // Store me globally
     window._me = me;
+    startInactivityTimer();
     return me;
   }
 

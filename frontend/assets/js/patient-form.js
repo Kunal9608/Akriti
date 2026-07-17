@@ -187,20 +187,32 @@ const PatientForm = (() => {
     const hidden = document.getElementById('total-amount-hidden');
     if (hidden) hidden.value = total;
 
-    // Auto-adjust Amount Paid if it exceeds the new total bill
+    // Read discount to calculate net payable
+    const discountInput = document.getElementById('discount-amount');
+    let discount = 0;
+    if (discountInput) {
+      discount = parseFloat(discountInput.value) || 0;
+      if (discount > total) {
+        discount = total;
+        discountInput.value = discount;
+      }
+    }
+    const net = Math.max(0, total - discount);
+
+    // Auto-adjust Amount Paid if it exceeds the net payable
     const amountInput = document.getElementById('amount-paid');
     if (amountInput) {
       let amount = parseFloat(amountInput.value) || 0;
-      if (amount > total) {
-        amountInput.value = total;
+      if (amount > net) {
+        amountInput.value = net;
         // Trigger update to update visibility/QR code
         const modeSection = document.getElementById('payment-mode-section');
         const modeSelect  = document.getElementById('payment-mode');
         const qrSection   = document.getElementById('qr-code-section');
-        if (modeSection) modeSection.style.display = total > 0 && total > 0 ? '' : 'none';
+        if (modeSection) modeSection.style.display = net > 0 ? '' : 'none';
         if (qrSection) {
           const isQR = modeSelect && modeSelect.value === 'qr';
-          qrSection.style.display = (total > 0 && isQR) ? '' : 'none';
+          qrSection.style.display = (net > 0 && isQR) ? '' : 'none';
         }
       }
     }
@@ -210,6 +222,7 @@ const PatientForm = (() => {
   // ── Payment mode toggle ───────────────────────────────────────────────────
   function initPaymentMode() {
     const amountInput = document.getElementById('amount-paid');
+    const discountInput = document.getElementById('discount-amount');
     const modeSection = document.getElementById('payment-mode-section');
     const modeSelect  = document.getElementById('payment-mode');
     const qrSection   = document.getElementById('qr-code-section');
@@ -217,10 +230,21 @@ const PatientForm = (() => {
 
     function update() {
       const total = [...selectedTests.values()].reduce((s, t) => s + Number(t.price), 0);
+      
+      let discount = 0;
+      if (discountInput) {
+        discount = parseFloat(discountInput.value) || 0;
+        if (discount > total) {
+          discount = total;
+          discountInput.value = discount;
+        }
+      }
+      const net = Math.max(0, total - discount);
+
       let amount = parseFloat(amountInput.value) || 0;
-      if (amount > total) {
-        amount = total;
-        amountInput.value = total;
+      if (amount > net) {
+        amount = net;
+        amountInput.value = net;
       }
       if (modeSection) modeSection.style.display = amount > 0 ? '' : 'none';
       if (qrSection) {
@@ -231,6 +255,7 @@ const PatientForm = (() => {
     }
 
     amountInput.addEventListener('input', update);
+    if (discountInput) discountInput.addEventListener('input', update);
     if (modeSelect) modeSelect.addEventListener('change', update);
     update();
   }
@@ -381,7 +406,8 @@ const PatientForm = (() => {
   let allDoctors = [];
   async function loadDoctors() {
     try {
-      allDoctors = await API.get('/api/v1/doctors', { silent: true }) || [];
+      const res = await API.get('/api/v1/doctors?page_size=1000', { silent: true });
+      allDoctors = res.items || res || [];
       return allDoctors;
     } catch {
       return [];
@@ -412,6 +438,7 @@ const PatientForm = (() => {
       payment_mode:  v('payment-mode') || 'cash',
       test_ids:      [...selectedTests.keys()],
       total_amount:  [...selectedTests.values()].reduce((s, t) => s + Number(t.price), 0),
+      discount_amount: parseFloat(v('discount-amount')) || 0,
     };
   }
 
