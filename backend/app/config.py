@@ -31,6 +31,8 @@ class Settings(BaseSettings):
     MAIL_TLS: bool = True
     MAIL_SSL: bool = False
     BREVO_API_KEY: str = ""
+    WASENDER_API_KEY: str = ""
+
 
     # Lab
     LAB_UPI_VPA: str = "akritilab@upi"

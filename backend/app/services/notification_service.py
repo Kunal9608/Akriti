@@ -243,9 +243,115 @@ class EmailProvider(NotificationProvider):
 
 
 class WhatsAppProvider(NotificationProvider):
-    """Stub — not enabled in v1. Fill in send() method to enable."""
     def send(self, event_type: str, recipient_email: str, context: Dict[str, Any]) -> bool:
-        raise NotImplementedError("WhatsApp provider not enabled in this version")
+        try:
+            from backend.app.config import settings
+            import httpx
+            import base64
+
+            # --- WASENDER CONFIG CHECK ---
+            if not settings.WASENDER_API_KEY:
+                print("  [WASENDER WARNING] WASender API Key not configured — settings.WASENDER_API_KEY is empty")
+                logger.warning("WASender API Key not configured — skipping notification")
+                return False
+
+            # Recipient should be a phone number. In context.get("mobile") we might have a cleaner mobile.
+            mobile = context.get("mobile") or recipient_email
+            if not mobile:
+                logger.warning("No recipient mobile number provided — skipping WhatsApp notification")
+                return False
+
+            # Clean non-digits
+            mobile = "".join(filter(str.isdigit, str(mobile)))
+            if len(mobile) == 10:
+                mobile = "91" + mobile
+
+            # We need to map event type to message template
+            templates = {
+                "patient_registered": "Hello {patient_name}, you have been successfully registered at Akriti Diagnostics Center. Your Patient ID is {patient_code}.",
+                "status_update": "Dear {patient_name}, the status of your lab report (ID: {patient_code}) has been updated to: {status}.",
+                "report_ready": "Dear {patient_name}, your diagnostic lab report for Patient ID {patient_code} is ready.",
+            }
+
+            if event_type not in templates:
+                logger.warning(f"Unhandled WhatsApp event type: {event_type}")
+                return False
+
+            text_message = templates[event_type].format(
+                patient_name=context.get("patient_name", "Patient"),
+                patient_code=context.get("patient_code", ""),
+                status=context.get("status", "").replace("_", " ").upper() if context.get("status") else ""
+            )
+
+            attachment_bytes = context.get("attachment_bytes")
+            attachment_name = context.get("attachment_name", "document.pdf")
+
+            headers = {
+                "Authorization": f"Bearer {settings.WASENDER_API_KEY}",
+                "Content-Type": "application/json",
+                "Accept": "application/json",
+                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+            }
+
+            # If there's an attachment, we upload it first to get a public URL
+            document_url = None
+            if attachment_bytes:
+                encoded_bytes = base64.b64encode(attachment_bytes).decode("utf-8")
+                upload_payload = {
+                    "mimetype": "application/pdf",
+                    "base64": f"data:application/pdf;base64,{encoded_bytes}"
+                }
+                
+                try:
+                    resp = httpx.post(
+                        "https://wasenderapi.com/api/upload",
+                        json=upload_payload,
+                        headers=headers,
+                        timeout=15.0
+                    )
+                    resp.raise_for_status()
+                    resp_data = resp.json()
+                    if resp_data.get("success"):
+                        document_url = resp_data.get("publicUrl")
+                        logger.info(f"WASender upload success: {document_url}")
+                    else:
+                        logger.error(f"WASender upload failed: {resp_data}")
+                        return False
+                except Exception as e:
+                    logger.error(f"WASender upload exception: {e}")
+                    return False
+
+            # Prepare payload for send-message
+            payload = {
+                "to": f"+{mobile}",
+                "text": text_message
+            }
+
+            if document_url:
+                payload["documentUrl"] = document_url
+                payload["fileName"] = attachment_name
+
+            resp = httpx.post(
+                "https://wasenderapi.com/api/send-message",
+                json=payload,
+                headers=headers,
+                timeout=15.0
+            )
+            resp.raise_for_status()
+            resp_data = resp.json()
+            logger.info(f"WASender send-message response: {resp_data}")
+
+            print(f"  [WASENDER OK] WhatsApp sent successfully: {event_type} -> {mobile}")
+            return True
+
+        except httpx.HTTPStatusError as he:
+            logger.error(f"WASender HTTP Error: {he.response.status_code} - {he.response.text}")
+            print(f"  [WASENDER HTTP ERROR] Code: {he.response.status_code}, Detail: {he.response.text}")
+            return False
+        except Exception as e:
+            logger.error(f"WASender error: {e}")
+            print(f"  [WASENDER ERROR] {e}")
+            return False
 
 
 class SmsProvider(NotificationProvider):
@@ -258,10 +364,12 @@ class SmsProvider(NotificationProvider):
 PROVIDER_REGISTRY: Dict[str, list] = {
     "otp": [EmailProvider()],
     "password_reset": [EmailProvider()],
-    "report_ready": [EmailProvider()],
+    "report_ready": [EmailProvider(), WhatsAppProvider()],
     "welcome_staff": [EmailProvider()],
     "password_change": [EmailProvider()],
     "delete_verify": [EmailProvider()],
+    "patient_registered": [WhatsAppProvider()],
+    "status_update": [WhatsAppProvider()],
 }
 
 

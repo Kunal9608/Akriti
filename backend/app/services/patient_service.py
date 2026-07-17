@@ -38,7 +38,7 @@ def _check_duplicates(db: Session, mobile: str, sample_date: date, test_ids: Lis
 
 
 def create_patient(db: Session, payload: PatientCreate, current_user_id: uuid.UUID,
-                   idempotency_key: Optional[str] = None) -> dict:
+                   background_tasks, idempotency_key: Optional[str] = None) -> dict:
     """FR-4.1, FR-4.2 — Create patient with sequence-based ID generation."""
     year = date.today().year
 
@@ -123,12 +123,23 @@ def create_patient(db: Session, payload: PatientCreate, current_user_id: uuid.UU
         after={"patient_code": patient_code, "name": payload.name, "total": total_amount},
     )
 
+    from backend.app.services import notification_service
+    background_tasks.add_task(
+        notification_service.notify,
+        "patient_registered",
+        patient.mobile,
+        {
+            "patient_name": patient.name,
+            "patient_code": patient_code,
+        }
+    )
+
     db.commit()
     return _patient_to_dict(db, patient)
 
 
 def update_patient(db: Session, patient_id: uuid.UUID, payload: PatientUpdate,
-                   current_user_id: uuid.UUID) -> dict:
+                   current_user_id: uuid.UUID, background_tasks = None) -> dict:
     """FR-4.1 — Edit patient. Recomputes total if tests changed."""
     patient = patient_repo.get_by_id(db, patient_id)
     if not patient:
@@ -207,6 +218,19 @@ def update_patient(db: Session, patient_id: uuid.UUID, payload: PatientUpdate,
             extra_info=extra_info
         )
         db.add(status_history_entry)
+
+        from backend.app.services import notification_service
+        if background_tasks and new_status not in ["report_ready", "partial_release"]:
+            background_tasks.add_task(
+                notification_service.notify,
+                "status_update",
+                patient.mobile,
+                {
+                    "patient_name": patient.name,
+                    "patient_code": patient.patient_code,
+                    "status": new_status,
+                }
+            )
 
     patient_repo.update_patient(db, patient_id, **update_data)
     audit_service.log(

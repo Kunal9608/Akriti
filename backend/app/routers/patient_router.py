@@ -1,5 +1,5 @@
 """Patient router."""
-from fastapi import APIRouter, Depends, Query, Header, HTTPException
+from fastapi import APIRouter, Depends, Query, Header, HTTPException, BackgroundTasks
 from sqlalchemy.orm import Session
 from typing import Optional
 from datetime import date
@@ -16,6 +16,7 @@ router = APIRouter(prefix="/patients", tags=["patients"])
 @router.post("", status_code=201)
 def create_patient(
     payload: PatientCreate,
+    background_tasks: BackgroundTasks,
     current_user=Depends(get_current_user),
     db: Session = Depends(get_db),
     idempotency_key: Optional[str] = Depends(get_idempotency_key),
@@ -25,7 +26,7 @@ def create_patient(
         if cached:
             return cached
 
-    result = patient_service.create_patient(db, payload, current_user.id)
+    result = patient_service.create_patient(db, payload, current_user.id, background_tasks)
 
     if idempotency_key:
         idempotency_service.store_result(idempotency_key, str(current_user.id), result)
@@ -78,6 +79,7 @@ def get_patient(patient_id: uuid.UUID, current_user=Depends(get_current_user),
 def update_patient(
     patient_id: uuid.UUID,
     payload: PatientUpdate,
+    background_tasks: BackgroundTasks,
     current_user=Depends(get_current_user),
     db: Session = Depends(get_db),
     idempotency_key: Optional[str] = Depends(get_idempotency_key),
@@ -87,7 +89,7 @@ def update_patient(
     if not patient:
         raise HTTPException(status_code=404, detail="Patient not found")
     check_patient_access(current_user, patient)
-    return patient_service.update_patient(db, patient_id, payload, current_user.id)
+    return patient_service.update_patient(db, patient_id, payload, current_user.id, background_tasks)
 
 
 @router.post("/{patient_id}/qr-code")

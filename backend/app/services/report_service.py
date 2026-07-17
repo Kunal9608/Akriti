@@ -128,6 +128,7 @@ def upload_report(db: Session, patient_id: uuid.UUID, file_bytes: bytes,
             "patient_code": patient.patient_code,
             "attachment_bytes": file_bytes,
             "attachment_name": attachment_name,
+            "mobile": patient.mobile,
         }
     )
 
