@@ -19,23 +19,22 @@ async def chat_with_copilot(
     db: Session = Depends(get_db)
 ):
     """
-    Stream a response from the PathLab AI Copilot using g4f.
+    Stream a response from the PathLab AI Copilot using Groq.
     """
     from backend.app.services.copilot_service import build_copilot_context
-    from g4f.client import AsyncClient
+    import os
+    from groq import AsyncGroq
     
     # Initialize the async client
-    client = AsyncClient()
+    client = AsyncGroq(api_key=os.environ.get("GROQ_API_KEY"))
     
     system_prompt = build_copilot_context(request.message, current_user, db)
 
     async def event_generator():
         try:
-            # Let g4f auto-select the best provider that isn't rate limited
-            
-            # When stream=True, create() returns an async generator directly (no await needed)
-            response = client.chat.completions.create(
-                model="gpt-4o", # PollinationsAI usually maps gpt-4o or similar
+            # Create stream using Groq SDK
+            response = await client.chat.completions.create(
+                model="llama-3.3-70b-versatile",
                 messages=[
                     {"role": "system", "content": system_prompt},
                     {"role": "user", "content": request.message}
@@ -43,14 +42,10 @@ async def chat_with_copilot(
                 stream=True,
             )
             
-            # Depending on the g4f version, it might return chunks directly or objects
             async for chunk in response:
-                # Some providers return string chunks, others return objects
-                if hasattr(chunk, 'choices') and chunk.choices and hasattr(chunk.choices[0], 'delta') and chunk.choices[0].delta.content:
+                if chunk.choices[0].delta.content is not None:
                     content = chunk.choices[0].delta.content
                     yield f"data: {content}\n\n"
-                elif isinstance(chunk, str):
-                    yield f"data: {chunk}\n\n"
                     
             yield "data: [DONE]\n\n"
         except Exception as e:
