@@ -276,6 +276,14 @@ Accuracy is more important than speed.
 Never hallucinate.
 Never fabricate.
 Never guess.
+
+==================================================
+CRITICAL RESPONSE RULE
+==================================================
+Do NOT narrate your internal process.
+Do NOT say "Let me check the database" or "I am calling the backend function" or "Let me fetch".
+The relevant live data has ALREADY been provided to you in this prompt under "CRITICAL LIVE DATA".
+Just provide the answer directly and immediately without any meta-commentary about fetching data.
 """
 
     msg_lower = message.lower()
@@ -338,11 +346,20 @@ Never guess.
             doc_names = ", ".join([f"Dr. {d.name}" for d in doc_records]) if doc_records else "None"
             injected_data.append(f"[Doctor Info]: Total Doctors: {len(doc_records)}. Names: {doc_names}.")
             
-        if any(k in msg_lower for k in ["revenue", "earning", "collection", "money", "today", "month", "total"]):
-            today_start = datetime.combine(datetime.now().date(), time.min)
+        if any(k in msg_lower for k in ["revenue", "earning", "collection", "money", "today", "yesterday", "month", "total"]):
+            from datetime import timedelta
+            now = datetime.now()
+            today_start = datetime.combine(now.date(), time.min)
+            yesterday_start = today_start - timedelta(days=1)
+            yesterday_end = today_start
+            month_start = today_start.replace(day=1)
+            
             today_rev = db.query(func.sum(Patient.amount_paid)).filter(Patient.created_at >= today_start).scalar() or 0
+            yesterday_rev = db.query(func.sum(Patient.amount_paid)).filter(Patient.created_at >= yesterday_start, Patient.created_at < yesterday_end).scalar() or 0
+            month_rev = db.query(func.sum(Patient.amount_paid)).filter(Patient.created_at >= month_start).scalar() or 0
             total_rev = db.query(func.sum(Patient.amount_paid)).scalar() or 0
-            injected_data.append(f"[Revenue Info]: Today's Revenue: Rs {today_rev}. Total Revenue: Rs {total_rev}.")
+            
+            injected_data.append(f"[Revenue Info]: Today's Revenue: Rs {today_rev}. Yesterday's Revenue: Rs {yesterday_rev}. This Month's Revenue: Rs {month_rev}. Total Revenue: Rs {total_rev}.")
 
     if injected_data:
         system_prompt += "\n\nCRITICAL LIVE DATA (Use this to answer the user's query):\n"
