@@ -306,7 +306,7 @@ Just provide the answer directly and immediately without any meta-commentary abo
                     uploaded_by = db.query(User).filter(User.id == r.uploaded_by).first()
                     uploader_name = uploaded_by.name if uploaded_by else "Unknown"
                     report_link = f"[View PDF](/api/v1/reports/download/{r.id})"
-                    report_details.append(f"Report ID {r.id}: Uploaded by {uploader_name} on {r.created_at.strftime('%Y-%m-%d %H:%M')}. Link: {report_link}")
+                    report_details.append(f"Report ID {r.id}: Uploaded by {uploader_name} on {r.uploaded_at.strftime('%Y-%m-%d %H:%M')}. Link: {report_link}")
                 
                 reports_str = " | ".join(report_details) if report_details else "No reports uploaded."
                 
