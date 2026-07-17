@@ -282,6 +282,9 @@ CRITICAL RESPONSE RULE
 ==================================================
 Do NOT narrate your internal process.
 Do NOT say "Let me check the database" or "I am calling the backend function" or "Let me fetch".
+If the user asks for a specific date, patient, or information that is NOT provided in the CRITICAL LIVE DATA below, YOU MUST reply EXACTLY with:
+"No matching records were found."
+Do not add any other text, apologies, or explanations.
 The relevant live data has ALREADY been provided to you in this prompt under "CRITICAL LIVE DATA".
 Just provide the answer directly and immediately without any meta-commentary about fetching data.
 """
@@ -359,7 +362,21 @@ Just provide the answer directly and immediately without any meta-commentary abo
             month_rev = db.query(func.sum(Patient.amount_paid)).filter(Patient.created_at >= month_start).scalar() or 0
             total_rev = db.query(func.sum(Patient.amount_paid)).scalar() or 0
             
-            injected_data.append(f"[Revenue Info]: Today's Revenue: Rs {today_rev}. Yesterday's Revenue: Rs {yesterday_rev}. This Month's Revenue: Rs {month_rev}. Total Revenue: Rs {total_rev}.")
+            rev_str = f"[Revenue Info]: Today's Revenue: Rs {today_rev}. Yesterday's Revenue: Rs {yesterday_rev}. This Month's Revenue: Rs {month_rev}. Total Revenue: Rs {total_rev}."
+            
+            try:
+                from dateutil.parser import parse
+                parsed_date = parse(message, fuzzy=True)
+                # If a valid date was found in the text, get that day's revenue
+                specific_start = datetime.combine(parsed_date.date(), time.min)
+                specific_end = specific_start + timedelta(days=1)
+                specific_rev = db.query(func.sum(Patient.amount_paid)).filter(Patient.created_at >= specific_start, Patient.created_at < specific_end).scalar() or 0
+                
+                rev_str += f" Revenue for specific date {parsed_date.strftime('%d %B %Y')} is Rs {specific_rev}."
+            except Exception:
+                pass
+                
+            injected_data.append(rev_str)
 
     if injected_data:
         system_prompt += "\n\nCRITICAL LIVE DATA (Use this to answer the user's query):\n"
