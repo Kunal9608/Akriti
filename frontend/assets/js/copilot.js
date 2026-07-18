@@ -106,6 +106,7 @@ const Copilot = (() => {
     const container = document.getElementById('copilot-messages');
     const msg = document.createElement('div');
     msg.className = 'copilot-msg system';
+    msg.textContent = 'Processing request...';
     container.appendChild(msg);
     container.scrollTop = container.scrollHeight;
     
@@ -127,6 +128,7 @@ const Copilot = (() => {
       
       const reader = response.body.getReader();
       const decoder = new TextDecoder();
+      let isFirstChunk = true;
       
       while (true) {
         const { value, done } = await reader.read();
@@ -139,6 +141,11 @@ const Copilot = (() => {
           if (line.startsWith('data: ')) {
             const data = line.slice(6).trim();
             if (data === '[DONE]') break;
+            
+            if (isFirstChunk) {
+               msg.textContent = '';
+               isFirstChunk = false;
+            }
             
             let textToAppend = data;
             try {
