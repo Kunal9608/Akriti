@@ -1,4 +1,4 @@
-﻿from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends
 from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 from pydantic import BaseModel
@@ -18,9 +18,9 @@ async def chat_with_copilot(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    "\""
+    """
     Stream a response from the PathLab AI Copilot using NVIDIA API.
-    "\""
+    """
     from backend.app.services.copilot_service import build_copilot_context
     import os
     from openai import AsyncOpenAI
