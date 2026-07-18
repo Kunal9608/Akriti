@@ -259,7 +259,8 @@ def delete_request_otp(
     from backend.app.services import auth_service
     from fastapi import HTTPException
     
-    if not verify_password(payload.password, current_user.password_hash):
+    is_valid, _ = verify_password(payload.password, current_user.password_hash)
+    if not is_valid:
         raise HTTPException(status_code=400, detail="Incorrect account password")
         
     db = SessionLocal()
@@ -290,7 +291,8 @@ def delete_everything(
     import io
     
     # 1. Verify Password
-    if not verify_password(payload.password, current_user.password_hash):
+    is_valid, _ = verify_password(payload.password, current_user.password_hash)
+    if not is_valid:
         raise HTTPException(status_code=400, detail="Incorrect account password")
         
     db = SessionLocal()

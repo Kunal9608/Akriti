@@ -139,7 +139,15 @@ const Copilot = (() => {
           if (line.startsWith('data: ')) {
             const data = line.slice(6).trim();
             if (data === '[DONE]') break;
-            msg.textContent += data + ' ';
+            
+            let textToAppend = data;
+            try {
+              textToAppend = JSON.parse(data);
+            } catch(e) {
+              // Fallback to raw text if parsing fails
+            }
+            
+            msg.textContent += textToAppend;
             container.scrollTop = container.scrollHeight;
           }
         }

@@ -93,7 +93,8 @@ def login(db: Session, email: str, password: str, ip: str,
     if not user.is_active and not user.must_reset_password:
         raise PermissionError("Account is inactive. Contact the administrator.")
 
-    if not verify_password(password, user.password_hash):
+    is_valid, needs_rehash = verify_password(password, user.password_hash)
+    if not is_valid:
         count = _redis_incr_fail(email)
         if count >= 5:
             user.is_locked = True
@@ -103,6 +104,10 @@ def login(db: Session, email: str, password: str, ip: str,
         session_repo.record_login(db, email, "bad_password", ip, user_agent, user.id)
         db.commit()
         raise ValueError("Invalid credentials")
+
+    if needs_rehash:
+        user.password_hash = hash_password(password)
+        db.commit()
 
     _redis_clear_fail(email)
     
@@ -197,6 +202,9 @@ def request_otp(db: Session, email: str, purpose: str, ip: str) -> bool:
 
 def verify_otp_code(db: Session, email: str, otp_code: str, purpose: str,
                     ip: Optional[str] = None, user_agent: Optional[str] = None) -> dict:
+    if not otp_code or not otp_code.isdigit():
+        raise ValueError("OTP must contain only numeric characters")
+        
     email = email.lower().strip()
     now = datetime.now(timezone.utc)
 
@@ -283,7 +291,7 @@ def reset_password(db: Session, reset_token: str, new_password: str) -> bool:
         raise ValueError("Invalid or expired reset token")
 
     if not validate_password_policy(new_password):
-        raise ValueError("Password must be between 6 and 13 characters with at least one letter and one digit")
+        raise ValueError("Password must be between 6 and 12 characters with at least one letter and one digit")
 
     user = user_repo.get_by_id(db, uuid.UUID(user_id))
     if not user:

@@ -13,26 +13,47 @@ from typing import Optional, Any, Dict
 import jwt
 from jwt.exceptions import PyJWTError as JWTError
 import bcrypt
+from argon2 import PasswordHasher
+from typing import Tuple
+
+ph = PasswordHasher()
 
 import sys
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))))
 from backend.app.config import settings
 
 
+def _apply_pepper(password: str) -> str:
+    """Combines password and pepper using HMAC-SHA256 before hashing."""
+    pepper = settings.PASSWORD_PEPPER.encode('utf-8')
+    return hmac.new(pepper, password.encode('utf-8'), hashlib.sha256).hexdigest()
+
 def hash_password(plain: str) -> str:
-    pw_bytes = plain.encode('utf-8')
-    salt = bcrypt.gensalt()
-    hashed = bcrypt.hashpw(pw_bytes, salt)
-    return hashed.decode('utf-8')
+    return ph.hash(_apply_pepper(plain))
 
 
-def verify_password(plain: str, hashed: str) -> bool:
-    pw_bytes = plain.encode('utf-8')
-    hashed_bytes = hashed.encode('utf-8')
+def verify_password(plain: str, hashed: str) -> Tuple[bool, bool]:
+    """
+    Returns (is_valid, needs_rehash).
+    Handles automatic bcrypt migration and Argon2 parameter upgrades.
+    """
+    if hashed.startswith("$2"):
+        # Legacy bcrypt hash
+        pw_bytes = plain.encode('utf-8')
+        hashed_bytes = hashed.encode('utf-8')
+        try:
+            is_valid = bcrypt.checkpw(pw_bytes, hashed_bytes)
+            return (is_valid, is_valid)  # If valid, requires immediate rehash
+        except Exception:
+            return (False, False)
+            
+    # Argon2id verification
     try:
-        return bcrypt.checkpw(pw_bytes, hashed_bytes)
+        is_valid = ph.verify(hashed, _apply_pepper(plain))
+        needs_rehash = ph.check_needs_rehash(hashed)
+        return (is_valid, needs_rehash)
     except Exception:
-        return False
+        return (False, False)
 
 
 def create_access_token(user_id: str, role: str, session_id: Optional[str] = None) -> str:
@@ -103,7 +124,10 @@ def canonical_json(data: dict) -> str:
 
 
 def validate_password_policy(password: str) -> bool:
-    """FR-1.4: min 6 chars, max 13 chars, at least one letter and one digit, alphanumeric only."""
+    """FR-1.4: min 6 chars, max 12 chars, at least one letter and one digit."""
     import re
-    pattern = r"^(?=.*[A-Za-z])(?=.*\d)[A-Za-z0-9]{6,13}$"
-    return bool(re.match(pattern, password))
+    if len(password) < 6 or len(password) > 12:
+        return False
+    if not re.search(r"[A-Za-z]", password) or not re.search(r"\d", password):
+        return False
+    return True

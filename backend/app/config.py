@@ -16,6 +16,7 @@ class Settings(BaseSettings):
     REDIS_URL: str = "redis://localhost:6379/0"
 
     # JWT
+    PASSWORD_PEPPER: str = ""
     JWT_SECRET_KEY: str = "change-this-secret"
     JWT_ACCESS_EXPIRE_MINUTES: int = 15
     JWT_REFRESH_EXPIRE_HOURS: int = 4
@@ -40,6 +41,20 @@ class Settings(BaseSettings):
     LAB_ADDRESS: str = ""
     LAB_PHONE: str = ""
     LAB_GSTIN: str = ""
+
+    # --- LLM Providers ---
+    NVIDIA_API_KEY: str = ""
+    NVIDIA_BASE_URL: str = "https://integrate.api.nvidia.com/v1"
+    NVIDIA_MODEL: str = "nvidia/nemotron-3-ultra-550b-a55b"
+    
+    OPENROUTER_API_KEY: str = ""
+    OPENROUTER_BASE_URL: str = "https://openrouter.ai/api/v1"
+    OPENROUTER_MODEL: str = "liquid/lfm-40b"
+    
+    GOOGLE_API_KEY: str = ""
+    GOOGLE_BASE_URL: str = "https://generativelanguage.googleapis.com/v1beta/openai/"
+    GOOGLE_MODEL: str = "gemini-2.5-flash"
+    # ---------------------
 
     # Face Recognition
     FACE_MATCH_THRESHOLD: float = 0.6

@@ -405,9 +405,9 @@ const Shell = (() => {
       try {
         await new Promise((resolve, reject) => {
           const script = document.createElement('script');
-          script.src = '/assets/js/copilot.js';
-          script.onload = resolve;
-          script.onerror = reject;
+          script.src = '/assets/js/copilot.js?v=' + Date.now();
+          script.onload = () => resolve();
+          script.onerror = (err) => reject(err);
           document.head.appendChild(script);
         });
       } catch (err) {

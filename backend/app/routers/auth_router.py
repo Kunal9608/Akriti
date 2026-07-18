@@ -148,9 +148,9 @@ def reset_password(payload: PasswordResetRequest, request: Request, response: Re
 
 @router.post("/refresh")
 def refresh_token(request: Request, response: Response, db: Session = Depends(get_db)):
+    from fastapi import HTTPException
     refresh = request.cookies.get("refresh_token")
     if not refresh:
-        from fastapi import HTTPException
         raise HTTPException(status_code=401, detail="No refresh token")
     access = auth_service.refresh_access_token(db, refresh)
     if not access:
@@ -223,7 +223,8 @@ def change_my_password(payload: ChangePasswordPayload,
         raise ValueError("Either current password or OTP code must be provided")
 
     if payload.current_password:
-        if not verify_password(payload.current_password, current_user.password_hash):
+        is_valid, _ = verify_password(payload.current_password, current_user.password_hash)
+        if not is_valid:
             raise ValueError("Current password is incorrect")
     else:
         ip = request.client.host if request.client else "0.0.0.0"
@@ -231,7 +232,7 @@ def change_my_password(payload: ChangePasswordPayload,
         auth_service.verify_otp_code(db, current_user.email, payload.otp_code, "password_change", ip, ua)
 
     if not validate_password_policy(payload.new_password):
-        raise ValueError("Password must be between 6 and 13 characters with at least one letter and one digit")
+        raise ValueError("Password must be between 6 and 12 characters with at least one letter and one digit")
     new_hash = hash_password(payload.new_password)
     user_repo.update_user(db, current_user.id, password_hash=new_hash, must_reset_password=False)
     srepo.revoke_all_user_sessions(db, current_user.id)
