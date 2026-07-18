@@ -45,7 +45,7 @@ async def chat_with_copilot(
                 temperature=1,
                 top_p=0.95,
                 max_tokens=16384,
-                extra_body={"chat_template_kwargs":{"enable_thinking":False},"reasoning_budget":16384},
+                extra_body={"chat_template_kwargs":{"enable_thinking":True},"reasoning_budget":16384},
                 stream=True,
             )
             
@@ -53,14 +53,16 @@ async def chat_with_copilot(
             async for chunk in response:
                 if not chunk.choices:
                     continue
-                delta = chunk.choices[0].delta
-                if delta.content is not None:
-                    # Strip any lingering thinking tags the model forces out
-                    clean_content = delta.content.replace("<think>", "").replace("</think>", "")
+                # The frontend expects Server-Sent Events (SSE) format starting with 'data: '
+                if chunk.choices[0].delta.content is not None:
+                    clean_content = chunk.choices[0].delta.content.replace("<think>", "").replace("</think>", "")
                     if clean_content:
-                        yield json.dumps({"content": clean_content}) + "\n"
+                        yield f"data: {json.dumps(clean_content)}\n\n"
+                    
+            yield "data: [DONE]\n\n"
         except Exception as e:
             import json
-            yield json.dumps({"content": f"\n\n[Error from AI: {str(e)}]"}) + "\n"
+            yield f"data: {json.dumps(f'[Error from AI: {str(e)}]')}\n\n"
+            yield "data: [DONE]\n\n"
 
     return StreamingResponse(event_generator(), media_type="text/event-stream")

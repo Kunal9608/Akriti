@@ -46,14 +46,6 @@ class Settings(BaseSettings):
     NVIDIA_API_KEY: str = ""
     NVIDIA_BASE_URL: str = "https://integrate.api.nvidia.com/v1"
     NVIDIA_MODEL: str = "nvidia/nemotron-3-ultra-550b-a55b"
-    
-    OPENROUTER_API_KEY: str = ""
-    OPENROUTER_BASE_URL: str = "https://openrouter.ai/api/v1"
-    OPENROUTER_MODEL: str = "liquid/lfm-40b"
-    
-    GOOGLE_API_KEY: str = ""
-    GOOGLE_BASE_URL: str = "https://generativelanguage.googleapis.com/v1beta/openai/"
-    GOOGLE_MODEL: str = "gemini-2.5-flash"
     # ---------------------
 
     # Face Recognition
