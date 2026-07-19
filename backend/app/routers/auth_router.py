@@ -69,6 +69,7 @@ def request_otp(payload: OtpRequestSchema, request: Request, db: Session = Depen
 
 
 @router.post("/otp/verify")
+@limiter.limit("5/minute")
 def verify_otp(payload: OtpVerifyRequest, request: Request, response: Response,
                db: Session = Depends(get_db)):
     otp_val = payload.otp or payload.otp_code
@@ -97,6 +98,7 @@ def verify_otp(payload: OtpVerifyRequest, request: Request, response: Response,
 
 
 @router.post("/password/reset")
+@limiter.limit("5/minute")
 def reset_password(payload: PasswordResetRequest, request: Request, response: Response,
                    db: Session = Depends(get_db)):
     from backend.app.services.auth_service import decode_token, create_access_token, create_refresh_token
