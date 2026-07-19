@@ -9,15 +9,21 @@ from backend.app.models.report import Report
 from backend.app.models.test import Test
 from backend.app.models.patient_test_result import PatientTestResult
 from backend.app.models.test_parameter import TestParameter
+from backend.app.models.expense import Expense
 
 def build_copilot_context(message: str, current_user: User, db: Session) -> str:
     """
     Analyzes the user message and dynamically builds a real-time context
     by querying the database based on detected keywords and RBAC.
     """
+    now = datetime.now()
+    current_time_str = now.strftime("%A, %d %B %Y, %I:%M %p")
     system_prompt = f"""You are Akriti Diagnostic AI Assistant.
 
 You are the official AI assistant integrated inside the PathLab Management System.
+
+CURRENT SYSTEM TIME (INDIAN STANDARD TIME): {current_time_str}
+Use this exact date and time whenever the user asks for the current date, time, or day.
 
 You are NOT ChatGPT.
 
@@ -289,18 +295,39 @@ Never fabricate.
 Never guess.
 
 ==================================================
-CRITICAL RESPONSE RULE
+STRICT ANTI-HALLUCINATION POLICY
 ==================================================
-Do NOT narrate your internal process.
-Do NOT say "Let me check the database" or "I am calling the backend function" or "Let me fetch".
-If the user asks for a specific date, patient, report, or any information that is NOT explicitly provided in the CRITICAL LIVE DATA below, YOU MUST reply EXACTLY with:
+If the USER asks a question (like requesting a list of names, specific patient info, or financial data) and the exact data is NOT explicitly found in the "CRITICAL LIVE DATA" below, you MUST reply EXACTLY with:
 "Insufficient info"
-Do not add any other text, apologies, explanations, or fabricated data. If the data isn't in the context below, you DO NOT know it.
-Just provide the answer directly and immediately without any meta-commentary about fetching data.
+
+DO NOT invent patient names.
+DO NOT invent financial data.
+DO NOT guess or assume.
+DO NOT write "Let me check...".
+DO NOT apologize.
+If the exact data is missing, your ONLY response should be "Insufficient info".
+
+==================================================
+CRITICAL LIVE DATA (Database Records)
+==================================================
 """
 
     msg_lower = message.lower()
     injected_data = []
+
+    from backend.app.models.user import ViewScopeEnum
+    
+    # 0. LOGGED-IN USER PROFILE
+    user_created = current_user.created_at.strftime('%Y-%m-%d') if hasattr(current_user, 'created_at') and current_user.created_at else 'Unknown'
+    v_scope = current_user.view_scope.value if hasattr(current_user.view_scope, 'value') else current_user.view_scope
+    
+    injected_data.append(
+        f"[Logged-In User Profile]: "
+        f"Name: {current_user.name}, Email: {getattr(current_user, 'email', 'N/A')}, "
+        f"Mobile: {getattr(current_user, 'mobile', 'N/A')}, Role: {current_user.role}, "
+        f"Staff Code: {getattr(current_user, 'staff_code', 'N/A')}, "
+        f"View Scope: {v_scope}, Registered On: {user_created}."
+    )
 
     # 1. PATIENT MODULE
     patient_ids = re.findall(r'PAT\d{6}', message.upper())
@@ -308,7 +335,7 @@ Just provide the answer directly and immediately without any meta-commentary abo
     
     if patient_ids:
         for pid in patient_ids:
-            if current_user.role == RoleEnum.staff:
+            if current_user.role == RoleEnum.staff and current_user.view_scope != ViewScopeEnum.all:
                 patient = db.query(Patient).filter(Patient.patient_code == pid, Patient.collected_by == current_user.id).first()
             else:
                 patient = db.query(Patient).filter(Patient.patient_code == pid).first()
@@ -361,7 +388,7 @@ Just provide the answer directly and immediately without any meta-commentary abo
 
     elif phone_numbers:
         for phone in phone_numbers:
-            if current_user.role == RoleEnum.staff:
+            if current_user.role == RoleEnum.staff and current_user.view_scope != ViewScopeEnum.all:
                 patients = db.query(Patient).filter(Patient.mobile == phone, Patient.collected_by == current_user.id).all()
             else:
                 patients = db.query(Patient).filter(Patient.mobile == phone).all()
@@ -395,26 +422,61 @@ Just provide the answer directly and immediately without any meta-commentary abo
             else:
                 injected_data.append(f"[Phone {phone}]: No patients found with this number.")
 
-    elif any(k in msg_lower for k in ["patient", "patients", "record"]):
+    elif any(k in msg_lower for k in ["patient", "patients", "record", "list"]):
         # General patient query
-        if current_user.role == RoleEnum.staff:
-            count = db.query(Patient).filter(Patient.collected_by == current_user.id).count()
-            injected_data.append(f"[Patients Summary]: You have registered {count} patients.")
+        if current_user.role == RoleEnum.staff and current_user.view_scope != ViewScopeEnum.all:
+            query = db.query(Patient).filter(Patient.collected_by == current_user.id)
+            count = query.count()
+            recent_patients = query.order_by(Patient.created_at.desc()).limit(10).all()
         else:
-            count = db.query(Patient).count()
-            injected_data.append(f"[Patients Summary]: There are {count} total patients in the system.")
+            query = db.query(Patient)
+            count = query.count()
+            recent_patients = query.order_by(Patient.created_at.desc()).limit(10).all()
+            
+        summary_str = f"[Patients Summary]: There are {count} total patients accessible."
+        if recent_patients:
+            summary_str += " Here is the Recent Patients List: "
+            p_list = []
+            for p in recent_patients:
+                p_list.append(f"{p.patient_code} - {p.name} (Age: {p.age}, Mobile: {p.mobile}, Date: {p.sample_date.strftime('%Y-%m-%d') if p.sample_date else 'N/A'})")
+            summary_str += " | ".join(p_list)
+        
+        injected_data.append(summary_str)
 
     # 2. TEST CATALOG MODULE
     if any(k in msg_lower for k in ["test", "tests", "catalog", "price"]):
-        active_tests = db.query(Test).filter(Test.is_active == True).all()
-        test_summary = ", ".join([f"{t.name} (Code: {t.test_code}, Rs {t.price})" for t in active_tests[:10]])
-        test_count = len(active_tests)
-        injected_data.append(f"[Test Catalog]: {test_count} active tests available. Sample: {test_summary}")
+        # Check for specific test code
+        test_codes = re.findall(r'TST\d{5,6}', message.upper())
+        if test_codes:
+            for tc in test_codes:
+                t = db.query(Test).filter(Test.test_code == tc).first()
+                if t:
+                    params = [p.parameter_name for p in t.parameters]
+                    param_str = ", ".join(params) if params else "No specific parameters"
+                    injected_data.append(f"[Specific Test {tc}]: Name: {t.name}, Price: Rs {t.price}, Category: {t.category}, Status: {'Active' if t.is_active else 'Inactive'}. Parameters: {param_str}")
+                else:
+                    injected_data.append(f"[Specific Test {tc}]: Not found.")
+        
+        # Check for specific test name
+        words = [w for w in msg_lower.split() if len(w) > 3 and w not in ["test", "tests", "what", "price", "details", "name", "about", "show", "tell", "catalog"]]
+        if words:
+            query = db.query(Test).filter(Test.is_active == True)
+            for w in words:
+                query = query.filter(Test.name.ilike(f"%{w}%"))
+            matched_tests = query.limit(5).all()
+            if matched_tests:
+                test_summary = " | ".join([f"{t.name} (Code: {t.test_code}, Rs {t.price})" for t in matched_tests])
+                injected_data.append(f"[Matched Tests by Name]: Found {len(matched_tests)} tests matching keywords. {test_summary}")
+
+        if not test_codes and not words:
+            active_tests = db.query(Test).filter(Test.is_active == True).limit(10).all()
+            test_summary = ", ".join([f"{t.name} (Code: {t.test_code}, Rs {t.price})" for t in active_tests])
+            injected_data.append(f"[Test Catalog]: Sample active tests: {test_summary}")
 
     # PENDING REPORTS MODULE
     if any(k in msg_lower for k in ["pending", "pending report", "pending status", "remaining", "due report", "not ready"]):
         from backend.app.models.patient import PatientStatusEnum
-        if current_user.role == RoleEnum.staff:
+        if current_user.role == RoleEnum.staff and current_user.view_scope != ViewScopeEnum.all:
             pending_patients = db.query(Patient).filter(
                 Patient.status != PatientStatusEnum.report_ready,
                 Patient.collected_by == current_user.id
@@ -434,22 +496,40 @@ Just provide the answer directly and immediately without any meta-commentary abo
             injected_data.append("[Pending Reports]: No pending reports found. All are report_ready.")
 
     # 3. ADMIN ONLY: STAFF, DOCTORS, REVENUE, DASHBOARD
-    if any(k in msg_lower for k in ["staff", "employee", "team", "doctor", "radiologist", "pathologist", "revenue", "earning", "collection", "money", "today", "yesterday", "month", "total", "dashboard", "summary", "overview"]):
+    if any(k in msg_lower for k in ["staff", "employee", "team", "doctor", "radiologist", "pathologist", "revenue", "earning", "collection", "money", "today", "yesterday", "month", "total", "dashboard", "summary", "overview", "expense", "expenses", "profit", "loss", "net"]):
         if current_user.role != RoleEnum.admin:
             # Explicitly inject unauthorized so the LLM doesn't guess
             injected_data.append("Error: User is not authorized to access staff, doctor, or revenue information.")
         else:
             if any(k in msg_lower for k in ["staff", "employee", "team"]):
-                staff_records = db.query(User).filter(User.role == RoleEnum.staff).all()
-                staff_names = ", ".join([f"{s.name} (Code: {s.staff_code})" for s in staff_records]) if staff_records else "None"
-                injected_data.append(f"[Staff Info]: Total Staff: {len(staff_records)}. Names: {staff_names}.")
+                words = [w for w in msg_lower.split() if len(w) > 3 and w not in ["staff", "employee", "team", "show", "details", "who", "is", "the"]]
+                if words:
+                    query = db.query(User).filter(User.role == RoleEnum.staff)
+                    for w in words:
+                        query = query.filter(User.name.ilike(f"%{w}%"))
+                    staff_records = query.limit(5).all()
+                    if staff_records:
+                        staff_names = " | ".join([f"{s.name} (Code: {s.staff_code}, Email: {s.email}, Phone: {s.mobile})" for s in staff_records])
+                        injected_data.append(f"[Specific Staff Search]: {staff_names}")
+                
+                total_staff = db.query(User).filter(User.role == RoleEnum.staff).count()
+                injected_data.append(f"[Staff Info Summary]: Total Staff: {total_staff}.")
                 
             if any(k in msg_lower for k in ["doctor", "radiologist", "pathologist"]):
-                doc_records = db.query(Doctor).all()
-                doc_names = ", ".join([f"Dr. {d.name}" for d in doc_records]) if doc_records else "None"
-                injected_data.append(f"[Doctor Info]: Total Doctors: {len(doc_records)}. Names: {doc_names}.")
+                words = [w for w in msg_lower.split() if len(w) > 3 and w not in ["doctor", "radiologist", "pathologist", "show", "details", "who", "is", "the", "dr.", "dr"]]
+                if words:
+                    query = db.query(Doctor)
+                    for w in words:
+                        query = query.filter(Doctor.name.ilike(f"%{w}%"))
+                    doc_records = query.limit(5).all()
+                    if doc_records:
+                        doc_names = " | ".join([f"Dr. {d.name} (Clinic: {d.clinic_name}, Comm: {d.commission_pct}%)" for d in doc_records])
+                        injected_data.append(f"[Specific Doctor Search]: {doc_names}")
+
+                total_docs = db.query(Doctor).count()
+                injected_data.append(f"[Doctor Info Summary]: Total Doctors: {total_docs}.")
                 
-            if any(k in msg_lower for k in ["revenue", "earning", "collection", "money", "today", "yesterday", "month", "total"]):
+            if any(k in msg_lower for k in ["revenue", "earning", "collection", "money", "today", "yesterday", "month", "total", "expense", "expenses", "profit", "loss", "net"]):
                 from datetime import timedelta
                 now = datetime.now()
                 today_start = datetime.combine(now.date(), time.min)
@@ -462,7 +542,15 @@ Just provide the answer directly and immediately without any meta-commentary abo
                 month_rev = db.query(func.sum(Patient.amount_paid)).filter(Patient.created_at >= month_start).scalar() or 0
                 total_rev = db.query(func.sum(Patient.amount_paid)).scalar() or 0
                 
-                rev_str = f"[Revenue Info]: Today's Revenue: Rs {today_rev}. Yesterday's Revenue: Rs {yesterday_rev}. This Month's Revenue: Rs {month_rev}. Total Revenue: Rs {total_rev}."
+                today_exp = db.query(func.sum(Expense.amount)).filter(Expense.created_at >= today_start).scalar() or 0
+                yesterday_exp = db.query(func.sum(Expense.amount)).filter(Expense.created_at >= yesterday_start, Expense.created_at < yesterday_end).scalar() or 0
+                month_exp = db.query(func.sum(Expense.amount)).filter(Expense.created_at >= month_start).scalar() or 0
+                total_exp = db.query(func.sum(Expense.amount)).scalar() or 0
+                
+                rev_str = f"[Financial Info]: Today's Revenue: Rs {today_rev} | Expenses: Rs {today_exp} | Net: Rs {today_rev - today_exp}.\n"
+                rev_str += f"Yesterday's Revenue: Rs {yesterday_rev} | Expenses: Rs {yesterday_exp} | Net: Rs {yesterday_rev - yesterday_exp}.\n"
+                rev_str += f"This Month's Revenue: Rs {month_rev} | Expenses: Rs {month_exp} | Net: Rs {month_rev - month_exp}.\n"
+                rev_str += f"Total Revenue: Rs {total_rev} | Total Expenses: Rs {total_exp} | Net Profit/Loss: Rs {total_rev - total_exp}."
                 
                 try:
                     from dateutil.parser import parse

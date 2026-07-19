@@ -84,10 +84,14 @@
   max-width: 85%;
   padding: 12px 16px;
   border-radius: 12px;
-  font-size: 0.95rem;
+  font-size: 0.98rem;
+  font-weight: 500;
+  font-family: var(--font-body), sans-serif;
+  letter-spacing: 0.2px;
   line-height: 1.5;
   word-wrap: break-word;
   white-space: pre-wrap;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.06);
 }
 
 .copilot-msg.system {

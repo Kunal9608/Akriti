@@ -5,6 +5,7 @@ const Copilot = (() => {
   let isInit = false;
 
   const COPILOT_ICON = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path><path d="M9 9h6"></path><path d="M9 13h6"></path></svg>`;
+  const SEND_ICON = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>`;
 
   function initUI() {
     if (isInit) return;
@@ -48,8 +49,8 @@ const Copilot = (() => {
           </div>
         </div>
         <div class="copilot-footer">
-          <textarea id="copilot-input" placeholder="Ask PathLab AI..." rows="1"></textarea>
-          <button id="copilot-send">${COPILOT_ICON}</button>
+          <textarea id="copilot-input" placeholder="Ask PathLab AI..." rows="1" enterkeyhint="send" style="resize: none; overflow: hidden;"></textarea>
+          <button id="copilot-send" aria-label="Send message">${SEND_ICON}</button>
         </div>
       </div>
     `;
@@ -96,9 +97,14 @@ const Copilot = (() => {
 
   async function sendMessage() {
     const input = document.getElementById('copilot-input');
+    const sendBtn = document.getElementById('copilot-send');
     const text = input.value.trim();
     if (!text) return;
     
+    input.disabled = true;
+    sendBtn.disabled = true;
+    
+
     appendMessage('user', text);
     input.value = '';
     
@@ -106,9 +112,15 @@ const Copilot = (() => {
     const container = document.getElementById('copilot-messages');
     const msg = document.createElement('div');
     msg.className = 'copilot-msg system';
-    msg.textContent = 'Processing request...';
+    msg.textContent = 'Processing request';
     container.appendChild(msg);
     container.scrollTop = container.scrollHeight;
+    
+    let dots = 0;
+    const loadingInterval = setInterval(() => {
+      dots = (dots + 1) % 4;
+      msg.textContent = 'Processing request' + '.'.repeat(dots);
+    }, 400);
     
     try {
       const token = localStorage.getItem('akriti_token') || '';
@@ -122,6 +134,7 @@ const Copilot = (() => {
       });
       
       if (!response.ok) {
+        clearInterval(loadingInterval);
         msg.textContent = 'Error connecting to AI Copilot.';
         return;
       }
@@ -143,6 +156,7 @@ const Copilot = (() => {
             if (data === '[DONE]') break;
             
             if (isFirstChunk) {
+               clearInterval(loadingInterval);
                msg.textContent = '';
                isFirstChunk = false;
             }
@@ -160,8 +174,13 @@ const Copilot = (() => {
         }
       }
     } catch (err) {
+      clearInterval(loadingInterval);
       console.error(err);
-      msg.textContent = 'Error connecting to AI Copilot.';
+      if (isFirstChunk) msg.textContent = 'Error connecting to AI Copilot.';
+    } finally {
+      input.disabled = false;
+      sendBtn.disabled = false;
+      input.focus();
     }
   }
 
