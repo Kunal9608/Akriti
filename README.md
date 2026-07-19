@@ -1,81 +1,75 @@
-# 🧪 Akriti Pathology Lab Management System
+<div align="center">
+  <img src="https://img.shields.io/badge/Akriti-Diagnostics%20Center-9A0002?style=for-the-badge&logo=healthcare" alt="Akriti Pathology Lab" />
+  <h1>🧪 Akriti Pathology Lab Management System</h1>
+  <p><strong>A Next-Generation, AI-Powered, Highly Secure Laboratory Information System (LIS)</strong></p>
 
-[![Python](https://img.shields.io/badge/python-3.10%2B-blue.svg)](https://www.python.org/)
-[![FastAPI](https://img.shields.io/badge/FastAPI-0.115.6-009688.svg)](https://fastapi.tiangolo.com/)
-[![License](https://img.shields.io/badge/License-Proprietary-red.svg)](#)
+  [![Python](https://img.shields.io/badge/Python-3.10+-3776AB?style=flat-square&logo=python&logoColor=white)](https://www.python.org/)
+  [![FastAPI](https://img.shields.io/badge/FastAPI-0.115+-009688?style=flat-square&logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com/)
+  [![PostgreSQL](https://img.shields.io/badge/PostgreSQL-pgvector-336791?style=flat-square&logo=postgresql&logoColor=white)](https://www.postgresql.org/)
+  [![License](https://img.shields.io/badge/License-Proprietary-red.svg?style=flat-square)](#)
 
-A premium, secure, and modern **Pathology Laboratory Management System** custom-designed for **Akriti Diagnostics Center**. This repository packages a robust **FastAPI (Python)** backend and a responsive **Vanilla HTML5/CSS3/ES6+ JavaScript** frontend, running as a unified application for streamlined setup and local or containerized operation.
+  <br />
+</div>
+
+## 📖 Overview
+
+The **Akriti Pathology Lab Management System** is a premium, secure, and modern platform custom-engineered for **Akriti Diagnostics Center**. It unifies a robust **FastAPI (Python)** backend with a responsive, high-performance **Vanilla JS/HTML5** frontend. 
+
+Built for speed, offline-resilience, and maximum security, this system streamlines everything from patient registration and dynamic UPI payments, to AI-assisted diagnostics, WhatsApp report deliveries, and biometric staff attendance.
 
 ---
 
-## 🌟 Key Modules & Features
+## 🌟 Key Features
 
-### 1. Reception & Patient Management
-*   **Registration & Billing:** Fast intake forms generating calendar-year patient codes (e.g., `PAT260001`).
-*   **Smart Pricing & Billing:** Client totals are recomputed server-side from pre-seeded test lists to prevent invoice tampering.
-*   **Offline Mode:** Seamless queueing of patient registration and payments locally when internet connectivity drops. Auto-syncs to the server once connection is restored.
-*   **Local UPI QR Payments:** Instantly generates dynamic UPI payment links via VPA (Virtual Payment Address) tailored to patient totals without costly API gateways.
+### 🤖 AI Copilot (Powered by Google Gemma 4 31B)
+*   **Context-Aware Chatbot:** Intelligent AI assistant powered by the blazing-fast Gemma 4 31B model for answering queries, fetching live patient statistics, and resolving operational roadblocks.
+*   **Strict Anti-Hallucination Engine:** Hardened safeguards ensure the AI never invents fake patient names, financial data, or diagnostics. It responds with "Insufficient info" if exact data is absent.
+*   **Smart Rate Limiting:** Enforced dynamic streaming rate limits to protect API quotas (Admin: 7 msgs/min, Staff: 3 msgs/min).
 
-### 2. Lab Operations & Report Generation
-*   **Test Catalog Master:** Pre-seeded with 65 standard diagnostic tests.
-*   **Sample Tracking Workflow:** Clear progress tracking (`sample_collected` -> `sent_to_franchise` -> `under_process` -> `partial_release` -> `report_ready`).
+### 🏥 Reception & Patient Management
+*   **Rapid Registration & Smart Billing:** Lightning-fast intake forms generating calendar-year based tracking codes (e.g., `PAT260001`). Totals are strictly computed server-side to prevent tampering.
+*   **Offline-First Architecture:** Seamless queueing of registration and payments locally when internet connectivity drops. Auto-syncs to the remote server immediately once the connection is restored.
+*   **Zero-Fee UPI Integration:** Instantly generates dynamic UPI payment QR codes tailored to patient totals using direct VPA—bypassing costly payment gateway commissions.
+
+### 🔬 Lab Operations & Smart Reporting
+*   **Master Test Catalog:** Pre-seeded with over 65 standard diagnostic tests.
 *   **Dual-Path Report Release:**
-    1.  **Structured Result Entry:** Enter parameters (e.g., Hemoglobin, WBC) to auto-render standard reports.
-    2.  **Manual PDF Upload:** Drag-and-drop custom formatted or scanned laboratory PDF reports.
-*   **Report Security & Versioning:** PDF modification logs, SHA-256 hash validation, and support for partial releases.
+    1.  **Structured Result Entry:** Enter parameters (e.g., Hemoglobin, WBC) to auto-render beautiful, branded PDF reports.
+    2.  **Manual PDF Upload:** Drag-and-drop custom or scanned laboratory PDFs securely to Supabase/Local storage.
+*   **Report Security & Verification:** Every generated PDF carries an immutable SHA-256 hash validation mechanism.
 
-### 3. Real-Time WhatsApp Alerts (WASenderAPI Integration)
-Provides instant notifications to patients via the **WASender API** (with bypass configurations for Cloudflare protection):
-*   **Registration Alerts:** Instant message with patient name and unique Patient ID immediately upon staff registration.
-*   **Status Updates:** Automatic notifications sent to patient's mobile number when report status changes.
-*   **Report Releases:** Delivers the finalized report directly to the patient's WhatsApp using a secure, temporary document download URL.
+### 💬 Real-Time WhatsApp Alerts
+Integrated with **WASender API** (equipped with Cloudflare bypass) for automated communication:
+*   **Welcome Alerts:** Sends a greeting with the unique Patient ID immediately upon registration.
+*   **Status Tracking:** Proactive mobile notifications whenever a sample's status progresses.
+*   **Direct Report Delivery:** Delivers finalized PDF reports straight to the patient’s WhatsApp via secure, temporary download URLs.
 
-### 4. Biometric Attendance Kiosk
-*   **Face Recognition Kiosk:** Real-time Check-In / Check-Out station for lab staff.
-*   **Liveness Gating:** Gated registration validating pose and image quality prior to activating staff accounts.
-*   **Vector Storage:** Efficient biometric verification leveraging PostgreSQL's `pgvector` extension.
+### 👤 Biometric Attendance Kiosk
+*   **Face Recognition Check-in:** Real-time Check-In/Check-Out station for lab staff.
+*   **Anti-Spoof Liveness Gating:** Validates pose and image quality prior to accepting attendance data.
+*   **High-Speed Vector Storage:** Utilizes PostgreSQL's `pgvector` for instantaneous facial recognition matching across the staff database.
+
+---
+
+## 🔒 Enterprise-Grade Security
+
+Security is deeply woven into the fabric of the Akriti PathLab System.
+
+*   **Military-Grade Password Hashing:** Powered by **Argon2id** combined with a robust HMAC-SHA256 **Password Pepper**.
+*   **Multi-Device Session Revocation:** Active Session Tracking prevents concurrent logins by terminating older access tokens automatically when a new device logs in.
+*   **IDOR Prevention:** Strict `check_patient_access` checks ensure staff can only view and manage patients they have registered, preventing lateral data breaches.
+*   **DDoS & Brute-Force Protection:** Intelligent in-memory token-bucket and `slowapi` rate limits (e.g., 5 attempts/min on login endpoints) guard against automated attacks.
+*   **Secure Deployment Scripts:** Bundled with a specialized `generate_secrets.py` CLI tool to automatically provision cryptographically secure JWT keys and Peppers for production servers.
 
 ---
 
 ## 🛠️ Technical Stack
 
 *   **Backend:** FastAPI (Python 3.10+), SQLAlchemy (Core/ORM), Uvicorn, Gunicorn
-*   **Database:** PostgreSQL (with `pgvector` extension), Redis (caching and idempotency key replays)
-*   **Frontend:** Vanilla HTML5, CSS3, ES6+ Javascript (no heavy frameworks)
+*   **Database:** PostgreSQL (with `pgvector` & `pg_trgm` extensions), Redis (Caching & Idempotency)
+*   **Frontend:** Vanilla HTML5, CSS3, ES6+ Javascript (No heavy virtual DOM frameworks for maximum speed)
 *   **Design System:** Tokenized Cream Vanilla (`#EFE6DD`) & Cherry Cola (`#9A0002`) palette, Outfit/Inter Typography, custom Skeleton loaders.
-*   **Notifications:** WASender API (WhatsApp Client), Brevo Transactional Mailer
-
----
-
-## 📂 Directory Structure
-
-```text
-├── backend/
-│   ├── alembic/                # DB migrations
-│   ├── app/
-│   │   ├── core/               # Security, Database config, and Redis connections
-│   │   ├── models/             # SQLAlchemy schemas & relationships
-│   │   ├── repositories/       # Database access layers (Repo pattern)
-│   │   ├── routers/            # FastAPI endpoint controllers
-│   │   ├── schemas/            # Pydantic schemas (validations)
-│   │   ├── services/           # Core business logic (WhatsApp, PDFs, Auth)
-│   │   ├── config.py           # Configuration loader
-│   │   └── main.py             # FastAPI App instance & CORS configuration
-│   └── seed/                   # Database seeding scripts
-├── frontend/
-│   ├── admin/                  # Administrative screens (Dashboard, Expenses, Audit)
-│   ├── staff/                  # Staff actions (Register Patient, Result Entry)
-│   ├── assets/
-│   │   ├── css/                # Tokenized CSS files
-│   │   ├── js/                 # Vanilla JS controllers
-│   │   └── images/             # Visual assets
-│   ├── index.html              # Login & Landing page
-│   └── attendance-kiosk.html   # Face Recognition Kiosk screen
-├── docker-compose.yml          # Container configuration
-├── main.py                     # Single Root Entry Point
-├── requirements.txt            # Python dependencies
-└── .env.example                # Template for environment configuration
-```
+*   **Integrations:** WASender API (WhatsApp), Brevo (Transactional Mail), Google GenAI SDK (Copilot).
 
 ---
 
@@ -83,57 +77,47 @@ Provides instant notifications to patients via the **WASender API** (with bypass
 
 ### 1. Prerequisites
 *   Python 3.10+
-*   PostgreSQL 14+ (optionally with the `pgvector` extension)
-*   Redis Server (optional; in-memory fallback enabled if offline)
-*   System dependencies for WeasyPrint (Pango, Cairo, GDK-PixBuf)
+*   PostgreSQL 14+ (with the `pgvector` extension installed)
+*   Redis Server (Optional; built-in fallback enabled)
 
-### 2. Standard Installation Steps
+### 2. Standard Installation
 
-1.  **Clone the Repository:**
-    ```bash
-    git clone https://github.com/Kunal9608/Akriti.git
-    cd Akriti
-    ```
+```bash
+# 1. Clone the Repository
+git clone https://github.com/Kunal9608/Akriti.git
+cd Akriti
 
-2.  **Create and Activate a Virtual Environment:**
-    ```bash
-    python -m venv .venv
-    # Windows:
-    .venv\Scripts\activate
-    # macOS/Linux:
-    source .venv/bin/activate
-    ```
+# 2. Setup Virtual Environment
+python -m venv .venv
+# Windows: .venv\Scripts\activate
+# Linux/Mac: source .venv/bin/activate
 
-3.  **Install Python Dependencies:**
-    ```bash
-    pip install -r requirements.txt
-    ```
+# 3. Install Dependencies
+pip install -r requirements.txt
 
-4.  **Set Up Environment Variables:**
-    Copy `.env.example` to `.env` and fill in the required keys:
-    ```bash
-    cp .env.example .env
-    ```
-    *Make sure to configure the keys for both `SUPABASE_KEY` (use service_role key starting with `eyJ...`) and `WASENDER_API_KEY` for WhatsApp.*
+# 4. Configure Environment
+cp .env.example .env
+# Important: Fill in DB credentials, Supabase keys, and WhatsApp tokens.
 
-5.  **Run the Server:**
-    ```bash
-    python main.py
-    ```
+# 5. Generate Secure Secrets
+python backend/scripts/generate_secrets.py
+# Copy the output keys into your .env file
 
----
+# 6. Run the Server
+python main.py
+```
 
-## 🐋 Running with Docker (Recommended)
+### 3. 🐋 Docker Deployment (Recommended)
 
-Run the application stack (FastAPI web server, PostgreSQL database with `pgvector`, and Redis) with a single command:
+Run the entire application stack (FastAPI, Postgres, Redis) with a single command:
 
 ```bash
 docker compose up --build -d
 ```
-* **Main Web App / Kiosk:** [http://localhost:8000](http://localhost:8000)
+* **Web App:** [http://localhost:8000](http://localhost:8000)
 * **Swagger API Docs:** [http://localhost:8000/docs](http://localhost:8000/docs)
 
 ---
 
 ## 📜 License
-This project is proprietary and custom-built for **Akriti Diagnostics Center**. Unauthorized duplication, distribution, or reverse engineering is prohibited.
+This software is strictly **proprietary** and custom-built for **Akriti Diagnostics Center**. Unauthorized distribution, reproduction, deployment, or reverse engineering is explicitly prohibited.
