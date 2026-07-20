@@ -50,7 +50,8 @@ def get_staff_paginated(
         query = query.filter(
             User.name.ilike(search) | User.email.ilike(search)
         )
-    total = query.count()
+    count_q = query.limit(1000).subquery()
+    total = db.query(count_q).count()
     items = query.order_by(User.created_at.desc()).offset((page - 1) * page_size).limit(page_size).all()
     return items, total
 

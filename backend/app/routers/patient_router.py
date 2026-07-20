@@ -53,6 +53,43 @@ def list_patients(
     )
 
 
+from pydantic import BaseModel
+
+class PatientSearchRequest(BaseModel):
+    q: Optional[str] = None
+    doctor_id: Optional[uuid.UUID] = None
+    date_from: Optional[date] = None
+    date_to: Optional[date] = None
+    status: Optional[str] = None
+
+@router.post("/search")
+def search_patients(
+    payload: PatientSearchRequest,
+    page: int = Query(1, ge=1),
+    page_size: int = Query(20, ge=1, le=100),
+    current_user=Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    return patient_service.list_patients(
+        db, current_user,
+        q=payload.q, doctor_id=payload.doctor_id, date_from=payload.date_from, date_to=payload.date_to,
+        status=payload.status, page=page, page_size=page_size,
+    )
+
+
+@router.get("/export")
+def export_patients(
+    date_from: Optional[date] = None,
+    date_to: Optional[date] = None,
+    current_user=Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    from backend.app.models.user import RoleEnum
+    if current_user.role != RoleEnum.admin:
+        raise HTTPException(status_code=403, detail="Only admins can export patients")
+    return patient_service.export_patients_csv(db, date_from, date_to)
+
+
 @router.get("/search")
 def search_by_mobile(
     mobile: str,

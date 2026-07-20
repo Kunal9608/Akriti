@@ -343,9 +343,6 @@ const Shell = (() => {
               <div class="user-role">${me.role}</div>
             </div>
           </a>
-          <button class="nav-item" id="logout-btn" style="width:100%; border:none; background:none; text-align:left; color: var(--color-ink-muted);">
-            ${icon('log-out')} Sign Out
-          </button>
         </div>
       `;
 

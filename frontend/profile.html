@@ -6,6 +6,8 @@
   <meta name="robots" content="noindex, nofollow">
 
   <title>My Profile — Akriti Diagnostics Center</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🧪</text></svg>">
+
   <meta name="description" content="View and update your profile, change password">
   <link rel="stylesheet" href="/assets/css/tokens.css">
   <link rel="stylesheet" href="/assets/css/components.css">
@@ -184,11 +186,6 @@
         </button>
         <h1 class="page-heading" id="topbar-title">My Profile</h1>
       </div>
-      <div class="topbar-right">
-        <button class="topbar-btn" data-theme-toggle aria-label="Toggle theme">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></svg>
-        </button>
-      </div>
     </header>
     <div class="offline-banner" role="status"></div>
 
@@ -346,6 +343,41 @@
   document.getElementById('profile-hero-name').textContent = me.name || '—';
   document.getElementById('profile-hero-role').textContent = me.role === 'admin' ? '👑 Administrator' : '🧑‍⚕️ Staff';
 
+  // ── Google reCAPTCHA v3 Setup ──────────────────────────────────────────────
+  let recaptchaKey = null;
+  let recaptchaEnabled = false;
+
+  async function getRecaptchaToken(actionName) {
+    if (!recaptchaEnabled || !recaptchaKey) return null;
+    return new Promise((resolve) => {
+      grecaptcha.ready(function() {
+        grecaptcha.execute(recaptchaKey, {action: actionName}).then(function(token) {
+          resolve(token);
+        }).catch(err => {
+          console.error("reCAPTCHA execution error:", err);
+          resolve(null);
+        });
+      });
+    });
+  }
+
+  // Load Settings and optionally load reCAPTCHA script
+  try {
+    const settings = await API.get('/api/v1/settings/lab', { silent: true });
+    recaptchaKey = settings.recaptcha_site_key;
+    recaptchaEnabled = settings.recaptcha_enabled;
+    
+    if (recaptchaEnabled && recaptchaKey) {
+      const script = document.createElement('script');
+      script.src = `https://www.google.com/recaptcha/api.js?render=${recaptchaKey}`;
+      script.async = true;
+      script.defer = true;
+      document.head.appendChild(script);
+    }
+  } catch (err) {
+    console.error("Failed to load settings/recaptcha:", err);
+  }
+
   // Fill meta section
   document.getElementById('profile-meta').innerHTML = `
     <div class="profile-meta-row">
@@ -481,7 +513,8 @@
     requestPwOtpBtn.setAttribute('aria-busy', 'true');
     requestPwOtpBtn.textContent = 'Sending...';
     try {
-      await API.post('/api/v1/auth/otp/request', { email: me.email, purpose: 'password_change' });
+      const recaptcha_token = await getRecaptchaToken('otp_request');
+      await API.post('/api/v1/auth/otp/request', { email: me.email, purpose: 'password_change', recaptcha_token });
       Toast.show('OTP code sent to your registered email', 'success');
     } catch (err) {
       Toast.show(err.message || 'Failed to send OTP', 'error');

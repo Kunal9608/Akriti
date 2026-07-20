@@ -6,6 +6,8 @@
   <meta name="robots" content="noindex, nofollow">
 
   <title>My Patients — Akriti Diagnostics Center</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🧪</text></svg>">
+
   <link rel="stylesheet" href="/assets/css/tokens.css">
   <link rel="stylesheet" href="/assets/css/components.css">
   <link rel="stylesheet" href="/assets/css/skeleton.css">
@@ -15,7 +17,7 @@
   <style>
     /* ── Slide Panel ────────────────────────────────────────────────────────── */
     .slide-panel {
-      position: fixed; right: 0; top: 0; bottom: 0; width: 460px;
+      position: fixed; right: 0; top: 0; bottom: 0; width: 460px; max-width: 100vw;
       background: var(--color-surface);
       border-left: 1px solid var(--color-border);
       box-shadow: -8px 0 40px rgba(0,0,0,.12);
@@ -130,11 +132,6 @@
         </button>
         <h1 class="page-heading" id="topbar-title">My Patients</h1>
       </div>
-      <div class="topbar-right">
-        <button class="topbar-btn" data-theme-toggle aria-label="Toggle theme">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></svg>
-        </button>
-      </div>
     </header>
 
     <div class="offline-banner" role="status"></div>
@@ -154,14 +151,16 @@
 
       <!-- Filters Bar -->
       <div class="filters-bar-pro">
-        <div class="topbar-search" style="width:260px;flex-shrink:0">
+        <div class="topbar-search" style="flex:1; min-width:150px; max-width:260px;">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
           <input type="text" id="search-q" placeholder="Name, mobile, patient ID…" autocomplete="off">
         </div>
         <select class="form-select" id="filter-status" style="height:36px;min-width:150px;font-size:13px">
           <option value="">All Statuses</option>
           <option value="sample_collected">Collected</option>
+          <option value="sent_to_franchise">Sent to Franchise</option>
           <option value="under_process">Processing</option>
+          <option value="partial_release">Partial Release</option>
           <option value="report_ready">Report Ready</option>
         </select>
         <input type="date" class="form-input" id="filter-from" style="height:36px;font-size:13px;width:150px" placeholder="From date">
@@ -504,14 +503,14 @@
       ` },
     ],
     fetchFn: async (params, options = {}) => {
-      const qs = new URLSearchParams({
-        page: params.page, page_size: params.page_size,
-        ...(params.q        && { q: params.q }),
-        ...(params.status   && { status: params.status }),
-        ...(params.date_from && { date_from: params.date_from }),
-        ...(params.date_to   && { date_to:   params.date_to }),
-      });
-      return await API.get(`/api/v1/patients?${qs}`, { skipBackgroundRefresh: typeof options !== 'undefined' ? options.silent : false });
+      const qs = new URLSearchParams({ page: params.page, page_size: params.page_size });
+      const payload = {
+        q: params.q || null,
+        status: params.status || null,
+        date_from: params.date_from || null,
+        date_to: params.date_to || null
+      };
+      return await API.post(`/api/v1/patients/search?${qs}`, payload, { skipBackgroundRefresh: typeof options !== 'undefined' ? options.silent : false });
     },
     pageSize: 20,
     emptyMessage: 'No patients found matching your filters',

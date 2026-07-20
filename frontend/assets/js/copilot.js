@@ -10,26 +10,29 @@ const Copilot = (() => {
   function initUI() {
     if (isInit) return;
     
-    // Replace Theme Toggle with Copilot Toggle
-    document.querySelectorAll('[data-theme-toggle]').forEach(btn => {
-      btn.removeAttribute('data-theme-toggle');
-      btn.setAttribute('data-copilot-toggle', 'true');
-      btn.setAttribute('aria-label', 'Open AI Copilot');
-      btn.innerHTML = COPILOT_ICON;
-      
-      // Remove old theme click listeners (cloning removes listeners)
-      const newBtn = btn.cloneNode(true);
-      btn.parentNode.replaceChild(newBtn, btn);
-      
-      newBtn.addEventListener('click', toggleDrawer);
-    });
+    // Inject Copilot Toggle into Topbar
+    const topbar = document.querySelector('.topbar');
+    if (topbar) {
+      let topbarRight = topbar.querySelector('.topbar-right');
+      if (!topbarRight) {
+        topbarRight = document.createElement('div');
+        topbarRight.className = 'topbar-right';
+        topbar.appendChild(topbarRight);
+      }
+      const copilotBtn = document.createElement('button');
+      copilotBtn.className = 'ask-ai-badge';
+      copilotBtn.setAttribute('aria-label', 'Open AI Copilot');
+      copilotBtn.innerHTML = `Ask AI ✨`;
+      copilotBtn.addEventListener('click', toggleDrawer);
+      topbarRight.appendChild(copilotBtn);
+    }
 
     // Inject CSS
     if (!document.getElementById('copilot-css')) {
       const link = document.createElement('link');
       link.id = 'copilot-css';
       link.rel = 'stylesheet';
-      link.href = '/assets/css/copilot.css';
+      link.href = '/assets/css/copilot.css?v=' + Date.now();
       document.head.appendChild(link);
     }
 

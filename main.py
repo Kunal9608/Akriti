@@ -62,13 +62,13 @@ def check_redis():
 def run_migrations():
     """Apply pending Alembic migrations."""
     try:
-        alembic_ini = ROOT / "backend" / "alembic.ini"
+        alembic_ini = ROOT / "alembic.ini"
         if not alembic_ini.exists():
             print("  [SKIP] No alembic.ini found — skipping migrations")
             return
         result = subprocess.run(
             [sys.executable, "-m", "alembic", "upgrade", "head"],
-            cwd=ROOT / "backend",
+            cwd=ROOT,
             capture_output=True,
             text=True
         )

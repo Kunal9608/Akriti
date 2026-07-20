@@ -30,11 +30,15 @@ def get_logs(db: Session, page: int = 1, page_size: int = 50,
         q = q.filter(AuditLog.occurred_at >= date_from)
     if date_to:
         q = q.filter(AuditLog.occurred_at <= date_to)
-    total = q.count()
+        
+    # Cap total count at 1000 to prevent full table scans on millions of logs
+    count_q = q.limit(1000).subquery()
+    total = db.query(count_q).count()
+    
     items = q.order_by(desc(AuditLog.id)).offset((page - 1) * page_size).limit(page_size).all()
     return items, total
 
 
-def get_all_ordered(db: Session) -> List[AuditLog]:
+def get_all_ordered(db: Session):
     """For integrity check — ordered by id ascending."""
-    return db.query(AuditLog).order_by(AuditLog.id).all()
+    return db.query(AuditLog).order_by(AuditLog.id).yield_per(1000)

@@ -28,7 +28,8 @@ def get_tests_paginated(
         query = query.filter(Test.is_active == True)
     if q:
         query = query.filter(Test.name.ilike(f"%{q.strip()}%"))
-    total = query.count()
+    count_q = query.limit(1000).subquery()
+    total = db.query(count_q).count()
     items = query.order_by(Test.name).offset((page - 1) * page_size).limit(page_size).all()
     return items, total
 

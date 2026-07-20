@@ -42,7 +42,7 @@ def generate_structured_report_pdf(patient, booked_tests_data, verification_hash
         pagesize=A4,
         leftMargin=36,
         rightMargin=36,
-        topMargin=36,
+        topMargin=110,
         bottomMargin=45
     )
 

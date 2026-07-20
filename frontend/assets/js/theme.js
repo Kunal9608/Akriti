@@ -42,7 +42,15 @@ const Theme = (() => {
     localStorage.setItem(KEY, theme);
     // Sync all toggle button icons
     document.querySelectorAll('[data-theme-toggle]').forEach(btn => {
-      btn.innerHTML = theme === DARK ? ICON_SUN : ICON_MOON;
+      if (btn.classList.contains('toggle')) {
+        if (theme === DARK) {
+          btn.classList.add('on');
+        } else {
+          btn.classList.remove('on');
+        }
+      } else {
+        btn.innerHTML = theme === DARK ? ICON_SUN : ICON_MOON;
+      }
       btn.setAttribute('aria-label', theme === DARK ? 'Switch to light mode' : 'Switch to dark mode');
     });
   }

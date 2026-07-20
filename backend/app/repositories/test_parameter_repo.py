@@ -2,6 +2,7 @@
 from sqlalchemy.orm import Session
 from typing import List, Optional
 import uuid
+import re
 
 from backend.app.models.test_parameter import TestParameter
 from backend.app.models.patient_test_result import PatientTestResult
@@ -23,14 +24,27 @@ def replace_for_test(db: Session, test_id: uuid.UUID, parameters_data: List[Test
 
     new_params = []
     for item in parameters_data:
+        ref_low = item.reference_low
+        ref_high = item.reference_high
+
+        if item.input_type == "numeric" and item.reference_text and ref_low is None and ref_high is None:
+            # Try to extract numbers from formats like "10-20", "10.5 - 20.5"
+            match = re.search(r"([\d\.]+)\s*-\s*([\d\.]+)", item.reference_text)
+            if match:
+                try:
+                    ref_low = float(match.group(1))
+                    ref_high = float(match.group(2))
+                except ValueError:
+                    pass
+
         p = TestParameter(
             test_id=test_id,
             parameter_name=item.parameter_name,
             unit=item.unit,
             input_type=item.input_type,
             dropdown_options=item.dropdown_options,
-            reference_low=item.reference_low,
-            reference_high=item.reference_high,
+            reference_low=ref_low,
+            reference_high=ref_high,
             reference_text=item.reference_text,
             applicable_gender=item.applicable_gender,
             display_order=item.display_order,

@@ -89,14 +89,14 @@ def get_daily_revenue(db: Session, date_from: date, date_to: date) -> dict:
     end_dt = datetime.combine(date_to, datetime.max.time())
 
     rows = db.query(
-        func.date(Patient.created_at).label("day"),
+        func.date(func.timezone('Asia/Kolkata', Patient.created_at)).label("day"),
         func.sum(Patient.amount_paid).label("revenue"),
         func.count(Patient.id).label("count"),
     ).filter(
         Patient.created_at >= start_dt,
         Patient.created_at <= end_dt,
         Patient.deleted_at.is_(None),
-    ).group_by(func.date(Patient.created_at)).order_by("day").all()
+    ).group_by(func.date(func.timezone('Asia/Kolkata', Patient.created_at))).order_by("day").all()
 
     data = [{"period": str(r.day), "revenue": float(r.revenue or 0), "patient_count": r.count} for r in rows]
     return {"data": data, "total": sum(d["revenue"] for d in data)}

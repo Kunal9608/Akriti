@@ -16,14 +16,24 @@ def with_idempotency(key: str, user_id: str, handler_fn: Callable, ttl: int = 86
     redis = get_redis()
     redis_key = f"idem:{key}:{user_id}"
 
-    # Check cache
+    # Check cache and acquire lock
     if redis:
         cached = redis.get(redis_key)
         if cached:
+            if cached == b"PENDING":
+                from fastapi import HTTPException
+                raise HTTPException(status_code=409, detail="Duplicate request is already processing.")
             return json.loads(cached)
+            
+        # Try to acquire lock
+        acquired = redis.set(redis_key, "PENDING", nx=True, ex=30)
+        if not acquired:
+            from fastapi import HTTPException
+            raise HTTPException(status_code=409, detail="Duplicate request is already processing.")
     else:
         if redis_key in _fallback_store:
             return _fallback_store[redis_key]
+        _fallback_store[redis_key] = "PENDING"
 
     # Execute the actual business logic
     result = handler_fn()

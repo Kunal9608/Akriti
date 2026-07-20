@@ -38,10 +38,20 @@ FRONTEND_DIR = ROOT / "frontend"
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Startup: initialize DB tables if they don't exist (fallback for no Alembic)."""
+    if settings.is_production:
+        if settings.JWT_SECRET_KEY == "change-this-secret":
+            import sys
+            print("  [FATAL] JWT_SECRET_KEY is using the default insecure value in production. Exiting.")
+            sys.exit(1)
+            
     try:
         init_db()
     except Exception as e:
         print(f"  [WARN] DB init: {e}")
+        if settings.is_production:
+            import sys
+            print("  [FATAL] Database initialization failed in production. Exiting to prevent silent failures.")
+            sys.exit(1)
     yield
 
 

@@ -101,8 +101,10 @@ def list_patients(
         query = query.filter(Patient.collected_by == collected_by)
         count_query = count_query.filter(Patient.collected_by == collected_by)
 
-    # Perform count on simple query without joins — runs instantly!
-    total = count_query.count()
+    # Cap the count to 1000 to prevent full table scans on millions of rows
+    # This ensures the pagination doesn't freeze the DB.
+    # Note: count_query has no offset, so we limit the base result.
+    total = count_query.limit(1000).count()
 
     items = (
         query.order_by(desc(Patient.created_at))
@@ -173,11 +175,20 @@ def get_today_stats(db: Session):
 def generate_patient_code(db: Session, year: int) -> str:
     """Generate Patient ID using PostgreSQL sequence — never MAX+1."""
     from sqlalchemy import text
+    from sqlalchemy.exc import ProgrammingError, OperationalError
     seq_name = f"patient_seq_{year}"
-    # Idempotent: create sequence if missing
-    db.execute(text(f"CREATE SEQUENCE IF NOT EXISTS {seq_name} START 1"))
-    result = db.execute(text(f"SELECT nextval('{seq_name}')"))
-    seq_val = result.scalar()
+    
+    try:
+        # Fast path: try to get nextval directly (works 99.9% of the time)
+        result = db.execute(text(f"SELECT nextval('{seq_name}')"))
+        seq_val = result.scalar()
+    except (ProgrammingError, OperationalError):
+        db.rollback()
+        # Slow path: create sequence if it doesn't exist (first run or new year)
+        db.execute(text(f"CREATE SEQUENCE IF NOT EXISTS {seq_name} START 1"))
+        result = db.execute(text(f"SELECT nextval('{seq_name}')"))
+        seq_val = result.scalar()
+        
     year_short = str(year)[-2:]
     padded = str(seq_val).zfill(4)
     return f"PAT{year_short}{padded}"

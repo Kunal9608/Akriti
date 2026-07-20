@@ -31,9 +31,10 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
 
 
 async def value_error_handler(request: Request, exc: ValueError):
+    logger.exception(f"Validation error (ValueError) on {request.method} {request.url}: {exc}")
     return JSONResponse(
         status_code=422,
-        content={"detail": str(exc), "message": str(exc)},
+        content={"detail": "A validation error occurred. Please check your inputs.", "message": "Validation Error"},
     )
 
 

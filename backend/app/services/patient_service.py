@@ -81,7 +81,7 @@ def create_patient(db: Session, payload: PatientCreate, current_user_id: uuid.UU
         doc = db.query(Doctor).filter(Doctor.id == payload.doctor_id).first()
         if doc:
             commission_pct = float(doc.commission_pct)
-            commission_amount = float(effective_total) * (commission_pct / 100.0)
+            commission_amount = round(float(effective_total) * (commission_pct / 100.0), 2)
 
     patient = patient_repo.create_patient(
         db,
@@ -277,6 +277,57 @@ def list_patients(db: Session, current_user, **kwargs) -> dict:
         "page_size": page_size,
         "total_pages": total_pages,
     }
+
+
+def export_patients_csv(db: Session, date_from: Optional[date], date_to: Optional[date]):
+    from fastapi.responses import StreamingResponse
+    import io
+    import csv
+    from backend.app.models.patient import Patient
+
+    query = db.query(Patient).filter(Patient.deleted_at.is_(None))
+    if date_from:
+        start_dt = datetime.combine(date_from, datetime.min.time())
+        query = query.filter(Patient.created_at >= start_dt)
+    if date_to:
+        end_dt = datetime.combine(date_to, datetime.max.time())
+        query = query.filter(Patient.created_at <= end_dt)
+
+    def iter_csv():
+        output = io.StringIO()
+        writer = csv.writer(output)
+        writer.writerow(['Patient ID', 'Name', 'Date', 'Total Bill', 'Discount', 'Net Paid', 'Due', 'Status', 'Payment Mode'])
+        yield output.getvalue()
+        output.seek(0)
+        output.truncate(0)
+
+        # yield_per prevents loading all rows into memory simultaneously
+        for p in query.yield_per(1000):
+            disc = float(p.discount_amount or 0)
+            net_paid = float(p.amount_paid or 0)
+            due = float(p.amount_due or 0)
+            date_str = p.created_at.strftime('%d/%m/%Y') if p.created_at else ''
+            
+            writer.writerow([
+                p.patient_code or '',
+                p.name or '',
+                date_str,
+                float(p.total_amount or 0),
+                disc,
+                net_paid,
+                due,
+                p.status.value if hasattr(p.status, 'value') else str(p.status) if p.status else '',
+                p.payment_mode or ''
+            ])
+            yield output.getvalue()
+            output.seek(0)
+            output.truncate(0)
+
+    filename = f"revenue_{date_from or 'all'}_to_{date_to or 'all'}.csv"
+    headers = {
+        'Content-Disposition': f'attachment; filename="{filename}"'
+    }
+    return StreamingResponse(iter_csv(), media_type="text/csv", headers=headers)
 
 
 def generate_qr_payload(db: Session, patient_id: uuid.UUID) -> str:

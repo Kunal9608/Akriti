@@ -29,13 +29,17 @@ engine_kwargs = {
 
 if not is_sqlite:
     engine_kwargs.update({
-        "pool_size": 5,
-        "max_overflow": 2,
+        "pool_size": 2,
+        "max_overflow": 5,
         "pool_timeout": 30,
-        "pool_recycle": 1800,  # Recycle every 30m to prevent stale sockets/leaks on Supabase
+        "pool_recycle": 300,  # Recycle every 5m to prevent stale sockets/leaks on Supabase
         "pool_pre_ping": True,
         "pool_use_lifo": True, # Reuse most recently used connections first to allow idle connections to be closed
         "connect_args": {
+            "keepalives": 1,
+            "keepalives_idle": 30,
+            "keepalives_interval": 10,
+            "keepalives_count": 5,
             # Statement timeout: 15s, Lock timeout: 5s, Idle in transaction timeout: 30s
             "options": "-c statement_timeout=15000 -c lock_timeout=5000 -c idle_in_transaction_session_timeout=30000"
         }

@@ -24,6 +24,8 @@ logger = logging.getLogger(__name__)
 # In-memory fallback for lockouts if Redis is not available
 _fail_counts: dict = {}
 _lockouts: dict = {}
+_otp_req_counts: dict = {}
+_otp_fail_counts: dict = {}
 
 
 def _redis_incr_fail(email: str) -> int:
@@ -154,13 +156,22 @@ def request_otp(db: Session, email: str, purpose: str, ip: str) -> bool:
 
     # Rate limiting: max 3 OTPs per 10 min per email
     r = get_redis()
-    rl_key = f"otp_rate:{email}"
     if r:
+        rl_key = f"otp_rate:{email}"
         count = r.get(rl_key)
         if count and int(count) >= 3:
             raise PermissionError("Too many OTP requests. Please wait 10 minutes.")
         r.incr(rl_key)
         r.expire(rl_key, 600)
+    else:
+        # In-memory fallback
+        now = datetime.now()
+        reqs = _otp_req_counts.get(email, [])
+        reqs = [t for t in reqs if (now - t).total_seconds() < 600]
+        if len(reqs) >= 3:
+            raise PermissionError("Too many OTP requests. Please wait 10 minutes.")
+        reqs.append(now)
+        _otp_req_counts[email] = reqs
 
     user = user_repo.get_by_email(db, email)
     if not user:
@@ -189,14 +200,22 @@ def request_otp(db: Session, email: str, purpose: str, ip: str) -> bool:
     }
     event_type = event_type_map.get(purpose, "otp")
 
-    # Send notification in background thread
-    import threading
-    t = threading.Thread(
-        target=notification_service.notify,
-        args=(event_type, email, {"otp": otp, "name": user.name}),
-        daemon=True
-    )
-    t.start()
+    # Send notification synchronously so failures throw a 503 instead of silent failing
+    try:
+        notification_service.notify(event_type, email, {"otp": otp, "name": user.name})
+    except Exception as e:
+        logger.error(f"Failed to send OTP to {email}: {e}")
+        # Delete the unused OTP request if sending failed
+        db.delete(otp_obj)
+        db.commit()
+        raise PermissionError("Failed to send OTP. Please check service configuration.")
+        
+    # Reset OTP failure counter for this email
+    if r:
+        r.delete(f"otp_fail:{email}")
+    else:
+        _otp_fail_counts.pop(email, None)
+
     return True
 
 
@@ -222,6 +241,28 @@ def verify_otp_code(db: Session, email: str, otp_code: str, purpose: str,
 
     if not otp_obj or not verify_otp(otp_code, otp_obj.otp_hash):
         session_repo.record_login(db, email, "bad_otp", ip or "0.0.0.0", user_agent)
+        
+        # Track OTP failures to prevent brute-forcing
+        r = get_redis()
+        fail_count = 0
+        if r:
+            fail_key = f"otp_fail:{email}"
+            fail_count = r.incr(fail_key)
+            r.expire(fail_key, 300)
+        else:
+            fail_count = _otp_fail_counts.get(email, 0) + 1
+            _otp_fail_counts[email] = fail_count
+            
+        if fail_count >= 3:
+            if otp_obj:
+                otp_obj.used_at = now  # Invalidate the current OTP request
+            _redis_set_lockout(email)  # Lock the user out for 15 minutes
+            user = user_repo.get_by_email(db, email)
+            if user:
+                user.is_locked = True
+            db.commit()
+            raise PermissionError("Too many incorrect OTP attempts. Account locked for 15 minutes.")
+            
         db.commit()
         raise ValueError("Invalid or expired OTP")
 

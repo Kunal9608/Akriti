@@ -6,6 +6,8 @@
   <meta name="robots" content="noindex, nofollow">
 
   <title>Settings — Akriti Diagnostics Center</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🧪</text></svg>">
+
   <link rel="stylesheet" href="/assets/css/tokens.css">
   <link rel="stylesheet" href="/assets/css/components.css">
   <link rel="stylesheet" href="/assets/css/skeleton.css">
@@ -37,11 +39,6 @@
         </button>
         <h1 class="page-heading" id="topbar-title">Settings</h1>
       </div>
-      <div class="topbar-right">
-        <button class="topbar-btn" data-theme-toggle aria-label="Toggle theme">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></svg>
-        </button>
-      </div>
     </header>
     <div class="offline-banner" role="status"></div>
 
@@ -54,9 +51,10 @@
       </div>
 
       <div class="settings-grid">
-        <!-- Lab Settings -->
-        <div class="settings-section">
-          <div class="settings-section-title">Lab Configuration</div>
+        <div style="display:flex;flex-direction:column;gap:24px">
+          <!-- Lab Settings -->
+          <div class="settings-section">
+            <div class="settings-section-title">Lab Configuration</div>
           <form id="lab-settings-form" novalidate>
             <div class="form-field mb-4">
               <label class="form-label" for="lab-name">Lab Name <span class="required">*</span></label>
@@ -86,7 +84,57 @@
           </form>
         </div>
 
-        <div style="display:flex;flex-direction:column;gap:24px">
+        <!-- Danger Zone -->
+        <div class="settings-section" style="border: 1px solid var(--color-error)">
+          <div class="settings-section-title" style="color: var(--color-error)">Danger Zone</div>
+          <p class="text-sm text-muted mb-4">Permanently hard-deletes patient records, test bookings, and report PDF files. Enter your account password and the OTP sent to your registered email to confirm.</p>
+          
+          <div class="form-field mb-4">
+            <label class="form-label" for="safety-password">Account Password</label>
+            <div style="position: relative;">
+              <input class="form-input" type="password" id="safety-password" placeholder="Enter your password" style="padding-right: 40px;">
+              <button type="button" class="password-toggle-btn" data-target="safety-password" style="position: absolute; right: 12px; top: 50%; transform: translateY(-50%); background: none; border: none; padding: 0; cursor: pointer; color: var(--color-ink-muted); display: flex; align-items: center;" aria-label="Show password">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+              </button>
+            </div>
+          </div>
+
+          <button type="button" class="btn" id="request-delete-otp-btn" style="background:var(--color-ink-muted);border-color:var(--color-ink-muted);color:#fff;width:100%;margin-bottom:16px">
+            Request Verification OTP
+          </button>
+
+          <div id="otp-section" style="display:none">
+            <div class="form-field mb-4">
+              <label class="form-label" for="delete-otp">Email Verification OTP</label>
+              <input class="form-input" type="text" id="delete-otp" placeholder="Enter 6-digit OTP code" maxlength="6" inputmode="numeric" autocomplete="one-time-code">
+            </div>
+            <button type="button" class="btn btn-danger" id="delete-everything-btn" style="background:var(--color-error);border-color:var(--color-error);color:#fff;width:100%">
+              Confirm Wipe & Download Backup
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div style="display:flex;flex-direction:column;gap:24px">
+          <!-- Preferences & Session -->
+          <div class="settings-section">
+            <div class="settings-section-title">Preferences & Session</div>
+            <div class="provider-row">
+              <div>
+                <div class="fw-600 text-sm">Dark Mode</div>
+                <div class="text-xs text-muted">Toggle application theme</div>
+              </div>
+              <button class="toggle" data-theme-toggle aria-label="Toggle theme"></button>
+            </div>
+            <div class="provider-row">
+              <div>
+                <div class="fw-600 text-sm">Sign Out</div>
+                <div class="text-xs text-muted">End your current session</div>
+              </div>
+              <button class="btn btn-sm btn-ghost" id="logout-btn" style="color:var(--color-error)">Sign Out</button>
+            </div>
+          </div>
+
           <!-- Notification Providers -->
           <div class="settings-section">
             <div class="settings-section-title">Notification Providers</div>
@@ -122,35 +170,6 @@
             </div>
           </div>
 
-          <!-- Danger Zone -->
-          <div class="settings-section" style="border: 1px solid var(--color-error)">
-            <div class="settings-section-title" style="color: var(--color-error)">Danger Zone</div>
-            <p class="text-sm text-muted mb-4">Permanently hard-deletes patient records, test bookings, and report PDF files. Enter your account password and the OTP sent to your registered email to confirm.</p>
-            
-            <div class="form-field mb-4">
-              <label class="form-label" for="safety-password">Account Password</label>
-              <div style="position: relative;">
-                <input class="form-input" type="password" id="safety-password" placeholder="Enter your password" style="padding-right: 40px;">
-                <button type="button" class="password-toggle-btn" data-target="safety-password" style="position: absolute; right: 12px; top: 50%; transform: translateY(-50%); background: none; border: none; padding: 0; cursor: pointer; color: var(--color-ink-muted); display: flex; align-items: center;" aria-label="Show password">
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
-                </button>
-              </div>
-            </div>
-
-            <button type="button" class="btn" id="request-delete-otp-btn" style="background:var(--color-ink-muted);border-color:var(--color-ink-muted);color:#fff;width:100%;margin-bottom:16px">
-              Request Verification OTP
-            </button>
-
-            <div id="otp-section" style="display:none">
-              <div class="form-field mb-4">
-                <label class="form-label" for="delete-otp">Email Verification OTP</label>
-                <input class="form-input" type="text" id="delete-otp" placeholder="Enter 6-digit OTP code" maxlength="6" inputmode="numeric" autocomplete="one-time-code">
-              </div>
-              <button type="button" class="btn btn-danger" id="delete-everything-btn" style="background:var(--color-error);border-color:var(--color-error);color:#fff;width:100%">
-                Confirm Wipe & Download Backup
-              </button>
-            </div>
-          </div>
         </div>
       </div>
 

@@ -93,6 +93,7 @@ def get_login_history(db: Session, user_id: Optional[uuid.UUID] = None,
         q = q.filter(LoginHistory.user_id == user_id)
     if outcome:
         q = q.filter(LoginHistory.outcome == outcome)
-    total = q.count()
+    count_q = q.limit(1000).subquery()
+    total = db.query(count_q).count()
     items = q.order_by(desc(LoginHistory.attempted_at)).offset((page - 1) * page_size).limit(page_size).all()
     return items, total
