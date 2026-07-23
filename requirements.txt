@@ -31,3 +31,4 @@ starlette>=0.37.2
 
 argon2-cffi>=25.1.0
 google-genai>=2.12.1
+groq>=0.13.0

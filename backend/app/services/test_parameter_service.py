@@ -33,7 +33,7 @@ def save_test_parameters(db: Session, test_id: uuid.UUID, payload: TestParameter
 
 
 def submit_report_entry(db: Session, patient_id: uuid.UUID, payload: ReportEntrySubmit,
-                        user_id: uuid.UUID, background_tasks, partial_release: bool = False) -> Dict[str, Any]:
+                        user_id: uuid.UUID, background_tasks, partial_release: bool = False, letterhead_mode: bool = False) -> Dict[str, Any]:
     """FR-2.2 (§2.4) — Save entered result parameters and trigger background PDF generation."""
     patient = patient_repo.get_by_id(db, patient_id)
     if not patient:
@@ -74,7 +74,8 @@ def submit_report_entry(db: Session, patient_id: uuid.UUID, payload: ReportEntry
         patient_id=patient_id,
         user_id=user_id,
         test_notes_map=test_notes_map,
-        partial_release=partial_release
+        partial_release=partial_release,
+        letterhead_mode=letterhead_mode
     )
 
     return {
@@ -86,12 +87,12 @@ def submit_report_entry(db: Session, patient_id: uuid.UUID, payload: ReportEntry
     }
 
 
-def _background_generate_report(patient_id: uuid.UUID, user_id: uuid.UUID, test_notes_map: Dict[str, str], partial_release: bool = False):
+def _background_generate_report(patient_id: uuid.UUID, user_id: uuid.UUID, test_notes_map: Dict[str, str], partial_release: bool = False, letterhead_mode: bool = False):
     """Background task wrapper to run inside a fresh DB session."""
     from backend.app.core.db import SessionLocal
     db = SessionLocal()
     try:
-        report_service.generate_and_save_structured_report(db, patient_id, user_id, test_notes_map, partial_release=partial_release)
+        report_service.generate_and_save_structured_report(db, patient_id, user_id, test_notes_map, partial_release=partial_release, letterhead_mode=letterhead_mode)
     except Exception as e:
         import traceback
         traceback.print_exc()

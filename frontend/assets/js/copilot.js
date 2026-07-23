@@ -4,6 +4,17 @@
 const Copilot = (() => {
   let isInit = false;
 
+  function formatMarkdown(str) {
+    if (!str) return '';
+    return str
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+      .replace(/\*(.*?)\*/g, '<em>$1</em>')
+      .replace(/`([^`]+)`/g, '<code style="background:rgba(0,0,0,0.08);padding:2px 6px;border-radius:4px;font-family:monospace;font-weight:700;">$1</code>');
+  }
+
   const COPILOT_ICON = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path><path d="M9 9h6"></path><path d="M9 13h6"></path></svg>`;
   const SEND_ICON = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>`;
 
@@ -17,6 +28,7 @@ const Copilot = (() => {
       if (!topbarRight) {
         topbarRight = document.createElement('div');
         topbarRight.className = 'topbar-right';
+        topbarRight.style.marginLeft = 'auto'; // Ensure it floats right
         topbar.appendChild(topbarRight);
       }
       const copilotBtn = document.createElement('button');
@@ -93,9 +105,10 @@ const Copilot = (() => {
     const container = document.getElementById('copilot-messages');
     const msg = document.createElement('div');
     msg.className = `copilot-msg ${role}`;
-    msg.textContent = text; // basic text for now
+    msg.textContent = text;
     container.appendChild(msg);
     container.scrollTop = container.scrollHeight;
+    return msg;
   }
 
   async function sendMessage() {
@@ -106,25 +119,20 @@ const Copilot = (() => {
     
     input.disabled = true;
     sendBtn.disabled = true;
-    
 
     appendMessage('user', text);
     input.value = '';
-    
-    // Create an empty system message to stream into
-    const container = document.getElementById('copilot-messages');
-    const msg = document.createElement('div');
-    msg.className = 'copilot-msg system';
-    msg.textContent = 'Processing request';
-    container.appendChild(msg);
-    container.scrollTop = container.scrollHeight;
-    
-    let dots = 0;
+    input.style.height = 'auto';
+
+    const msg = appendMessage('system', 'Thinking');
+    let dotCount = 0;
     const loadingInterval = setInterval(() => {
-      dots = (dots + 1) % 4;
-      msg.textContent = 'Processing request' + '.'.repeat(dots);
+      dotCount = (dotCount + 1) % 4;
+      msg.textContent = 'Thinking' + '.'.repeat(dotCount);
     }, 400);
-    
+
+    let isFirstChunk = true;
+    let rawText = '';
     try {
       const token = localStorage.getItem('akriti_token') || '';
       const response = await fetch('/api/v1/copilot/chat', {
@@ -144,7 +152,6 @@ const Copilot = (() => {
       
       const reader = response.body.getReader();
       const decoder = new TextDecoder();
-      let isFirstChunk = true;
       
       while (true) {
         const { value, done } = await reader.read();
@@ -160,7 +167,7 @@ const Copilot = (() => {
             
             if (isFirstChunk) {
                clearInterval(loadingInterval);
-               msg.textContent = '';
+               msg.innerHTML = '';
                isFirstChunk = false;
             }
             
@@ -171,7 +178,9 @@ const Copilot = (() => {
               // Fallback to raw text if parsing fails
             }
             
-            msg.textContent += textToAppend;
+            rawText += textToAppend;
+            msg.innerHTML = formatMarkdown(rawText);
+            const container = document.getElementById('copilot-messages');
             container.scrollTop = container.scrollHeight;
           }
         }

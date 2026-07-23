@@ -118,6 +118,38 @@
     .report-card-meta { display: flex; flex-direction: column; gap: 2px; }
     .report-card-name { font-size: 12px; font-weight: 600; color: var(--color-ink); word-break: break-all; }
     .report-card-sub  { font-size: 11px; color: var(--color-ink-faint); }
+
+    /* Responsive Modal Table for Mobile */
+    @media (max-width: 640px) {
+      .test-param-table table, .test-param-table thead, .test-param-table tbody, .test-param-table th, .test-param-table td, .test-param-table tr {
+        display: block;
+      }
+      .test-param-table thead tr {
+        position: absolute; top: -9999px; left: -9999px;
+      }
+      .test-param-table tr { 
+        border-bottom: 2px solid rgba(0,0,0,0.06) !important; 
+        padding-bottom: 12px; 
+        margin-bottom: 12px; 
+      }
+      .test-param-table td {
+        border: none;
+        position: relative;
+        padding: 8px 0px 4px 0px !important;
+        width: 100% !important;
+        text-align: left !important;
+      }
+      .test-param-table td::before {
+        content: attr(data-label);
+        display: block;
+        font-size: 11px;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        color: var(--color-ink-muted);
+        margin-bottom: 4px;
+      }
+    }
   </style>
 </head>
 <body>
@@ -169,6 +201,10 @@
         <button class="btn btn-ghost btn-sm" id="clear-filters-btn" style="flex-shrink:0">
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
           Clear
+        </button>
+        <button class="btn btn-primary btn-sm" id="export-csv-btn" style="flex-shrink:0; margin-left:auto;">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+          Export CSV
         </button>
       </div>
 
@@ -1236,7 +1272,7 @@
                 </div>
               </div>
             </div>
-            <div style="padding:16px 18px">
+            <div style="padding:16px 18px" class="test-param-table">
               <table style="width:100%;border-collapse:collapse;font-size:13px">
                 <thead>
                   <tr style="border-bottom:1px solid var(--color-border);color:var(--color-ink-muted);font-size:11px;text-transform:uppercase;letter-spacing:0.04em">
@@ -1254,29 +1290,29 @@
 
                     let inputHtml = '';
                     if (p.input_type === 'numeric') {
-                      inputHtml = `<input type="number" step="any" class="form-input param-input ${isAbn ? 'border-danger' : ''}" data-param-id="${p.id}" data-test-id="${group.test_id}" data-type="numeric" data-low="${p.reference_low ?? ''}" data-high="${p.reference_high ?? ''}" value="${escapeHtml(val)}" placeholder="e.g. ${p.reference_low !== null && p.reference_high !== null ? ((p.reference_low + p.reference_high)/2).toFixed(1) : 'Value'}" style="height:34px;font-size:13px;font-weight:600">`;
+                      inputHtml = `<input type="number" step="any" class="form-input param-input ${isAbn ? 'border-danger' : ''}" data-param-id="${p.id}" data-test-id="${group.test_id}" data-type="numeric" data-low="${p.reference_low ?? ''}" data-high="${p.reference_high ?? ''}" value="${escapeHtml(val)}" placeholder="e.g. ${p.reference_low !== null && p.reference_high !== null ? ((p.reference_low + p.reference_high)/2).toFixed(1) : 'Value'}" style="height:34px;font-size:13px;font-weight:600;width:100%;">`;
                     } else if (p.input_type === 'dropdown' && Array.isArray(p.dropdown_options) && p.dropdown_options.length > 0) {
-                      inputHtml = `<select class="form-input param-input" data-param-id="${p.id}" data-test-id="${group.test_id}" data-type="dropdown" style="height:34px;font-size:13px;font-weight:600">
+                      inputHtml = `<select class="form-input param-input" data-param-id="${p.id}" data-test-id="${group.test_id}" data-type="dropdown" style="height:34px;font-size:13px;font-weight:600;width:100%;">
                         <option value="">-- Select --</option>
                         ${p.dropdown_options.map(o => `<option value="${escapeHtml(o)}" ${val === o ? 'selected' : ''}>${escapeHtml(o)}</option>`).join('')}
                       </select>`;
                     } else {
-                      inputHtml = `<input type="text" class="form-input param-input" data-param-id="${p.id}" data-test-id="${group.test_id}" data-type="text" value="${escapeHtml(val)}" placeholder="Enter finding..." style="height:34px;font-size:13px;font-weight:600">`;
+                      inputHtml = `<input type="text" class="form-input param-input" data-param-id="${p.id}" data-test-id="${group.test_id}" data-type="text" value="${escapeHtml(val)}" placeholder="Enter finding..." style="height:34px;font-size:13px;font-weight:600;width:100%;">`;
                     }
 
                     return `
                       <tr style="border-bottom:1px solid rgba(0,0,0,0.04)">
-                        <td style="padding:12px 6px">
+                        <td data-label="Parameter" style="padding:12px 6px">
                           <strong style="color:var(--color-ink)">${escapeHtml(p.parameter_name)}</strong>
                           ${p.unit ? `<span style="font-size:11px;color:var(--color-ink-muted);margin-left:4px">(${escapeHtml(p.unit)})</span>` : ''}
                         </td>
-                        <td style="padding:12px 6px;color:var(--color-ink-muted);font-size:12px">
+                        <td data-label="Reference Range" style="padding:12px 6px;color:var(--color-ink-muted);font-size:12px">
                           ${p.reference_text ? escapeHtml(p.reference_text) : (p.reference_low !== null && p.reference_high !== null ? `${p.reference_low} - ${p.reference_high} ${p.unit || ''}` : '—')}
                         </td>
-                        <td style="padding:12px 6px">
+                        <td data-label="Result Value" style="padding:12px 6px">
                           ${inputHtml}
                         </td>
-                        <td style="padding:12px 6px;text-align:center">
+                        <td data-label="Flag" style="padding:12px 6px;text-align:center">
                           <label style="display:inline-flex;align-items:center;gap:5px;cursor:pointer;user-select:none;padding:4px 8px;border-radius:var(--radius-pill);background:${isAbn ? 'rgba(192,57,43,0.12)' : 'transparent'};transition:background 0.2s" class="flag-label-${p.id}">
                             <input type="checkbox" class="param-abnormal-chk" data-param-id="${p.id}" ${isAbn ? 'checked' : ''} style="cursor:pointer">
                             <span style="font-size:11px;font-weight:700;color:${isAbn ? '#C0392B' : 'var(--color-ink-faint)'}" class="flag-text-${p.id}">${isAbn ? 'ABNORMAL' : 'Normal'}</span>
@@ -1460,6 +1496,63 @@
   }
 
   document.getElementById('data-entry-submit-btn').addEventListener('click', () => executeReportEntrySubmission(false));
+
+  // ── Export CSV ─────────────────────────────────────────────────────────────
+  const exportBtn = document.getElementById('export-csv-btn');
+  if (exportBtn) {
+    exportBtn.addEventListener('click', async () => {
+      const from = document.getElementById('filter-from').value;
+      const to   = document.getElementById('filter-to').value;
+      const origHtml = exportBtn.innerHTML;
+      exportBtn.innerHTML = 'Exporting...';
+      exportBtn.disabled = true;
+      try {
+        const token = localStorage.getItem('akriti_token') || localStorage.getItem('token');
+        let exportUrl = `/api/v1/patients/export?`;
+        if (from) exportUrl += `date_from=${from}&`;
+        if (to) exportUrl += `date_to=${to}`;
+        
+        const headers = {};
+        if (token) headers['Authorization'] = `Bearer ${token}`;
+
+        let res = await fetch(exportUrl, {
+          credentials: 'include',
+          headers
+        });
+        
+        if (res.status === 401) {
+          try {
+            await API.get('/api/v1/auth/me', { silent: true });
+            const newToken = localStorage.getItem('akriti_token') || localStorage.getItem('token');
+            if (newToken) headers['Authorization'] = `Bearer ${newToken}`;
+            res = await fetch(exportUrl, { credentials: 'include', headers });
+          } catch (e) {
+            // Let it fall through to the ok check
+          }
+        }
+        
+        if (!res.ok) {
+          const errData = await res.json().catch(() => ({}));
+          throw new Error(errData.detail || "Export failed");
+        }
+        
+        const blob = await res.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `patients_${from || 'all'}_to_${to || 'all'}.csv`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        window.URL.revokeObjectURL(url);
+      } catch (err) { 
+        Toast.show(err.message || 'Failed to export', 'error'); 
+      } finally {
+        exportBtn.innerHTML = origHtml;
+        exportBtn.disabled = false;
+      }
+    });
+  }
 })();
 </script>
 </body>

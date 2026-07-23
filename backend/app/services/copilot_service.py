@@ -422,7 +422,7 @@ CRITICAL LIVE DATA (Database Records)
             else:
                 injected_data.append(f"[Phone {phone}]: No patients found with this number.")
 
-    elif any(k in msg_lower for k in ["patient", "patients", "record", "list"]):
+    elif any(k in msg_lower for k in ["patient", "patients"]):
         # General patient query
         if current_user.role == RoleEnum.staff and current_user.view_scope != ViewScopeEnum.all:
             query = db.query(Patient).filter(Patient.collected_by == current_user.id)
@@ -498,8 +498,7 @@ CRITICAL LIVE DATA (Database Records)
     # 3. ADMIN ONLY: STAFF, DOCTORS, REVENUE, DASHBOARD
     if any(k in msg_lower for k in ["staff", "employee", "team", "doctor", "radiologist", "pathologist", "revenue", "earning", "collection", "money", "today", "yesterday", "month", "total", "dashboard", "summary", "overview", "expense", "expenses", "profit", "loss", "net"]):
         if current_user.role != RoleEnum.admin:
-            # Explicitly inject unauthorized so the LLM doesn't guess
-            injected_data.append("Error: User is not authorized to access staff, doctor, or revenue information.")
+            injected_data.append("Error: User is not authorized to access administrative staff, doctor, or revenue information.")
         else:
             if any(k in msg_lower for k in ["staff", "employee", "team"]):
                 words = [w for w in msg_lower.split() if len(w) > 3 and w not in ["staff", "employee", "team", "show", "details", "who", "is", "the"]]
@@ -555,7 +554,6 @@ CRITICAL LIVE DATA (Database Records)
                 try:
                     from dateutil.parser import parse
                     parsed_date = parse(message, fuzzy=True)
-                    # If a valid date was found in the text, get that day's revenue
                     specific_start = datetime.combine(parsed_date.date(), time.min)
                     specific_end = specific_start + timedelta(days=1)
                     specific_rev = db.query(func.sum(Patient.amount_paid)).filter(Patient.created_at >= specific_start, Patient.created_at < specific_end).scalar() or 0
@@ -565,6 +563,42 @@ CRITICAL LIVE DATA (Database Records)
                     pass
                     
                 injected_data.append(rev_str)
+
+    # 4. DEDICATED AUDIT LOGS MODULE (Admin Only)
+    audit_keywords = [
+        "audit", "log", "logs", "activity", "activities", "history", 
+        "delete", "deleted", "deletion", "change", "changed", "changes",
+        "update", "updated", "create", "created", "who", "event", "events",
+        "track", "tracking", "action", "actions", "entry", "entries", "security"
+    ]
+    if any(k in msg_lower for k in audit_keywords) or (current_user.role == RoleEnum.admin and any(k in msg_lower for k in ["show", "list", "record", "records", "all", "what", "recent"])):
+        if current_user.role != RoleEnum.admin:
+            injected_data.append("SECURITY POLICY NOTICE: The user is a Staff member and is NOT permitted to access or view audit logs, security records, or activity history. You MUST respond clearly with: 'You do not have permission to access audit logs.' (or in Hindi: 'Aapke paas audit logs dekhne ki permission nahi hai.')")
+        else:
+            from backend.app.models.audit_log import AuditLog
+            logs = db.query(AuditLog).order_by(AuditLog.occurred_at.desc()).limit(25).all()
+            if logs:
+                log_items = []
+                for l in logs:
+                    actor_name = l.actor.name if l.actor else "System/Unknown"
+                    time_str = l.occurred_at.strftime('%Y-%m-%d %H:%M:%S') if l.occurred_at else "N/A"
+                    details = f"Action: {l.action}"
+                    if l.entity_type:
+                        details += f" | Entity: {l.entity_type}"
+                    if l.entity_id:
+                        details += f" (ID: {l.entity_id})"
+                    details += f" | Performed By: {actor_name}"
+                    if l.ip_address:
+                        details += f" | IP: {l.ip_address}"
+                    if l.before_value:
+                        details += f" | Before: {l.before_value}"
+                    if l.after_value:
+                        details += f" | After: {l.after_value}"
+                    log_items.append(f"[{time_str}] {details}")
+                injected_data.append(f"[Audit Logs & System Activity Records (Top {len(logs)} Entries)]:\n" + "\n".join(log_items))
+                injected_data.append("SPECIAL INSTRUCTION: The user has requested to see the audit logs. You MUST output the above audit log records in a readable list format.")
+            else:
+                injected_data.append("[Audit Logs]: No audit log records found in the database system yet. Reply exactly with: 'No audit logs are available yet.' Do not reply Insufficient info.")
 
     if injected_data:
         system_prompt += "\n\nCRITICAL LIVE DATA (Use this to answer the user's query):\n"

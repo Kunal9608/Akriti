@@ -183,7 +183,7 @@ def verify_report(db: Session, report_id: uuid.UUID, short_hash: Optional[str] =
     }
 
 
-def generate_and_save_structured_report(db: Session, patient_id: uuid.UUID, uploader_id: uuid.UUID, test_notes_map: Optional[dict] = None, partial_release: bool = False) -> dict:
+def generate_and_save_structured_report(db: Session, patient_id: uuid.UUID, uploader_id: uuid.UUID, test_notes_map: Optional[dict] = None, partial_release: bool = False, letterhead_mode: bool = False) -> dict:
     """Generate official PDF from entered patient_test_results and save as new version with source='auto'."""
     from backend.app.models.patient_test_result import PatientTestResult
     from backend.app.services.structured_report_pdf import generate_structured_report_pdf
@@ -242,7 +242,7 @@ def generate_and_save_structured_report(db: Session, patient_id: uuid.UUID, uplo
             "parameters": params_list
         })
 
-    pdf_bytes = generate_structured_report_pdf(patient, booked_tests_data)
+    pdf_bytes = generate_structured_report_pdf(patient, booked_tests_data, letterhead_mode=letterhead_mode)
     filename = f"Report_{patient.patient_code}_Structured.pdf"
 
     # Use a dummy BackgroundTasks instance or direct execution since we are already inside background task or sync call

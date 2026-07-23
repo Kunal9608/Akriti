@@ -75,9 +75,9 @@ const Shell = (() => {
     {
       group: 'Admin',
       items: [
+        { href: '/profile',                  label: 'My Profile',       icon: 'person' },
         { href: '/admin/audit-log',          label: 'Audit Log',        icon: 'shield' },
         { href: '/admin/settings',           label: 'Settings',         icon: 'settings' },
-        { href: '/profile',                  label: 'My Profile',       icon: 'person' },
       ],
     },
   ];

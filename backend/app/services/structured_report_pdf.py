@@ -14,7 +14,7 @@ from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib.enums import TA_CENTER, TA_LEFT, TA_RIGHT
 
 
-def generate_structured_report_pdf(patient, booked_tests_data, verification_hash: str = "") -> bytes:
+def generate_structured_report_pdf(patient, booked_tests_data, verification_hash: str = "", letterhead_mode: bool = False) -> bytes:
     """
     Generate the official Akriti Diagnostics Center patient diagnostic report PDF.
     `booked_tests_data` format:
@@ -199,9 +199,13 @@ def generate_structured_report_pdf(patient, booked_tests_data, verification_hash
     story = []
 
     # 1. Header / Letterhead
-    story.append(Paragraph("AKRITI DIAGNOSTICS CENTER", lab_title_style))
-    story.append(Paragraph("PATHOLOGY & DIGITAL X-RAY CLINICAL LABORATORY · ISO 9001:2015 CERTIFIED", lab_subtitle_style))
-    story.append(Paragraph("Opposite City Civil Hospital, Main Road, New Delhi – 110001 | Phone: +91 98765 43210 / 011-23456789 | Email: reports@akritidiagnostics.com", lab_address_style))
+    if not letterhead_mode:
+        story.append(Paragraph("AKRITI DIAGNOSTICS CENTER", lab_title_style))
+        story.append(Paragraph("PATHOLOGY & DIGITAL X-RAY CLINICAL LABORATORY · ISO 9001:2015 CERTIFIED", lab_subtitle_style))
+        story.append(Paragraph("Opposite City Civil Hospital, Main Road, New Delhi – 110001 | Phone: +91 98765 43210 / 011-23456789 | Email: reports@akritidiagnostics.com", lab_address_style))
+    else:
+        # Pre-printed letterhead mode: Leave blank space at the top for the physical letterhead logo and details
+        story.append(Spacer(1, 80))
 
     # Banner block
     badge_table = Table([[Paragraph("OFFICIAL LABORATORY DIAGNOSTIC REPORT", report_badge_style)]], colWidths=[523])

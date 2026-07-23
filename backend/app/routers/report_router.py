@@ -316,7 +316,7 @@ def submit_report_entry(
 
     try:
         return test_parameter_service.submit_report_entry(
-            db, patient_id, submit_data, current_user.id, background_tasks, partial_release=partial_release
+            db, patient_id, submit_data, current_user.id, background_tasks, partial_release=partial_release, letterhead_mode=submit_data.letterhead_mode
         )
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))

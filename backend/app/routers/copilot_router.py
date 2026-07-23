@@ -57,10 +57,17 @@ async def chat_with_copilot(
     # )
     # ---------------------------------------------
     
-    # Initialize Gemini API
-    api_key = os.environ.get("GEMINI_API_KEY")
-    client = genai.Client(api_key=api_key)
-    
+    # Initialize Gemini API (Commented Out)
+    # api_key = os.environ.get("GEMINI_API_KEY")
+    # client = genai.Client(api_key=api_key)
+    # 
+    # system_prompt = build_copilot_context(request.message, current_user, db)
+
+    # Initialize Groq API
+    from groq import AsyncGroq
+    client = AsyncGroq(
+        api_key=os.environ.get("GROQ_API_KEY")
+    )
     system_prompt = build_copilot_context(request.message, current_user, db)
 
     async def event_generator():
@@ -88,19 +95,41 @@ async def chat_with_copilot(
             #             yield f"data: {json.dumps(clean_content)}\n\n"
             # ----------------------------------------
             
-            # Create stream using Gemini API
-            response_stream = await client.aio.models.generate_content_stream(
-                model='gemma-4-31b-it',
-                contents=request.message,
-                config=types.GenerateContentConfig(
-                    system_instruction=system_prompt,
-                )
+            # Create stream using Gemini API (Commented Out)
+            # response_stream = await client.aio.models.generate_content_stream(
+            #     model='gemma-4-31b-it',
+            #     contents=request.message,
+            #     config=types.GenerateContentConfig(
+            #         system_instruction=system_prompt,
+            #     )
+            # )
+            # 
+            # async for chunk in response_stream:
+            #     if chunk.text:
+            #         yield f"data: {json.dumps(chunk.text)}\n\n"
+            #         
+            # yield "data: [DONE]\n\n"
+
+            # Create stream using Groq API
+            response = await client.chat.completions.create(
+                model="llama-3.1-8b-instant",
+                messages=[
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": request.message}
+                ],
+                temperature=0.7,
+                max_tokens=2048,
+                stream=True,
             )
             
-            async for chunk in response_stream:
-                if chunk.text:
-                    yield f"data: {json.dumps(chunk.text)}\n\n"
-                    
+            async for chunk in response:
+                if not chunk.choices:
+                    continue
+                if chunk.choices[0].delta.content is not None:
+                    clean_content = chunk.choices[0].delta.content
+                    if clean_content:
+                        yield f"data: {json.dumps(clean_content)}\n\n"
+                        
             yield "data: [DONE]\n\n"
         except Exception as e:
             yield f"data: {json.dumps(f'[Error from AI: {str(e)}]')}\n\n"

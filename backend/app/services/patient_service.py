@@ -55,9 +55,11 @@ def create_patient(db: Session, payload: PatientCreate, current_user_id: uuid.UU
     sample_date = payload.sample_date or date.today()
     _check_duplicates(db, payload.mobile, sample_date, payload.test_ids)
 
-    total_amount = sum(price_map.values())
-    amount_paid = float(payload.amount_paid or 0)
-    discount_amount = float(payload.discount_amount or 0)
+    from decimal import Decimal
+
+    total_amount = Decimal(sum(price_map.values()))
+    amount_paid = Decimal(str(payload.amount_paid or 0))
+    discount_amount = Decimal(str(payload.discount_amount or 0))
 
     if discount_amount < 0:
         raise ValueError("Discount amount cannot be negative")
@@ -74,14 +76,14 @@ def create_patient(db: Session, payload: PatientCreate, current_user_id: uuid.UU
 
     estimated_report_date = payload.estimated_report_date or (sample_date + timedelta(days=1))
 
-    commission_pct = 0.0
-    commission_amount = 0.0
+    commission_pct = Decimal(0)
+    commission_amount = Decimal(0)
     if payload.doctor_id:
         from backend.app.models.doctor import Doctor
         doc = db.query(Doctor).filter(Doctor.id == payload.doctor_id).first()
         if doc:
-            commission_pct = float(doc.commission_pct)
-            commission_amount = round(float(effective_total) * (commission_pct / 100.0), 2)
+            commission_pct = Decimal(str(doc.commission_pct))
+            commission_amount = round(effective_total * (commission_pct / Decimal(100)), 2)
 
     patient = patient_repo.create_patient(
         db,
@@ -95,12 +97,12 @@ def create_patient(db: Session, payload: PatientCreate, current_user_id: uuid.UU
         collection_type=payload.collection_type,
         sample_date=sample_date,
         estimated_report_date=estimated_report_date,
-        total_amount=total_amount,
-        discount_amount=discount_amount,
-        amount_paid=amount_paid,
+        total_amount=float(total_amount),
+        discount_amount=float(discount_amount),
+        amount_paid=float(amount_paid),
         payment_mode=payload.payment_mode if amount_paid > 0 else None,
-        referred_doctor_commission_pct=commission_pct,
-        referred_doctor_commission_amount=commission_amount,
+        referred_doctor_commission_pct=float(commission_pct),
+        referred_doctor_commission_amount=float(commission_amount),
     )
 
     # Insert patient_tests with price snapshot
@@ -157,18 +159,20 @@ def update_patient(db: Session, patient_id: uuid.UUID, payload: PatientUpdate,
         _check_duplicates(db, new_mobile, new_sample_date, new_test_ids, exclude_patient_id=patient.id)
 
     # If tests changed, recompute total
+    from decimal import Decimal
+    
     if "test_ids" in update_data:
         price_map = test_repo.get_current_prices(db, update_data["test_ids"])
-        total_amount = sum(price_map.values())
+        total_amount = Decimal(sum(price_map.values()))
         patient_repo.delete_patient_tests(db, patient_id)
         for test_id in update_data.pop("test_ids"):
             patient_repo.add_patient_test(db, patient_id, test_id, price_map[str(test_id)])
-        update_data["total_amount"] = total_amount
+        update_data["total_amount"] = float(total_amount)
 
     # Validate payment
-    discount_amount = update_data.get("discount_amount", float(patient.discount_amount or 0))
-    amount_paid = update_data.get("amount_paid", float(patient.amount_paid or 0))
-    total = update_data.get("total_amount", float(patient.total_amount or 0))
+    discount_amount = Decimal(str(update_data.get("discount_amount", patient.discount_amount or 0)))
+    amount_paid = Decimal(str(update_data.get("amount_paid", patient.amount_paid or 0)))
+    total = Decimal(str(update_data.get("total_amount", patient.total_amount or 0)))
     if discount_amount < 0:
         raise ValueError("Discount amount cannot be negative")
     if discount_amount > total:
@@ -182,18 +186,18 @@ def update_patient(db: Session, patient_id: uuid.UUID, payload: PatientUpdate,
         new_total = update_data.get("total_amount") if "total_amount" in update_data else patient.total_amount
         new_discount = update_data.get("discount_amount") if "discount_amount" in update_data else patient.discount_amount
         
-        commission_pct = 0.0
-        commission_amount = 0.0
+        commission_pct = Decimal(0)
+        commission_amount = Decimal(0)
         if new_doc_id:
             from backend.app.models.doctor import Doctor
             doc = db.query(Doctor).filter(Doctor.id == new_doc_id).first()
             if doc:
-                commission_pct = float(doc.commission_pct)
-                effective_total = float(new_total or 0) - float(new_discount or 0)
-                commission_amount = float(effective_total) * (commission_pct / 100.0)
+                commission_pct = Decimal(str(doc.commission_pct))
+                effective_total = Decimal(str(new_total or 0)) - Decimal(str(new_discount or 0))
+                commission_amount = round(effective_total * (commission_pct / Decimal(100)), 2)
         
-        update_data["referred_doctor_commission_pct"] = commission_pct
-        update_data["referred_doctor_commission_amount"] = commission_amount
+        update_data["referred_doctor_commission_pct"] = float(commission_pct)
+        update_data["referred_doctor_commission_amount"] = float(commission_amount)
 
     new_status = update_data.get("status")
     if new_status and new_status != patient.status:
@@ -283,15 +287,22 @@ def export_patients_csv(db: Session, date_from: Optional[date], date_to: Optiona
     from fastapi.responses import StreamingResponse
     import io
     import csv
+    from sqlalchemy import or_, and_
     from backend.app.models.patient import Patient
 
     query = db.query(Patient).filter(Patient.deleted_at.is_(None))
-    if date_from:
+    if date_from and date_to:
         start_dt = datetime.combine(date_from, datetime.min.time())
-        query = query.filter(Patient.created_at >= start_dt)
-    if date_to:
         end_dt = datetime.combine(date_to, datetime.max.time())
-        query = query.filter(Patient.created_at <= end_dt)
+        query = query.filter(
+            or_(
+                and_(Patient.sample_date >= date_from, Patient.sample_date <= date_to),
+                and_(Patient.created_at >= start_dt, Patient.created_at <= end_dt)
+            )
+        )
+        query = query.order_by(Patient.created_at.desc())
+    else:
+        query = query.order_by(Patient.created_at.desc()).limit(20)
 
     def iter_csv():
         output = io.StringIO()
@@ -306,7 +317,8 @@ def export_patients_csv(db: Session, date_from: Optional[date], date_to: Optiona
             disc = float(p.discount_amount or 0)
             net_paid = float(p.amount_paid or 0)
             due = float(p.amount_due or 0)
-            date_str = p.created_at.strftime('%d/%m/%Y') if p.created_at else ''
+            date_val = p.sample_date or (p.created_at.date() if p.created_at else None)
+            date_str = date_val.strftime('%Y-%m-%d') if date_val else ''
             
             writer.writerow([
                 p.patient_code or '',
@@ -323,7 +335,7 @@ def export_patients_csv(db: Session, date_from: Optional[date], date_to: Optiona
             output.seek(0)
             output.truncate(0)
 
-    filename = f"revenue_{date_from or 'all'}_to_{date_to or 'all'}.csv"
+    filename = f"patients_{date_from or 'all'}_to_{date_to or 'all'}.csv"
     headers = {
         'Content-Disposition': f'attachment; filename="{filename}"'
     }

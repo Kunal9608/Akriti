@@ -19,3 +19,4 @@ class TestResultGroup(BaseModel):
 
 class ReportEntrySubmit(BaseModel):
     tests: List[TestResultGroup]
+    letterhead_mode: bool = False

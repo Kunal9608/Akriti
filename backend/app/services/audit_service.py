@@ -44,6 +44,10 @@ def log(db, action: str, actor_user_id: Optional[uuid.UUID] = None,
         before = _sanitize_for_json(before)
         after = _sanitize_for_json(after)
 
+        # Use PostgreSQL advisory lock to serialize audit log inserts and prevent hash-chain forks
+        from sqlalchemy import text
+        db.execute(text("SELECT pg_advisory_xact_lock(7777777)"))
+
         last_row = audit_repo.get_last_row(db)
         prev_hash = last_row.record_hash if last_row else "GENESIS"
 
@@ -69,28 +73,38 @@ def log(db, action: str, actor_user_id: Optional[uuid.UUID] = None,
             record_hash=record_hash,
             prev_hash=prev_hash,
         )
-    except Exception:
-        # Audit log must never crash the main operation
+    except Exception as e:
+        import logging
+        logging.getLogger("akriti.audit").error(f"Audit log failed: {e}")
+        # Audit log must never crash the main operation, but we log the error
         pass
 
 
 def verify_chain(db) -> tuple[bool, Optional[int]]:
-    """Verify hash chain integrity. Returns (is_valid, first_bad_id)."""
-    rows = audit_repo.get_all_ordered(db)
+    """Verify hash chain integrity using explicit pagination to prevent OOM."""
+    from backend.app.models.audit_log import AuditLog
     expected_prev = "GENESIS"
+    last_id = 0
+    chunk_size = 5000
 
-    for row in rows:
-        canonical = canonical_json({
-            "action": row.action,
-            "entity_type": row.entity_type,
-            "entity_id": str(row.entity_id) if row.entity_id else None,
-            "before": row.before_value,
-            "after": row.after_value,
-            "occurred_at": row.occurred_at.isoformat() if row.occurred_at else None,
-        })
-        expected_hash = sha256_hex(canonical + expected_prev)
-        if expected_hash != row.record_hash:
-            return False, row.id
-        expected_prev = row.record_hash
+    while True:
+        rows = db.query(AuditLog).filter(AuditLog.id > last_id).order_by(AuditLog.id).limit(chunk_size).all()
+        if not rows:
+            break
+
+        for row in rows:
+            canonical = canonical_json({
+                "action": row.action,
+                "entity_type": row.entity_type,
+                "entity_id": str(row.entity_id) if row.entity_id else None,
+                "before": row.before_value,
+                "after": row.after_value,
+                "occurred_at": row.occurred_at.isoformat() if row.occurred_at else None,
+            })
+            expected_hash = sha256_hex(canonical + expected_prev)
+            if expected_hash != row.record_hash:
+                return False, row.id
+            expected_prev = row.record_hash
+            last_id = row.id
 
     return True, None

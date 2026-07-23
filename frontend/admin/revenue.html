@@ -221,27 +221,34 @@
     btn.disabled = true;
     try {
       // Use the new streaming export endpoint to avoid backend OOM on millions of rows
-      const token = localStorage.getItem('token');
+      const token = localStorage.getItem('akriti_token') || localStorage.getItem('token');
       const exportUrl = `/api/v1/patients/export?date_from=${from}&date_to=${to}`;
       
+      const headers = {};
+      if (token) headers['Authorization'] = `Bearer ${token}`;
+
       // We fetch the blob directly
       const res = await fetch(exportUrl, {
-        headers: { 'Authorization': `Bearer ${token}` }
+        credentials: 'include',
+        headers
       });
       
-      if (!res.ok) throw new Error("Export failed");
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.detail || "Export failed");
+      }
       
       const blob = await res.blob();
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `revenue_${from}_to_${to}.csv`;
+      a.download = `revenue_${from || 'all'}_to_${to || 'all'}.csv`;
       document.body.appendChild(a);
       a.click();
       a.remove();
       window.URL.revokeObjectURL(url);
-    } catch { 
-      Toast.show('Failed to export', 'error'); 
+    } catch (err) { 
+      Toast.show(err.message || 'Failed to export', 'error'); 
     } finally {
       btn.innerHTML = origHtml;
       btn.disabled = false;

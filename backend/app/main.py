@@ -343,13 +343,15 @@ def delete_everything(
             except Exception:
                 pass
 
-        # 6. Hard delete patient-related data ONLY
+        # 6. Hard delete patient-related data ONLY for the identified patients
         from backend.app.models.patient_test import PatientTest
         from backend.app.models.report import Report
 
-        db.query(Report).delete()
-        db.query(PatientTest).delete()
-        db.query(Patient).delete()
+        if patients:
+            patient_ids = [p.id for p in patients]
+            db.query(Report).filter(Report.patient_id.in_(patient_ids)).delete(synchronize_session=False)
+            db.query(PatientTest).filter(PatientTest.patient_id.in_(patient_ids)).delete(synchronize_session=False)
+            db.query(Patient).filter(Patient.id.in_(patient_ids)).delete(synchronize_session=False)
         db.commit()
     except Exception as e:
         db.rollback()

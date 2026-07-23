@@ -22,16 +22,13 @@ def create_patient(
     idempotency_key: Optional[str] = Depends(get_idempotency_key),
 ):
     if idempotency_key:
-        cached = idempotency_service.check_key_exists(idempotency_key, str(current_user.id))
-        if cached:
-            return cached
+        return idempotency_service.with_idempotency(
+            idempotency_key,
+            str(current_user.id),
+            lambda: patient_service.create_patient(db, payload, current_user.id, background_tasks)
+        )
 
-    result = patient_service.create_patient(db, payload, current_user.id, background_tasks)
-
-    if idempotency_key:
-        idempotency_service.store_result(idempotency_key, str(current_user.id), result)
-
-    return result
+    return patient_service.create_patient(db, payload, current_user.id, background_tasks)
 
 
 @router.get("")
@@ -79,15 +76,38 @@ def search_patients(
 
 @router.get("/export")
 def export_patients(
-    date_from: Optional[date] = None,
-    date_to: Optional[date] = None,
+    date_from: Optional[str] = None,
+    date_to: Optional[str] = None,
     current_user=Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     from backend.app.models.user import RoleEnum
     if current_user.role != RoleEnum.admin:
         raise HTTPException(status_code=403, detail="Only admins can export patients")
-    return patient_service.export_patients_csv(db, date_from, date_to)
+        
+    parsed_date_from = None
+    parsed_date_to = None
+    
+    if date_from:
+        try:
+            parsed_date_from = date.fromisoformat(date_from)
+        except ValueError:
+            raise HTTPException(status_code=400, detail="Invalid date_from format")
+    if date_to:
+        try:
+            parsed_date_to = date.fromisoformat(date_to)
+        except ValueError:
+            raise HTTPException(status_code=400, detail="Invalid date_to format")
+            
+    if parsed_date_from or parsed_date_to:
+        if not (parsed_date_from and parsed_date_to):
+            raise HTTPException(status_code=400, detail="Both date_from and date_to must be provided")
+        if (parsed_date_to - parsed_date_from).days > 15:
+            raise HTTPException(status_code=400, detail="Maximum 15 days of data can be exported at a time")
+        if (parsed_date_to - parsed_date_from).days < 0:
+            raise HTTPException(status_code=400, detail="date_to must be after date_from")
+
+    return patient_service.export_patients_csv(db, parsed_date_from, parsed_date_to)
 
 
 @router.get("/search")
