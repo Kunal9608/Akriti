@@ -167,6 +167,9 @@ Explain software workflows.
 
 Explain clearly using steps.
 
+If asked about how to change the theme, dark mode, or light mode:
+Tell the user to go to the Settings page to toggle the application theme.
+
 ==================================================
 DATE UNDERSTANDING
 ==================================================
