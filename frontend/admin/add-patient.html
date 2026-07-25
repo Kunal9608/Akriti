@@ -15,96 +15,127 @@
   <script src="/assets/js/theme.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
   <style>
-    .form-card { background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-lg); padding: 28px; margin-bottom: 24px; }
-    .form-card-title { font-family: var(--font-display); font-size: var(--text-xl); font-weight: 600; color: var(--color-ink); margin-bottom: 20px; }
-    .billing-total-bar { background: var(--color-primary-tint); border: 1.5px solid var(--color-primary); border-radius: var(--radius-lg); padding: 16px 24px; display: flex; align-items: center; justify-content: space-between; margin-bottom: 24px; }
-    .billing-total-label { font-size: var(--text-sm); font-weight: 600; color: var(--color-primary); }
-    .billing-total-value { font-family: var(--font-display); font-size: 28px; font-weight: 700; color: var(--color-primary); font-variant-numeric: tabular-nums; }
+    .form-card {
+      background: var(--color-surface);
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-lg);
+      padding: 28px;
+      margin-bottom: 24px;
+      box-shadow: var(--shadow-sm);
+    }
+    .form-card-title {
+      font-family: var(--font-display);
+      font-size: var(--text-xl);
+      font-weight: 700;
+      color: var(--color-ink);
+      margin-bottom: 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1px solid var(--color-border);
+      padding-bottom: 12px;
+    }
+    .billing-total-bar {
+      background: linear-gradient(135deg, #0a192f 0%, #172a45 100%);
+      border-radius: var(--radius-lg);
+      padding: 20px 28px;
+      color: #fff;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 24px;
+      box-shadow: 0 4px 16px rgba(10, 25, 47, 0.2);
+    }
+    .billing-total-label { font-size: var(--text-sm); font-weight: 600; opacity: 0.85; text-transform: uppercase; letter-spacing: 0.05em; }
+    .billing-total-value { font-family: var(--font-mono); font-size: 32px; font-weight: 700; color: #ffffff; font-variant-numeric: tabular-nums; }
     #qr-code-canvas img, #qr-code-canvas canvas { display: block; margin: 0 auto; }
+    
+    /* Popular Test Chips */
+    .popular-chips-container { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px; }
+    .popular-chip {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 6px 12px; border-radius: var(--radius-pill);
+      border: 1.5px solid var(--color-border); background: var(--color-bg);
+      font-size: 12px; font-weight: 600; color: var(--color-ink);
+      cursor: pointer; transition: all 0.15s ease; user-select: none;
+    }
+    .popular-chip:hover { border-color: var(--color-primary); background: var(--color-primary-tint); }
+    .popular-chip.selected { border-color: var(--color-primary); background: var(--color-primary); color: #fff; }
+
     /* Test picker improvements */
     .test-picker { max-height: 320px; overflow-y: auto; border: 1px solid var(--color-border); border-radius: var(--radius-md); background: var(--color-bg); }
-    .test-group-label { position: sticky; top: 0; background: var(--color-surface); z-index: 1; }
+    .test-group-label { position: sticky; top: 0; background: var(--color-surface); z-index: 1; font-weight: 700; color: var(--color-primary); }
     .test-option { display: flex; align-items: center; justify-content: space-between; padding: 10px 14px; cursor: pointer; transition: background .15s; border-bottom: 1px solid var(--color-border-faint, rgba(0,0,0,.04)); }
     .test-option:hover { background: var(--color-primary-tint); }
     .test-option.selected { background: var(--color-primary-tint); font-weight: 600; }
     .test-option.selected .test-name::before { content: '✓ '; color: var(--color-primary); font-weight: 700; }
     .test-name { font-size: var(--text-sm); color: var(--color-ink); }
-    .test-price { font-size: var(--text-sm); color: var(--color-primary); font-weight: 600; white-space: nowrap; margin-left: 12px; }
-    /* QR section */
-    #qr-code-section { background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-lg); padding: 24px; text-align: center; }
-    /* ── Force search bar visible inside the form ── */
-    .form-search.topbar-search { display: flex !important; width: 100% !important; }
-    /* Wizard / Multi-step Form styling */
+    .test-price { font-size: var(--text-sm); color: var(--color-primary); font-weight: 600; white-space: nowrap; margin-left: 12px; font-family: var(--font-mono); }
+    
+    /* Wizard Styling */
     .wizard-steps {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      margin-bottom: 28px;
-      background: var(--color-surface);
-      border: 1px solid var(--color-border);
-      border-radius: var(--radius-lg);
-      padding: 16px 24px;
+      display: flex; align-items: center; justify-content: space-between;
+      margin-bottom: 28px; background: var(--color-surface);
+      border: 1px solid var(--color-border); border-radius: var(--radius-lg);
+      padding: 16px 24px; box-shadow: var(--shadow-sm);
     }
-    .wizard-step {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      color: var(--color-ink-muted);
-      font-size: var(--text-sm);
-      font-weight: 500;
-      transition: color 0.2s;
-    }
-    .wizard-step.active {
-      color: var(--color-primary);
-      font-weight: 700;
-    }
-    .wizard-step.completed {
-      color: var(--color-ink);
-    }
+    .wizard-step { display: flex; align-items: center; gap: 10px; color: var(--color-ink-muted); font-size: var(--text-sm); font-weight: 500; transition: color 0.2s; }
+    .wizard-step.active { color: var(--color-primary); font-weight: 700; }
+    .wizard-step.completed { color: var(--color-ink); }
     .wizard-step-num {
-      width: 24px;
-      height: 24px;
-      border-radius: 50%;
-      background: var(--color-bg);
-      border: 2px solid var(--color-border);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 11px;
-      font-weight: 700;
-      color: var(--color-ink-faint);
-      transition: all 0.2s;
+      width: 26px; height: 26px; border-radius: 50%;
+      background: var(--color-bg); border: 2px solid var(--color-border);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 11px; font-weight: 700; color: var(--color-ink-faint); transition: all 0.2s;
     }
-    .wizard-step.active .wizard-step-num {
-      background: var(--color-primary);
-      border-color: var(--color-primary);
-      color: #fff;
+    .wizard-step.active .wizard-step-num { background: #0a192f; border-color: #0a192f; color: #fff; box-shadow: 0 0 10px rgba(10,25,47,0.25); }
+    .wizard-step.completed .wizard-step-num { background: var(--color-primary-tint); border-color: var(--color-primary); color: var(--color-primary); }
+    .wizard-step-line { flex: 1; height: 2px; background: var(--color-border); margin: 0 16px; transition: background 0.2s; }
+    .wizard-step-line.completed { background: #0a192f; }
+    .form-step-section { display: none; }
+    .form-step-section.active { display: block; }
+    /* Custom Segmented Gender Selector */
+    .custom-gender-selector {
+      display: flex; gap: 6px; background: var(--color-bg);
+      border: 1.5px solid var(--color-border); border-radius: var(--radius-md); padding: 3px; height: 40px;
     }
-    .wizard-step.completed .wizard-step-num {
-      background: var(--color-primary-tint);
-      border-color: var(--color-primary);
-      color: var(--color-primary);
+    .gender-btn {
+      flex: 1; border: none; background: transparent; border-radius: var(--radius-sm);
+      font-size: 13px; font-weight: 600; color: var(--color-ink-muted);
+      cursor: pointer; transition: all 0.15s ease; user-select: none;
     }
-    .wizard-step-line {
-      flex: 1;
-      height: 2px;
-      background: var(--color-border);
-      margin: 0 16px;
-      transition: background 0.2s;
+    .gender-btn:hover { color: var(--color-ink); background: rgba(0,0,0,0.04); }
+    .gender-btn.active { background: #0a192f; color: #ffffff; box-shadow: 0 2px 6px rgba(10,25,47,0.25); }
+
+    /* Custom Doctor Searchable Dropdown */
+    .custom-dropdown-wrap { position: relative; width: 100%; }
+    .custom-dropdown-trigger {
+      width: 100%; height: 40px; padding: 0 12px; background: var(--color-surface);
+      border: 1.5px solid var(--color-border); border-radius: var(--radius-md);
+      display: flex; align-items: center; justify-content: space-between;
+      font-size: var(--text-sm); font-weight: 600; color: var(--color-ink); cursor: pointer;
+      transition: border-color 0.2s, box-shadow 0.2s;
     }
-    .wizard-step-line.completed {
-      background: var(--color-primary);
+    .custom-dropdown-trigger:focus, .custom-dropdown-trigger.open {
+      border-color: var(--color-primary); box-shadow: 0 0 0 3px rgba(10,25,47,0.12); outline: none;
     }
-    .form-step-section {
-      display: none;
+    .custom-dropdown-menu {
+      position: absolute; top: calc(100% + 4px); left: 0; right: 0;
+      background: var(--color-surface); border: 1.5px solid var(--color-border);
+      border-radius: var(--radius-md); box-shadow: var(--shadow-md); z-index: 9999;
     }
-    .form-step-section.active {
-      display: block;
+    .custom-dropdown-item {
+      padding: 9px 12px; font-size: 13px; font-weight: 500; color: var(--color-ink);
+      cursor: pointer; transition: background 0.15s; border-bottom: 1px solid var(--color-border-faint, rgba(0,0,0,0.03));
     }
+    .custom-dropdown-item:hover, .custom-dropdown-item.selected {
+      background: var(--color-primary-tint); color: var(--color-primary); font-weight: 700;
+    }
+
     @media (max-width: 640px) {
       .form-card { padding: 18px 14px; }
-      .billing-total-bar { flex-direction: column; align-items: flex-start; gap: 4px; padding: 12px 16px; }
-      .billing-total-value { font-size: 22px; }
+      .billing-total-bar { flex-direction: column; align-items: flex-start; gap: 4px; padding: 16px; }
+      .billing-total-value { font-size: 26px; }
       .wizard-steps { padding: 12px; gap: 4px; }
       .wizard-step-label { display: none; }
       .wizard-step-line { margin: 0 8px; }
@@ -173,23 +204,35 @@
             </div>
             <div class="form-row mb-4">
               <div class="form-field">
-                <label class="form-label" for="patient-age">Age <span class="required">*</span></label>
-                <input class="form-input" type="number" id="patient-age" min="0" max="130" placeholder="Years" required>
+                <label class="form-label" for="patient-age">Age (Years) <span class="required">*</span></label>
+                <input class="form-input" type="number" id="patient-age" min="0" max="130" placeholder="e.g. 35" required>
               </div>
               <div class="form-field">
-                <label class="form-label" for="patient-gender">Gender <span class="required">*</span></label>
-                <select class="form-select" id="patient-gender" required>
-                  <option value="">Select gender</option>
-                  <option value="male">Male</option>
-                  <option value="female">Female</option>
-                  <option value="trans">Other / Trans</option>
-                </select>
+                <label class="form-label">Gender <span class="required">*</span></label>
+                <div class="custom-gender-selector" id="gender-segmented-control">
+                  <button type="button" class="gender-btn active" data-value="male">♂ Male</button>
+                  <button type="button" class="gender-btn" data-value="female">♀ Female</button>
+                  <button type="button" class="gender-btn" data-value="trans">⚧ Other</button>
+                </div>
+                <input type="hidden" id="patient-gender" value="male" required>
               </div>
             </div>
             <div class="form-row">
               <div class="form-field">
-                <label class="form-label" for="patient-doctor">Referring Doctor</label>
-                <select class="form-select" id="patient-doctor"></select>
+                <label class="form-label">Referring Doctor</label>
+                <div class="custom-dropdown-wrap" id="doctor-custom-dropdown">
+                  <button type="button" class="custom-dropdown-trigger" id="doctor-dropdown-trigger">
+                    <span id="doctor-selected-text">SELF / Direct Walk-in</span>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+                  </button>
+                  <div class="custom-dropdown-menu" id="doctor-dropdown-menu" style="display:none;">
+                    <div style="padding:6px;border-bottom:1px solid var(--color-border);">
+                      <input type="text" id="doctor-search-input" class="form-input" placeholder="Search doctor by name..." style="height:32px;font-size:12px">
+                    </div>
+                    <div class="custom-dropdown-items" id="doctor-dropdown-list" style="max-height:180px;overflow-y:auto;"></div>
+                  </div>
+                  <input type="hidden" id="patient-doctor" value="">
+                </div>
               </div>
               <div class="form-field">
                 <label class="form-label" for="patient-sample-date">Sample Collection Date <span class="required">*</span></label>
@@ -202,21 +245,24 @@
         <!-- Step 2: Test Selection -->
         <div class="form-step-section" id="step-2-section">
           <div class="form-card">
-            <div class="form-card-title">Select Tests</div>
+            <div class="form-card-title">Select Diagnostic Tests</div>
             <div class="form-field mb-4">
-              <label class="form-label" for="test-search-input">Search Tests</label>
+              <label class="form-label" style="margin-bottom:6px">Popular Diagnostic Panels</label>
+              <div class="popular-chips-container" id="popular-test-chips"></div>
+
+              <label class="form-label" for="test-search-input" style="margin-top:10px">Full Master Test Catalog Search</label>
               <div class="topbar-search form-search" style="width:100%;margin-bottom:8px">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-                <input type="text" id="test-search-input" placeholder="Type to filter tests…">
+                <input type="text" id="test-search-input" placeholder="Type test name, category, or code…">
               </div>
               <div class="test-picker" id="test-picker-container">
                 <div style="padding:12px;text-align:center"><span class="skel skel-text" style="width:60%"></span></div>
               </div>
             </div>
-            <div class="form-field">
-              <label class="form-label">Selected Tests</label>
+            <div class="form-field" style="background:var(--color-bg);border:1px solid var(--color-border);border-radius:var(--radius-md);padding:14px">
+              <label class="form-label" style="font-weight:700;color:var(--color-primary);margin-bottom:8px">Selected Tests Summary</label>
               <div class="selected-chips-bar" id="selected-tests-chips" style="display:flex;flex-wrap:wrap;gap:6px;min-height:28px">
-                <span class="text-faint text-xs">No tests selected</span>
+                <span class="text-faint text-xs">No tests selected yet</span>
               </div>
             </div>
           </div>
@@ -319,7 +365,9 @@
   // Load tests, doctors and init form logic
   const [allTests, _] = await Promise.all([PatientForm.loadTests(), PatientForm.loadDoctors()]);
   PatientForm.renderTestPicker('test-picker-container', 'test-search-input');
+  PatientForm.renderPopularChips('popular-test-chips');
   PatientForm.renderDoctorDropdown('patient-doctor');
+  PatientForm.initGenderSelector();
   PatientForm.initPaymentMode();
   PatientForm.initReturningPatientLookup();
 
@@ -331,8 +379,8 @@
       if (draft.name) document.getElementById('patient-name').value = draft.name;
       if (draft.mobile) document.getElementById('patient-mobile').value = draft.mobile;
       if (draft.age) document.getElementById('patient-age').value = draft.age;
-      if (draft.gender) document.getElementById('patient-gender').value = draft.gender;
-      if (draft.doctor_id) document.getElementById('patient-doctor').value = draft.doctor_id;
+      if (draft.gender) PatientForm.setGender(draft.gender);
+      if (draft.doctor_id) PatientForm.setDoctor(draft.doctor_id);
       if (draft.sample_date) document.getElementById('patient-sample-date').value = draft.sample_date;
       if (draft.amount_paid) document.getElementById('amount-paid').value = draft.amount_paid;
       if (draft.payment_mode) document.getElementById('payment-mode').value = draft.payment_mode;

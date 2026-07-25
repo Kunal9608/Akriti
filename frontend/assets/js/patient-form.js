@@ -55,6 +55,9 @@ const PatientForm = (() => {
         if (document.getElementById('test-picker-container')) {
           renderTestPicker('test-picker-container', 'test-search-input');
         }
+        if (document.getElementById('popular-test-chips')) {
+          renderPopularChips('popular-test-chips');
+        }
       }
     } catch (err) {
       if (!allTests.length) {
@@ -415,12 +418,122 @@ const PatientForm = (() => {
   }
 
   function renderDoctorDropdown(selectId) {
-    const el = document.getElementById(selectId);
-    if (!el) return;
-    el.innerHTML = `
-      <option value="">SELF</option>
-      ${allDoctors.map(d => `<option value="${d.id}">${escapeHtml(d.name)}</option>`).join('')}
-    `;
+    const listEl = document.getElementById('doctor-dropdown-list');
+    const selectEl = document.getElementById(selectId);
+    
+    if (listEl) {
+      function renderItems(filter = '') {
+        const q = filter.toLowerCase().trim();
+        const filtered = allDoctors.filter(d => !q || d.name.toLowerCase().includes(q) || (d.clinic_name && d.clinic_name.toLowerCase().includes(q)));
+        const currentVal = document.getElementById('patient-doctor')?.value || '';
+        
+        let html = `<div class="custom-dropdown-item ${!currentVal ? 'selected' : ''}" data-value="" data-name="SELF / Direct Walk-in">SELF / Direct Walk-in</div>`;
+        html += filtered.map(d => {
+          const isSel = String(currentVal) === String(d.id);
+          return `<div class="custom-dropdown-item ${isSel ? 'selected' : ''}" data-value="${d.id}" data-name="${escapeHtml(d.name)}">${escapeHtml(d.name)}${d.clinic_name ? ` <span style="font-size:11px;opacity:0.7">(${escapeHtml(d.clinic_name)})</span>` : ''}</div>`;
+        }).join('');
+        listEl.innerHTML = html;
+
+        listEl.querySelectorAll('.custom-dropdown-item').forEach(item => {
+          item.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const val = item.dataset.value;
+            const name = item.dataset.name || item.textContent;
+            setDoctor(val, name);
+            
+            const menu = document.getElementById('doctor-dropdown-menu');
+            if (menu) menu.style.display = 'none';
+            const trigger = document.getElementById('doctor-dropdown-trigger');
+            if (trigger) trigger.classList.remove('open');
+          });
+        });
+      }
+      
+      renderItems('');
+      const searchInput = document.getElementById('doctor-search-input');
+      if (searchInput && !searchInput.dataset.bound) {
+        searchInput.dataset.bound = 'true';
+        searchInput.addEventListener('input', e => renderItems(e.target.value));
+      }
+      
+      const trigger = document.getElementById('doctor-dropdown-trigger');
+      const menu = document.getElementById('doctor-dropdown-menu');
+      if (trigger && menu && !trigger.dataset.bound) {
+        trigger.dataset.bound = 'true';
+        trigger.addEventListener('click', (e) => {
+          e.stopPropagation();
+          const isOpen = menu.style.display === 'block';
+          menu.style.display = isOpen ? 'none' : 'block';
+          trigger.classList.toggle('open', !isOpen);
+          if (!isOpen && searchInput) {
+            searchInput.value = '';
+            renderItems('');
+            setTimeout(() => searchInput.focus(), 50);
+          }
+        });
+        document.addEventListener('click', (e) => {
+          if (!trigger.contains(e.target) && !menu.contains(e.target)) {
+            menu.style.display = 'none';
+            trigger.classList.remove('open');
+          }
+        });
+      }
+    }
+
+    if (selectEl && selectEl.tagName === 'SELECT') {
+      selectEl.innerHTML = `
+        <option value="">SELF</option>
+        ${allDoctors.map(d => `<option value="${d.id}">${escapeHtml(d.name)}</option>`).join('')}
+      `;
+    }
+  }
+
+  function setDoctor(val, nameStr = null) {
+    const hidden = document.getElementById('patient-doctor');
+    const text = document.getElementById('doctor-selected-text');
+    if (hidden) hidden.value = val || '';
+    if (text) {
+      if (nameStr) {
+        text.textContent = nameStr;
+      } else {
+        const doc = allDoctors.find(d => String(d.id) === String(val));
+        text.textContent = doc ? doc.name : 'SELF / Direct Walk-in';
+      }
+    }
+    const listEl = document.getElementById('doctor-dropdown-list');
+    if (listEl) {
+      listEl.querySelectorAll('.custom-dropdown-item').forEach(i => {
+        i.classList.toggle('selected', String(i.dataset.value) === String(val || ''));
+      });
+    }
+  }
+
+  // ── Custom Gender Selector ─────────────────────────────────────────────
+  function initGenderSelector() {
+    const container = document.getElementById('gender-segmented-control');
+    const hidden = document.getElementById('patient-gender');
+    if (!container || !hidden) return;
+
+    container.querySelectorAll('.gender-btn').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.preventDefault();
+        setGender(btn.dataset.value);
+      });
+    });
+
+    const currentVal = hidden.value || 'male';
+    setGender(currentVal);
+  }
+
+  function setGender(val) {
+    const container = document.getElementById('gender-segmented-control');
+    const hidden = document.getElementById('patient-gender');
+    if (hidden) hidden.value = val;
+    if (container) {
+      container.querySelectorAll('.gender-btn').forEach(b => {
+        b.classList.toggle('active', b.dataset.value === val);
+      });
+    }
   }
 
   // ── Collect form data ─────────────────────────────────────────────────────
@@ -449,6 +562,37 @@ const PatientForm = (() => {
     tests.forEach(t => selectedTests.set(String(t.test_id || t.id), { name: t.name, price: Number(t.price ?? t.price_at_booking ?? 0) }));
   }
 
+  // ── Popular Test Chips ──────────────────────────────────────────────────
+  function renderPopularChips(containerId) {
+    const container = document.getElementById(containerId);
+    if (!container || !allTests.length) return;
+    
+    // Pick first 8 active tests or popular ones
+    const popular = allTests.slice(0, 8);
+    container.innerHTML = popular.map(t => {
+      const isSelected = selectedTests.has(String(t.id));
+      return `<div class="popular-chip ${isSelected ? 'selected' : ''}" data-id="${t.id}">${isSelected ? '✓ ' : '+ '}${escapeHtml(t.name)} (₹${t.price})</div>`;
+    }).join('');
+
+    container.querySelectorAll('.popular-chip').forEach(chip => {
+      chip.addEventListener('click', () => {
+        const id = String(chip.dataset.id);
+        const test = allTests.find(t => String(t.id) === id);
+        if (!test) return;
+
+        if (selectedTests.has(id)) {
+          selectedTests.delete(id);
+        } else {
+          selectedTests.set(id, { name: test.name, price: Number(test.price) });
+        }
+        updateTotal();
+        renderSelectedChips();
+        renderTestPicker('test-picker-container', 'test-search-input');
+        renderPopularChips(containerId);
+      });
+    });
+  }
+
   function clearForm() { selectedTests.clear(); }
 
   return {
@@ -456,8 +600,12 @@ const PatientForm = (() => {
     revalidateTests,
     loadDoctors,
     renderDoctorDropdown,
+    setDoctor,
     renderTestPicker,
+    renderPopularChips,
     renderSelectedChips,
+    initGenderSelector,
+    setGender,
     updateTotal,
     initPaymentMode,
     initReturningPatientLookup,

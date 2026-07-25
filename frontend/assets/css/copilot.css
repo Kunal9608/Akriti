@@ -87,15 +87,15 @@
 }
 
 .ask-ai-badge {
-  background: linear-gradient(135deg, #16201C 0%, #2A3E35 100%);
+  background: linear-gradient(135deg, #0a192f 0%, #1a2e4c 100%);
   color: #FFFFFF !important;
   padding: 8px 18px;
   border-radius: 20px;
-  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-family: var(--font-body, system-ui, sans-serif);
   font-weight: 700;
-  font-size: 14px;
-  letter-spacing: 0.4px;
-  box-shadow: 0 3px 10px rgba(22, 32, 28, 0.35);
+  font-size: 13.5px;
+  letter-spacing: 0.3px;
+  box-shadow: 0 3px 10px rgba(10, 25, 47, 0.25);
   white-space: nowrap;
   display: inline-flex !important;
   align-items: center !important;
@@ -109,8 +109,8 @@
 }
 
 [data-theme="dark"] .ask-ai-badge {
-  background: linear-gradient(135deg, #2563EB 0%, #1D4ED8 100%);
-  box-shadow: 0 3px 10px rgba(37, 99, 235, 0.4);
+  background: linear-gradient(135deg, #1e3a8a 0%, #0a192f 100%);
+  box-shadow: 0 3px 10px rgba(10, 25, 47, 0.4);
 }
 
 .ask-ai-badge:hover {
@@ -130,32 +130,31 @@
 
 .copilot-msg {
   max-width: 88%;
-  padding: 14px 18px;
-  border-radius: 16px;
-  font-size: 1.05rem; /* Increased font size */
-  font-weight: 700; /* Made it bolder */
-  font-family: 'Inter', 'Plus Jakarta Sans', 'Outfit', system-ui, -apple-system, sans-serif;
-  letter-spacing: 0.3px; /* Slightly increased letter spacing */
-  line-height: 1.6;
+  padding: 12px 16px;
+  border-radius: 12px;
+  font-size: 0.93rem;
+  font-weight: 500;
+  font-family: var(--font-body, system-ui, sans-serif);
+  line-height: 1.5;
   word-wrap: break-word;
   white-space: pre-wrap;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.08); /* Stronger shadow */
+  box-shadow: 0 2px 8px rgba(0,0,0,0.06);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
 .copilot-msg strong {
-  font-weight: 800;
+  font-weight: 700;
   color: inherit;
 }
 
 .copilot-msg.system {
   align-self: flex-start;
   background: var(--color-surface);
-  border: 1.5px solid var(--color-border); /* Slightly thicker border */
+  border: 1px solid var(--color-border);
   color: var(--color-ink);
-  border-bottom-left-radius: 4px;
-  font-weight: 700; /* Made bolder */
+  border-bottom-left-radius: 3px;
+  font-weight: 500;
 }
 
 [data-theme="dark"] .copilot-msg.system {
@@ -166,11 +165,10 @@
 
 .copilot-msg.user {
   align-self: flex-end;
-  background: linear-gradient(135deg, var(--color-primary) 0%, #6D0001 100%);
+  background: linear-gradient(135deg, #0a192f 0%, #1b3052 100%);
   color: #FFFFFF;
-  border-bottom-right-radius: 4px;
-  font-weight: 700;
-  text-shadow: 0 1px 2px rgba(0,0,0,0.2);
+  border-bottom-right-radius: 3px;
+  font-weight: 500;
 }
 
 .copilot-footer {
@@ -209,7 +207,7 @@
 }
 
 .copilot-footer button {
-  background: linear-gradient(135deg, var(--color-primary) 0%, #6D0001 100%);
+  background: linear-gradient(135deg, #0a192f 0%, #1b3052 100%);
   color: white;
   border: none;
   border-radius: 12px;
@@ -221,7 +219,7 @@
   cursor: pointer;
   flex-shrink: 0;
   transition: transform 0.2s, opacity 0.2s;
-  box-shadow: 0 3px 8px rgba(109, 0, 1, 0.3);
+  box-shadow: 0 3px 8px rgba(10, 25, 47, 0.25);
 }
 
 .copilot-footer button:hover {
