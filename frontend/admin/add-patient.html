@@ -17,19 +17,19 @@
   <style>
     .form-card { background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-lg); padding: 28px; margin-bottom: 24px; }
     .form-card-title { font-family: var(--font-display); font-size: var(--text-xl); font-weight: 600; color: var(--color-ink); margin-bottom: 20px; }
-    .billing-total-bar { background: var(--color-cherry-cola-tint-10); border: 1.5px solid var(--color-cherry-cola); border-radius: var(--radius-lg); padding: 16px 24px; display: flex; align-items: center; justify-content: space-between; margin-bottom: 24px; }
-    .billing-total-label { font-size: var(--text-sm); font-weight: 600; color: var(--color-cherry-cola); }
-    .billing-total-value { font-family: var(--font-display); font-size: 28px; font-weight: 700; color: var(--color-cherry-cola); font-variant-numeric: tabular-nums; }
+    .billing-total-bar { background: var(--color-primary-tint); border: 1.5px solid var(--color-primary); border-radius: var(--radius-lg); padding: 16px 24px; display: flex; align-items: center; justify-content: space-between; margin-bottom: 24px; }
+    .billing-total-label { font-size: var(--text-sm); font-weight: 600; color: var(--color-primary); }
+    .billing-total-value { font-family: var(--font-display); font-size: 28px; font-weight: 700; color: var(--color-primary); font-variant-numeric: tabular-nums; }
     #qr-code-canvas img, #qr-code-canvas canvas { display: block; margin: 0 auto; }
     /* Test picker improvements */
     .test-picker { max-height: 320px; overflow-y: auto; border: 1px solid var(--color-border); border-radius: var(--radius-md); background: var(--color-bg); }
     .test-group-label { position: sticky; top: 0; background: var(--color-surface); z-index: 1; }
     .test-option { display: flex; align-items: center; justify-content: space-between; padding: 10px 14px; cursor: pointer; transition: background .15s; border-bottom: 1px solid var(--color-border-faint, rgba(0,0,0,.04)); }
-    .test-option:hover { background: var(--color-cherry-cola-tint-10); }
-    .test-option.selected { background: var(--color-cherry-cola-tint-10); font-weight: 600; }
-    .test-option.selected .test-name::before { content: '✓ '; color: var(--color-cherry-cola); font-weight: 700; }
+    .test-option:hover { background: var(--color-primary-tint); }
+    .test-option.selected { background: var(--color-primary-tint); font-weight: 600; }
+    .test-option.selected .test-name::before { content: '✓ '; color: var(--color-primary); font-weight: 700; }
     .test-name { font-size: var(--text-sm); color: var(--color-ink); }
-    .test-price { font-size: var(--text-sm); color: var(--color-cherry-cola); font-weight: 600; white-space: nowrap; margin-left: 12px; }
+    .test-price { font-size: var(--text-sm); color: var(--color-primary); font-weight: 600; white-space: nowrap; margin-left: 12px; }
     /* QR section */
     #qr-code-section { background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-lg); padding: 24px; text-align: center; }
     /* ── Force search bar visible inside the form ── */
@@ -55,7 +55,7 @@
       transition: color 0.2s;
     }
     .wizard-step.active {
-      color: var(--color-cherry-cola);
+      color: var(--color-primary);
       font-weight: 700;
     }
     .wizard-step.completed {
@@ -76,14 +76,14 @@
       transition: all 0.2s;
     }
     .wizard-step.active .wizard-step-num {
-      background: var(--color-cherry-cola);
-      border-color: var(--color-cherry-cola);
+      background: var(--color-primary);
+      border-color: var(--color-primary);
       color: #fff;
     }
     .wizard-step.completed .wizard-step-num {
-      background: var(--color-cherry-cola-tint-10);
-      border-color: var(--color-cherry-cola);
-      color: var(--color-cherry-cola);
+      background: var(--color-primary-tint);
+      border-color: var(--color-primary);
+      color: var(--color-primary);
     }
     .wizard-step-line {
       flex: 1;
@@ -93,7 +93,7 @@
       transition: background 0.2s;
     }
     .wizard-step-line.completed {
-      background: var(--color-cherry-cola);
+      background: var(--color-primary);
     }
     .form-step-section {
       display: none;
@@ -244,9 +244,9 @@
                 <input class="form-input" type="number" id="discount-amount" min="0" step="0.01" value="" placeholder="0 (leave blank if no discount)">
               </div>
               <div class="form-field" style="align-self:flex-end">
-                <div style="background:var(--color-cherry-cola-tint-10);border:1px solid var(--color-border);border-radius:var(--radius-md);padding:10px 14px;">
+                <div style="background:var(--color-primary-tint);border:1px solid var(--color-border);border-radius:var(--radius-md);padding:10px 14px;">
                   <div style="font-size:var(--text-xs);color:var(--color-ink-muted);font-weight:600;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:2px">Net Payable</div>
-                  <div id="net-payable-display" style="font-size:var(--text-xl);font-weight:700;color:var(--color-cherry-cola);font-variant-numeric:tabular-nums">₹0</div>
+                  <div id="net-payable-display" style="font-size:var(--text-xl);font-weight:700;color:var(--color-primary);font-variant-numeric:tabular-nums">₹0</div>
                 </div>
               </div>
             </div>

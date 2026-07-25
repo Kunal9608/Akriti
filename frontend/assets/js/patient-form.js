@@ -318,7 +318,7 @@ const PatientForm = (() => {
     qrEl.innerHTML = `
       <div style="margin-bottom:12px">
         <div style="font-size:12px;color:var(--color-ink-faint);margin-bottom:2px">Pay to: <strong>${escapeHtml(labName)}</strong></div>
-        <div style="font-family:var(--font-display);font-size:28px;font-weight:700;color:var(--color-cherry-cola)">${formatCurrency(amount)}</div>
+        <div style="font-family:var(--font-display);font-size:28px;font-weight:700;color:var(--color-primary)">${formatCurrency(amount)}</div>
         <div style="font-size:11px;color:var(--color-ink-faint)">${escapeHtml(vpa)}</div>
       </div>
       <div id="qr-canvas-inner" style="display:inline-block;padding:12px;background:#fff;border-radius:8px;border:2px solid var(--color-border)"></div>

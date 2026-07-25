@@ -482,8 +482,8 @@ const Shell = (() => {
               color: var(--color-ink) !important;
             }
             .flatpickr-day.selected, .flatpickr-day.selected:focus, .flatpickr-day.selected:hover {
-              background: var(--color-cherry-cola) !important;
-              border-color: var(--color-cherry-cola) !important;
+              background: var(--color-primary) !important;
+              border-color: var(--color-primary) !important;
               color: #fff !important;
             }
             .flatpickr-day:hover {
@@ -494,7 +494,7 @@ const Shell = (() => {
               color: var(--color-ink) !important;
             }
             .flatpickr-months .flatpickr-prev-month:hover svg, .flatpickr-months .flatpickr-next-month:hover svg {
-              fill: var(--color-cherry-cola) !important;
+              fill: var(--color-primary) !important;
             }
           `;
           document.head.appendChild(style);

@@ -121,7 +121,7 @@
   50%       { opacity: 0.7; transform: scale(1.04); }
 }
 .kiosk-scanning-ring {
-  border: 2px solid var(--color-cherry-cola);
+  border: 2px solid var(--color-primary);
   border-radius: 50%;
   animation: kiosk-pulse 1.5s ease-in-out infinite;
 }

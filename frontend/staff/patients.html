@@ -32,7 +32,7 @@
       padding: 20px 24px;
       border-bottom: 1px solid var(--color-border);
       flex-shrink: 0;
-      background: linear-gradient(135deg, var(--color-cherry-cola-tint-10) 0%, transparent 60%);
+      background: linear-gradient(135deg, var(--color-primary-tint) 0%, transparent 60%);
     }
     .panel-title-wrap { display: flex; flex-direction: column; gap: 2px; }
     .panel-title { font-family: var(--font-display); font-size: var(--text-xl); font-weight: 700; color: var(--color-ink); }
@@ -48,12 +48,12 @@
     .detail-item-label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--color-ink-faint); margin-bottom: 3px; }
     .detail-item-value { font-size: var(--text-sm); font-weight: 600; color: var(--color-ink); }
     .detail-item.full-width { grid-column: 1 / -1; }
-    .detail-item.accent { border-left: 3px solid var(--color-cherry-cola); }
+    .detail-item.accent { border-left: 3px solid var(--color-primary); }
     .detail-item.discount-item { border-left: 3px solid #3D6B7D; }
 
     /* ── Billing Summary Card ─────────────────────────────────────────────── */
     .billing-summary {
-      background: linear-gradient(135deg, var(--color-cherry-cola) 0%, #6D0001 100%);
+      background: linear-gradient(135deg, var(--color-primary) 0%, #6D0001 100%);
       border-radius: var(--radius-lg);
       padding: 16px 20px;
       color: #fff;
@@ -82,7 +82,7 @@
 
     /* ── Page header banner ──────────────────────────────────────────────── */
     .patients-header-banner {
-      background: linear-gradient(135deg, var(--color-cherry-cola) 0%, #6D0001 100%);
+      background: linear-gradient(135deg, var(--color-primary) 0%, #6D0001 100%);
       border-radius: var(--radius-lg);
       padding: 20px 28px;
       margin-bottom: 24px;
@@ -242,8 +242,8 @@
 <!-- Payment Collection & Due Protection Modal -->
 <div class="modal-backdrop" id="payment-collection-modal">
   <div class="modal" role="dialog" aria-modal="true" aria-labelledby="payment-collection-modal-title" style="max-width:460px">
-    <div class="modal-header" style="background:var(--color-cherry-cola-tint-10);border-bottom:1px solid var(--color-cherry-cola)">
-      <h2 class="modal-title" id="payment-collection-modal-title" style="color:var(--color-cherry-cola);display:flex;align-items:center;gap:8px">
+    <div class="modal-header" style="background:var(--color-primary-tint);border-bottom:1px solid var(--color-primary)">
+      <h2 class="modal-title" id="payment-collection-modal-title" style="color:var(--color-primary);display:flex;align-items:center;gap:8px">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
         Pending Dues Collection
       </h2>
@@ -252,11 +252,11 @@
       </button>
     </div>
     <div class="modal-body" style="padding:20px">
-      <div id="payment-collection-info" style="font-size:13px;color:var(--color-ink);margin-bottom:16px;line-height:1.5;background:var(--color-bg);padding:12px;border-radius:var(--radius-md);border-left:4px solid var(--color-cherry-cola)">
+      <div id="payment-collection-info" style="font-size:13px;color:var(--color-ink);margin-bottom:16px;line-height:1.5;background:var(--color-bg);padding:12px;border-radius:var(--radius-md);border-left:4px solid var(--color-primary)">
       </div>
       <div style="background:var(--color-bg);border:1px solid var(--color-border);border-radius:var(--radius-md);padding:16px;text-align:center;margin-bottom:16px">
         <div style="font-size:12px;color:var(--color-ink-muted);font-weight:600;text-transform:uppercase;letter-spacing:0.5px">Amount Due to Release Report</div>
-        <div id="payment-collection-due-amount" style="font-size:28px;font-weight:800;color:var(--color-cherry-cola);margin:4px 0">₹0</div>
+        <div id="payment-collection-due-amount" style="font-size:28px;font-weight:800;color:var(--color-primary);margin:4px 0">₹0</div>
       </div>
       <div class="form-field mb-3">
         <label class="form-label" for="payment-collection-mode">Payment Mode</label>
@@ -388,7 +388,7 @@
 <!-- Partial Release Alert Modal -->
 <div class="modal-backdrop" id="partial-alert-modal" style="z-index:9999">
   <div class="modal" style="max-width:520px;width:95%" role="dialog" aria-modal="true" aria-labelledby="partial-alert-title">
-    <div class="modal-header" style="border-bottom:1px solid var(--color-border);padding:16px 20px;background:var(--color-cherry-cola-tint-10)">
+    <div class="modal-header" style="border-bottom:1px solid var(--color-border);padding:16px 20px;background:var(--color-primary-tint)">
       <div style="display:flex;align-items:center;gap:10px">
         <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#C0392B" stroke-width="2.2"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
         <h3 class="modal-title" id="partial-alert-title" style="font-size:16px;color:#C0392B">Incomplete Report Entry Alert</h3>
@@ -449,7 +449,7 @@
 
   fileInput.addEventListener('change', () => updateDropLabel(fileInput.files[0]));
 
-  dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.style.borderColor = 'var(--color-cherry-cola)'; dropZone.style.background = 'var(--color-cherry-cola-tint-10)'; });
+  dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.style.borderColor = 'var(--color-primary)'; dropZone.style.background = 'var(--color-primary-tint)'; });
   dropZone.addEventListener('dragleave', () => updateDropLabel(fileInput.files[0]));
   dropZone.addEventListener('drop', e => {
     e.preventDefault();
@@ -892,10 +892,10 @@
 
       if (due > 0) {
         paySec.innerHTML = `
-          <div class="mb-4" style="background:var(--color-cherry-cola-tint-10);border:1px solid var(--color-cherry-cola);border-radius:var(--radius-md);padding:14px">
+          <div class="mb-4" style="background:var(--color-primary-tint);border:1px solid var(--color-primary);border-radius:var(--radius-md);padding:14px">
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
               <span style="font-size:13px;color:var(--color-ink);font-weight:600">Remaining Due Amount:</span>
-              <span class="fw-700" style="color:var(--color-cherry-cola);font-size:16px">${formatCurrency(due)}</span>
+              <span class="fw-700" style="color:var(--color-primary);font-size:16px">${formatCurrency(due)}</span>
             </div>
             <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer;user-select:none;margin-bottom:8px">
               <input type="checkbox" id="complete-payment-chk">
@@ -1223,7 +1223,7 @@
       groupedParams.forEach(group => {
         html += `
           <div class="test-param-card mb-4" style="background:var(--color-surface);border:1px solid var(--color-border);border-radius:var(--radius-lg);overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.03)">
-            <div style="background:linear-gradient(135deg, var(--color-cherry-cola-tint-10) 0%, var(--color-bg) 100%);padding:14px 18px;border-bottom:1px solid var(--color-border);display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px">
+            <div style="background:linear-gradient(135deg, var(--color-primary-tint) 0%, var(--color-bg) 100%);padding:14px 18px;border-bottom:1px solid var(--color-border);display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px">
               <div>
                 <strong style="font-family:var(--font-display);font-size:15px;color:var(--color-ink)">${escapeHtml(group.test_name)}</strong>
                 ${group.test_code ? `<span style="font-size:11px;color:var(--color-ink-muted);background:var(--color-surface);border:1px solid var(--color-border);padding:1px 6px;border-radius:4px;margin-left:8px;font-family:monospace">${escapeHtml(group.test_code)}</span>` : ''}
@@ -1243,10 +1243,11 @@
               <table style="width:100%;border-collapse:collapse;font-size:13px">
                 <thead>
                   <tr style="border-bottom:1px solid var(--color-border);color:var(--color-ink-muted);font-size:11px;text-transform:uppercase;letter-spacing:0.04em">
-                    <th style="padding:8px 6px;text-align:left;width:32%">Parameter</th>
-                    <th style="padding:8px 6px;text-align:left;width:28%">Reference Range</th>
-                    <th style="padding:8px 6px;text-align:left;width:26%">Result Value</th>
-                    <th style="padding:8px 6px;text-align:center;width:14%">Flag</th>
+                    <th style="padding:8px 6px;text-align:left;width:25%">Parameter</th>
+                    <th style="padding:8px 6px;text-align:left;width:20%">Range</th>
+                    <th style="padding:8px 6px;text-align:left;width:20%">Result</th>
+                    <th style="padding:8px 6px;text-align:left;width:25%">Visualizer</th>
+                    <th style="padding:8px 6px;text-align:center;width:10%">Flag</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -1267,6 +1268,27 @@
                       inputHtml = `<input type="text" class="form-input param-input" data-param-id="${p.id}" data-test-id="${group.test_id}" data-type="text" value="${escapeHtml(val)}" placeholder="Enter finding..." style="height:34px;font-size:13px;font-weight:600">`;
                     }
 
+                    let vizHtml = '';
+                    if (p.input_type === 'numeric' && p.reference_low !== null && p.reference_high !== null) {
+                       let pos = 50;
+                       if (val !== '') {
+                           const v = parseFloat(val);
+                           const range = p.reference_high - p.reference_low;
+                           const extendedRange = range * 2;
+                           const minView = p.reference_low - (range * 0.5);
+                           pos = ((v - minView) / extendedRange) * 100;
+                           pos = Math.max(0, Math.min(100, pos));
+                       }
+                       vizHtml = `
+                         <div class="range-viz-container" id="viz-container-${p.id}">
+                           <div class="range-viz-track">
+                             <div class="range-viz-normal-zone" style="left:25%;width:50%"></div>
+                             <div class="range-viz-marker ${isAbn ? 'abnormal' : ''}" id="viz-marker-${p.id}" style="left:${pos}%"></div>
+                           </div>
+                         </div>
+                       `;
+                    }
+
                     return `
                       <tr style="border-bottom:1px solid rgba(0,0,0,0.04)">
                         <td style="padding:12px 6px">
@@ -1278,6 +1300,9 @@
                         </td>
                         <td style="padding:12px 6px">
                           ${inputHtml}
+                        </td>
+                        <td style="padding:12px 6px">
+                          ${vizHtml}
                         </td>
                         <td style="padding:12px 6px;text-align:center">
                           <label style="display:inline-flex;align-items:center;gap:5px;cursor:pointer;user-select:none;padding:4px 8px;border-radius:var(--radius-pill);background:${isAbn ? 'rgba(192,57,43,0.12)' : 'transparent'};transition:background 0.2s" class="flag-label-${p.id}">
@@ -1322,6 +1347,22 @@
               this.style.borderColor = '';
               if (label) label.style.background = 'transparent';
               if (text) { text.textContent = 'Normal'; text.style.color = 'var(--color-ink-faint)'; }
+            }
+            
+            // Update Visualizer
+            const marker = container.querySelector(`#viz-marker-${paramId}`);
+            if (marker && low !== null && high !== null) {
+              const range = high - low;
+              const extendedRange = range * 2;
+              const minView = low - (range * 0.5);
+              let pos = ((val - minView) / extendedRange) * 100;
+              pos = Math.max(0, Math.min(100, pos));
+              marker.style.left = pos + '%';
+              if (abnormal) {
+                  marker.classList.add('abnormal');
+              } else {
+                  marker.classList.remove('abnormal');
+              }
             }
           }
         });

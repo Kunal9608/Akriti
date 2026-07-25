@@ -16,13 +16,13 @@
   <style>
     .login-tabs { display: flex; border-bottom: 1px solid var(--color-border); margin-bottom: 28px; gap: 4px; }
     .login-tab { flex: 1; padding: 10px; text-align: center; font-size: var(--text-sm); font-weight: 600; color: var(--color-ink-muted); cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -1px; transition: all var(--transition-fast); background: none; border-top: none; border-left: none; border-right: none; }
-    .login-tab.active { color: var(--color-cherry-cola); border-bottom-color: var(--color-cherry-cola); }
+    .login-tab.active { color: var(--color-primary); border-bottom-color: var(--color-primary); }
     .tab-panel { display: none; }
     .tab-panel.active { display: block; }
     .brand-hero { text-align: center; margin-bottom: 32px; }
-    .brand-hero-mark { width: 54px; height: 54px; border-radius: var(--radius-lg); background: var(--color-cherry-cola); color: #fff; display: flex; align-items: center; justify-content: center; font-family: var(--font-display); font-weight: 700; font-size: 22px; margin: 0 auto 14px; }
+    .brand-hero-mark { width: 54px; height: 54px; border-radius: var(--radius-lg); background: var(--color-primary); color: #fff; display: flex; align-items: center; justify-content: center; font-family: var(--font-display); font-weight: 700; font-size: 22px; margin: 0 auto 14px; }
     .otp-sent-hint { background: var(--color-success-tint); border-radius: var(--radius-md); padding: 10px 14px; font-size: var(--text-sm); color: var(--color-success); margin-bottom: 16px; display: none; }
-    .forgot-link { font-size: var(--text-sm); color: var(--color-cherry-cola); cursor: pointer; background: none; border: none; font-family: inherit; padding: 0; }
+    .forgot-link { font-size: var(--text-sm); color: var(--color-primary); cursor: pointer; background: none; border: none; font-family: inherit; padding: 0; }
     .forgot-link:hover { text-decoration: underline; }
   </style>
 </head>
@@ -88,7 +88,7 @@
           <!-- Resend OTP timer and button -->
           <div id="resend-otp-container" style="display:none; text-align:right; margin-bottom:16px;">
             <span id="resend-otp-timer" style="font-size:12px;color:var(--color-ink-muted);">Resend OTP in 60s</span>
-            <button type="button" id="resend-otp-btn" class="btn btn-sm btn-ghost" style="display:none; font-size:12px; padding:4px 8px; color:var(--color-cherry-cola); border-color:transparent; background:transparent;">Resend OTP</button>
+            <button type="button" id="resend-otp-btn" class="btn btn-sm btn-ghost" style="display:none; font-size:12px; padding:4px 8px; color:var(--color-primary); border-color:transparent; background:transparent;">Resend OTP</button>
           </div>
           <button type="submit" class="btn btn-primary btn-lg" style="width:100%" id="otp-btn">Send OTP</button>
         </form>

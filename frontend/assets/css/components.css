@@ -27,28 +27,28 @@
   line-height: 1;
 }
 
-/* Primary — Cherry Cola filled */
+/* Primary — Hematoxylin Navy filled */
 .btn-primary {
-  background: var(--color-cherry-cola);
+  background: var(--color-primary);
   color: #fff;
-  border-color: var(--color-cherry-cola);
+  border-color: transparent;
 }
 .btn-primary:hover  { 
-  background: var(--color-cherry-cola-hover); 
-  border-color: var(--color-cherry-cola-hover); 
-  box-shadow: 0 6px 16px rgba(14,92,78,0.24); 
-  transform: translateY(-1.5px) scale(1.02);
+  background: var(--color-primary-hover); 
+  border-color: transparent; 
+  box-shadow: 0 4px 12px rgba(27, 38, 59, 0.2); 
+  transform: translateY(-1px);
 }
-.btn-primary:active { transform: scale(0.96) translateY(0); box-shadow: 0 2px 4px rgba(14,92,78,0.12); }
+.btn-primary:active { transform: scale(0.98) translateY(0); box-shadow: 0 1px 2px rgba(27, 38, 59, 0.1); }
 
 /* Secondary — outlined */
 .btn-secondary {
   background: transparent;
-  color: var(--color-cherry-cola);
-  border-color: var(--color-cherry-cola);
+  color: var(--color-primary);
+  border-color: var(--color-primary);
 }
 .btn-secondary:hover { 
-  background: var(--color-cherry-cola-tint-10); 
+  background: var(--color-primary-tint); 
   transform: translateY(-1.5px) scale(1.02);
   box-shadow: 0 4px 12px rgba(14,92,78,0.12);
 }
@@ -158,9 +158,9 @@
   box-shadow: var(--shadow-xs);
   transition: box-shadow 300ms var(--ease-spring), transform 300ms var(--ease-spring);
 }
-.card:hover { 
-  box-shadow: var(--shadow-sm); 
-  transform: translateY(-2px); 
+.card:hover {
+  box-shadow: var(--shadow-md);
+  transform: translateY(-2px);
 }
 
 .card-header {
@@ -180,31 +180,58 @@
 .card-footer {
   padding: var(--space-4) var(--space-6);
   border-top: 1px solid var(--color-border);
-  background: rgba(42,35,32,.02);
+  background: var(--bg);
   border-radius: 0 0 var(--radius-lg) var(--radius-lg);
 }
 
-/* KPI card */
-.kpi-card {
-  background: var(--color-surface);
+/* ╔══════════════════════════════════════════════════════╗
+   ║  LEDGER GRID (Clinical Stat Area)                    ║
+   ╚══════════════════════════════════════════════════════╝ */
+.ledger-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
   border: 1px solid var(--color-border);
-  border-radius: var(--radius-lg);
-  padding: var(--space-5) var(--space-6);
-  position: relative;
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
   overflow: hidden;
-  transition: box-shadow 300ms var(--ease-spring), transform 300ms var(--ease-spring);
+  margin-bottom: var(--space-6);
+  box-shadow: var(--shadow-xs);
 }
-.kpi-card:hover { 
-  box-shadow: var(--shadow-md); 
-  transform: translateY(-4px) scale(1.015); 
+.ledger-item {
+  padding: 20px 24px;
+  border-right: 1px solid var(--color-border);
+  border-bottom: 1px solid var(--color-border);
+  position: relative;
+  transition: background var(--transition-fast);
 }
-.kpi-card::after {
-  content: '';
-  position: absolute;
-  left: 0; top: 0; bottom: 0;
-  width: 4px;
-  background: var(--color-cherry-cola);
-  border-radius: var(--radius-sm) 0 0 var(--radius-sm);
+.ledger-item:last-child {
+  border-right: none;
+}
+.ledger-item:hover {
+  background: var(--color-bg);
+}
+.ledger-label {
+  font-family: var(--font-body);
+  font-size: var(--text-sm);
+  color: var(--color-ink-muted);
+  font-weight: 500;
+  margin-bottom: 8px;
+}
+.ledger-value {
+  font-family: var(--font-mono);
+  font-size: var(--text-3xl);
+  font-weight: 600;
+  color: var(--color-primary);
+  line-height: 1;
+}
+.ledger-sub {
+  font-family: var(--font-body);
+  font-size: 11px;
+  color: var(--color-ink-faint);
+  margin-top: 8px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
   transition: transform 300ms var(--ease-spring);
 }
 .kpi-card:hover::after {
@@ -222,7 +249,7 @@
    ╚══════════════════════════════════════════════════════╝ */
 .form-field { display: flex; flex-direction: column; gap: 5px; }
 .form-label { font-size: var(--text-sm); font-weight: 500; color: var(--color-ink-muted); }
-.form-label .required { color: var(--color-cherry-cola); margin-left: 2px; }
+.form-label .required { color: var(--color-primary); margin-left: 2px; }
 
 .form-input,
 .form-select,
@@ -247,8 +274,8 @@
   border-color: var(--color-ink-faint);
 }
 .form-input:focus, .form-select:focus, .form-textarea:focus {
-  border-color: var(--color-cherry-cola);
-  box-shadow: 0 0 0 4px var(--color-cherry-cola-tint-10);
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 4px var(--color-primary-tint);
   transform: scale(1.005);
 }
 .form-input.error, .form-select.error { border-color: var(--color-error); }
@@ -291,7 +318,7 @@
   border-bottom: 1px solid var(--color-border);
 }
 .data-table tbody tr:last-child { border-bottom: none; }
-.data-table tbody tr:hover { background: var(--color-cherry-cola-tint-10); }
+.data-table tbody tr:hover { background: var(--color-primary-tint); }
 .data-table td { padding: 12px 16px; color: var(--color-ink); vertical-align: middle; }
 
 /* Empty state within table */
@@ -327,8 +354,8 @@
   transition: all var(--transition-fast);
 }
 .page-btn:hover, .page-btn.active {
-  background: var(--color-cherry-cola);
-  border-color: var(--color-cherry-cola);
+  background: var(--color-primary);
+  border-color: var(--color-primary);
   color: #fff;
 }
 
@@ -374,6 +401,66 @@
 
 @keyframes toastIn  { from { opacity: 0; transform: translateY(12px) scale(0.96); } to { opacity: 1; transform: none; } }
 @keyframes toastOut { to   { opacity: 0; transform: translateY(-8px) scale(0.96); } }
+
+/* ╔══════════════════════════════════════════════════════╗
+   ║  MODALS & OFFCANVAS                                  ║
+   ╚══════════════════════════════════════════════════════╝ */
+.modal-overlay {
+  position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(17, 24, 39, 0.6); backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px);
+  z-index: 1000; display: flex; align-items: center; justify-content: center;
+  opacity: 0; pointer-events: none; transition: opacity var(--transition-base);
+}
+.modal-overlay.open { opacity: 1; pointer-events: all; }
+
+/* ╔══════════════════════════════════════════════════════╗
+   ║  SIGNATURE: CLINICAL RANGE VISUALIZER                 ║
+   ╚══════════════════════════════════════════════════════╝ */
+.range-viz-container {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  max-width: 250px;
+}
+.range-viz-val {
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--color-ink);
+  width: 50px;
+  text-align: right;
+}
+.range-viz-val.abnormal { color: var(--color-error); }
+.range-viz-track {
+  flex: 1;
+  height: 6px;
+  background: var(--color-border);
+  border-radius: var(--radius-pill);
+  position: relative;
+}
+.range-viz-normal-zone {
+  position: absolute;
+  height: 100%;
+  background: var(--color-ink-faint);
+  opacity: 0.3;
+  border-radius: var(--radius-pill);
+}
+.range-viz-marker {
+  position: absolute;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: 8px;
+  height: 14px;
+  background: var(--color-ink);
+  border-radius: 2px;
+  transition: left 0.3s var(--ease);
+}
+.range-viz-marker.abnormal {
+  background: var(--color-error);
+  box-shadow: 0 0 0 0 rgba(217, 45, 32, 0.6);
+  animation: pulse-error 2s infinite;
+}
 
 /* ╔══════════════════════════════════════════════════════╗
    ║  MODAL                                               ║
@@ -437,7 +524,7 @@
 .divider  { height: 1px; background: var(--color-border); margin: var(--space-5) 0; }
 .text-muted { color: var(--color-ink-muted); }
 .text-faint { color: var(--color-ink-faint); }
-.text-primary { color: var(--color-cherry-cola); }
+.text-primary { color: var(--color-primary); }
 .text-success { color: var(--color-success); }
 .text-warning { color: var(--color-warning); }
 .text-danger  { color: var(--color-error); }

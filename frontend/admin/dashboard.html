@@ -45,15 +45,15 @@
     <div class="offline-banner" role="status"></div>
 
     <main class="page-content">
-      <!-- KPI Grid -->
-      <div class="kpi-grid" id="kpi-grid">
+      <!-- Clinical Ledger Grid -->
+      <div class="ledger-grid" id="kpi-grid">
         <!-- Skeleton -->
-        <div class="kpi-card"><div class="skel-kpi-card"><span class="skel skel-label skel-w-12"></span><span class="skel skel-kpi skel-w-20"></span><span class="skel skel-label skel-w-8"></span></div></div>
-        <div class="kpi-card"><div class="skel-kpi-card"><span class="skel skel-label skel-w-12"></span><span class="skel skel-kpi skel-w-16"></span><span class="skel skel-label skel-w-8"></span></div></div>
-        <div class="kpi-card"><div class="skel-kpi-card"><span class="skel skel-label skel-w-12"></span><span class="skel skel-kpi skel-w-16"></span><span class="skel skel-label skel-w-8"></span></div></div>
-        <div class="kpi-card"><div class="skel-kpi-card"><span class="skel skel-label skel-w-12"></span><span class="skel skel-kpi skel-w-16"></span><span class="skel skel-label skel-w-8"></span></div></div>
-        <div class="kpi-card"><div class="skel-kpi-card"><span class="skel skel-label skel-w-12"></span><span class="skel skel-kpi skel-w-12"></span><span class="skel skel-label skel-w-8"></span></div></div>
-        <div class="kpi-card"><div class="skel-kpi-card"><span class="skel skel-label skel-w-12"></span><span class="skel skel-kpi skel-w-20"></span><span class="skel skel-label skel-w-8"></span></div></div>
+        <div class="ledger-item"><span class="skel skel-label skel-w-12"></span><span class="skel skel-kpi skel-w-20"></span><span class="skel skel-label skel-w-8"></span></div>
+        <div class="ledger-item"><span class="skel skel-label skel-w-12"></span><span class="skel skel-kpi skel-w-16"></span><span class="skel skel-label skel-w-8"></span></div>
+        <div class="ledger-item"><span class="skel skel-label skel-w-12"></span><span class="skel skel-kpi skel-w-16"></span><span class="skel skel-label skel-w-8"></span></div>
+        <div class="ledger-item"><span class="skel skel-label skel-w-12"></span><span class="skel skel-kpi skel-w-16"></span><span class="skel skel-label skel-w-8"></span></div>
+        <div class="ledger-item"><span class="skel skel-label skel-w-12"></span><span class="skel skel-kpi skel-w-12"></span><span class="skel skel-label skel-w-8"></span></div>
+        <div class="ledger-item"><span class="skel skel-label skel-w-12"></span><span class="skel skel-kpi skel-w-20"></span><span class="skel skel-label skel-w-8"></span></div>
       </div>
 
       <!-- Charts -->
@@ -98,10 +98,10 @@
   // ── KPI Cards ─────────────────────────────────────────────────────────────
   function kpiCard(label, value, sub, icon) {
     return `
-      <div class="kpi-card">
-        <div class="kpi-label">${label}</div>
-        <div class="kpi-value tabular">${value}</div>
-        ${sub ? `<div class="kpi-sub">${sub}</div>` : ''}
+      <div class="ledger-item">
+        <div class="ledger-label">${label}</div>
+        <div class="ledger-value tabular">${value}</div>
+        ${sub ? `<div class="ledger-sub">${sub}</div>` : ''}
       </div>
     `;
   }
