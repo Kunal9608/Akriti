@@ -70,7 +70,8 @@ def list_patients(
     count_query = db.query(Patient).filter(Patient.deleted_at.is_(None))
 
     if q:
-        search = f"%{q}%"
+        # Use prefix search if exact code/phone/name or wildcard
+        search = f"{q}%" if not q.startswith("%") else q
         flt = or_(
             Patient.name.ilike(search),
             Patient.mobile.ilike(search),
@@ -101,10 +102,17 @@ def list_patients(
         query = query.filter(Patient.collected_by == collected_by)
         count_query = count_query.filter(Patient.collected_by == collected_by)
 
-    # Cap the count to 1000 to prevent full table scans on millions of rows
-    # This ensures the pagination doesn't freeze the DB.
-    # Note: count_query has no offset, so we limit the base result.
-    total = count_query.limit(1000).count()
+    # Scalable count logic: if filtering, count up to 10,000 to keep responses fast
+    if q or doctor_id or date_from or date_to or status or collected_by:
+        total = count_query.limit(10000).count()
+    else:
+        # Fast estimated count for overall table total at 50M scale
+        try:
+            from sqlalchemy import text
+            res = db.execute(text("SELECT reltuples::bigint FROM pg_class WHERE relname = 'patients'")).scalar()
+            total = int(res) if res and res > 0 else count_query.limit(10000).count()
+        except Exception:
+            total = count_query.limit(10000).count()
 
     items = (
         query.order_by(desc(Patient.created_at))
@@ -143,16 +151,18 @@ def delete_patient_tests(db: Session, patient_id: uuid.UUID):
 
 def get_today_stats(db: Session):
     today = date.today()
-    start_of_day = datetime.combine(today, datetime.min.time())
-    end_of_day = datetime.combine(today, datetime.max.time())
+    start_of_day = datetime.combine(today, datetime.min.time()).replace(tzinfo=timezone.utc)
+    end_of_day = datetime.combine(today, datetime.max.time()).replace(tzinfo=timezone.utc)
 
-    # Count & sum computed inside SQL in one fast query!
+    # Count & sum computed inside SQL in one fast query matching sample_date or created_at UTC
     stats = db.query(
         func.count(Patient.id),
         func.sum(Patient.amount_paid)
     ).filter(
-        Patient.created_at >= start_of_day,
-        Patient.created_at <= end_of_day,
+        or_(
+            Patient.sample_date == today,
+            and_(Patient.created_at >= start_of_day, Patient.created_at <= end_of_day)
+        ),
         Patient.deleted_at.is_(None)
     ).first()
 

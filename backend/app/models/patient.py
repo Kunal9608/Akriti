@@ -72,9 +72,14 @@ class Patient(Base):
                         onupdate=lambda: datetime.now(timezone.utc))
     deleted_at = Column(DateTime(timezone=True), nullable=True)
 
+    from sqlalchemy import Index
+
     __table_args__ = (
         CheckConstraint("age > 0 AND age < 130", name="chk_age_range"),
         CheckConstraint("mobile ~ '^[6-9][0-9]{9}$'", name="chk_patient_mobile"),
+        Index("idx_patients_mobile_date", "mobile", "sample_date"),
+        Index("idx_patients_collected_by_created", "collected_by", "created_at"),
+        Index("idx_patients_name_mobile_code", "name", "mobile", "patient_code"),
     )
 
     @property

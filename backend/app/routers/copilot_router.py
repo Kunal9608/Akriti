@@ -31,11 +31,22 @@ async def chat_with_copilot(
     from google import genai
     from google.genai import types
     
+    global user_chat_timestamps
+    
     # --- Role-based Rate Limiting ---
     limit = 7 if current_user.role.value == "admin" else 3
     user_id = str(current_user.id)
     now = datetime.now()
     
+    # Clean up old inactive users from memory dictionary periodically to prevent memory leaks
+    if len(user_chat_timestamps) > 500:
+        cutoff = now.timestamp() - 3600
+        user_chat_timestamps = {
+            uid: [t for t in ts if t.timestamp() > cutoff]
+            for uid, ts in user_chat_timestamps.items()
+            if any(t.timestamp() > cutoff for t in ts)
+        }
+
     history = user_chat_timestamps.get(user_id, [])
     history = [t for t in history if (now - t).total_seconds() < 60]
     
@@ -49,26 +60,16 @@ async def chat_with_copilot(
     user_chat_timestamps[user_id] = history
     # --------------------------------
     
-    # --- NVIDIA Implementation ---
+    # Offload blocking database context building to threadpool to keep event loop responsive
+    from fastapi.concurrency import run_in_threadpool
+    system_prompt = await run_in_threadpool(build_copilot_context, request.message, current_user, db)
+
+    # --- NVIDIA / OpenAI API Client ---
     from openai import AsyncOpenAI
     client = AsyncOpenAI(
         base_url=os.environ.get("NVIDIA_BASE_URL", "https://integrate.api.nvidia.com/v1"),
         api_key=os.environ.get("NVIDIA_API_KEY")
     )
-    # ---------------------------------------------
-    
-    # Initialize Gemini API (Commented Out)
-    # api_key = os.environ.get("GEMINI_API_KEY")
-    # client = genai.Client(api_key=api_key)
-    # 
-    # system_prompt = build_copilot_context(request.message, current_user, db)
-
-    # Initialize Groq API
-    # from groq import AsyncGroq
-    # client = AsyncGroq(
-    #     api_key=os.environ.get("GROQ_API_KEY")
-    # )
-    system_prompt = build_copilot_context(request.message, current_user, db)
 
     async def event_generator():
         try:
