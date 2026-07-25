@@ -103,25 +103,30 @@
 }
 
 .nav-item:hover {
-  background: rgba(42, 35, 32, 0.05);
+  background: rgba(10, 25, 47, 0.05);
   color: var(--color-ink);
   transform: translateX(3px);
 }
 
 .nav-item.active {
-  background: var(--color-primary-tint);
-  color: var(--color-primary);
-  font-weight: 600;
+  background: linear-gradient(135deg, #0a192f 0%, #172a45 100%);
+  color: #ffffff !important;
+  font-weight: 700;
+  box-shadow: 0 4px 12px rgba(10, 25, 47, 0.2);
+}
+
+.nav-item.active svg {
+  stroke: #ffffff;
 }
 
 .nav-item.active::before {
   content: '';
   position: absolute;
-  left: -20px; /* Attach to edge of sidebar */
-  top: 0;
-  bottom: 0;
+  left: -20px;
+  top: 4px;
+  bottom: 4px;
   width: 4px;
-  background: var(--color-eosin); /* Eosin Rose indicator */
+  background: var(--color-eosin);
   border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
 }
 
