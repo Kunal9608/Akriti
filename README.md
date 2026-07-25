@@ -48,7 +48,7 @@ Engineered for speed, offline-resilience, and maximum security, the system strea
 
 ## 🌟 Key Features
 
-### 🤖 AI Copilot <sub>(Powered by Google Gemma 4 31B)</sub>
+### 🤖 AI Copilot <sub>(Powered by Llama 3.1 8B via NVIDIA)</sub>
 - **Context-Aware Chatbot** — Intelligent AI assistant for answering queries, fetching live patient statistics, and resolving operational roadblocks.
 - **Strict Anti-Hallucination Engine** — Hardened safeguards ensure the AI never invents patient names, financial data, or diagnostics; responds with *"Insufficient info"* if exact data is absent.
 - **Smart Rate Limiting** — Dynamic streaming rate limits protect API quotas (Admin: 7 msgs/min, Staff: 3 msgs/min).
@@ -107,7 +107,7 @@ flowchart TB
     subgraph External["🔌 Integrations"]
         WA[WASender — WhatsApp]
         BR[Brevo — Email]
-        AI[Google GenAI — Copilot]
+        AI[NVIDIA API — Copilot]
     end
 
     Frontend --> RT --> SV --> RP --> MD --> PG
@@ -146,7 +146,7 @@ stateDiagram-v2
 | **Migrations** | Alembic |
 | **Frontend** | Vanilla HTML5, CSS3, ES6+ JavaScript — no heavy VDOM frameworks, built for raw speed |
 | **Design System** | Cream Vanilla (`#EFE6DD`) + Cherry Cola (`#9A0002`) palette, Outfit/Inter typography, custom skeleton loaders |
-| **Integrations** | WASender API (WhatsApp), Brevo (Transactional mail), Google GenAI SDK (AI Copilot) |
+| **Integrations** | WASender API (WhatsApp), Brevo (Transactional mail), OpenAI SDK for NVIDIA API (AI Copilot) |
 | **Deployment** | Docker & Docker Compose |
 
 ---
