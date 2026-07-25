@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="https://img.shields.io/badge/Akriti-Diagnostics%20Center-9A0002?style=for-the-badge&logo=healthcare" />
+<img src="https://img.shields.io/badge/Akriti-Diagnostics%20Center-0a192f?style=for-the-badge&logo=healthcare" />
 
 # 🧪 Akriti Pathology Lab Management System
 ### A Next-Generation, AI-Powered, Highly Secure Laboratory Information System (LIS)
@@ -27,7 +27,9 @@
 
 ## 📖 Overview
 
-The **Akriti Pathology Lab Management System** is a premium, secure, and modern platform built end-to-end for **Akriti Diagnostics Center**. It unifies a robust **FastAPI (Python)** backend with a fast, dependency-light **Vanilla JS / HTML5** frontend into a single deployable monolith.
+The **Akriti Pathology Lab Management System** is a premium, secure, and modern platform built end-to-end for **Akriti Diagnostics Center**. It unifies a robust **FastAPI (Python)** backend with a fast, dependency-light **Vanilla JS / HTML5** frontend into a single deployable monolith. 
+
+The user interface is powered by our proprietary **Clinical Workbench** design system, inspired by Hematoxylin & Eosin (H&E) tissue stains, offering a sterile, precise, and highly functional clinical environment for medical professionals.
 
 Engineered for speed, offline-resilience, and maximum security, the system streamlines everything from patient registration and dynamic UPI billing, to AI-assisted diagnostics, WhatsApp report delivery, and biometric staff attendance — all under one roof.
 
@@ -36,6 +38,7 @@ Engineered for speed, offline-resilience, and maximum security, the system strea
 ## 📑 Table of Contents
 
 - [Key Features](#-key-features)
+- [Clinical Workbench UI](#-clinical-workbench-ui-design-system)
 - [System Architecture](#️-system-architecture)
 - [Report Lifecycle](#-report-lifecycle)
 - [Technical Stack](#️-technical-stack)
@@ -48,9 +51,10 @@ Engineered for speed, offline-resilience, and maximum security, the system strea
 
 ## 🌟 Key Features
 
-### 🤖 AI Copilot <sub>(Powered by Llama 3.1 8B via NVIDIA)</sub>
+### 🤖 AI Copilot <sub>(Powered by Groq Llama 3.1 8B)</sub>
 - **Context-Aware Chatbot** — Intelligent AI assistant for answering queries, fetching live patient statistics, and resolving operational roadblocks.
 - **Strict Anti-Hallucination Engine** — Hardened safeguards ensure the AI never invents patient names, financial data, or diagnostics; responds with *"Insufficient info"* if exact data is absent.
+- **Role-Based Dynamic Responses** — AI tailors responses based on the active user role (Admin vs. Staff), including dynamic theme-changing instructions and role-specific permissions.
 - **Smart Rate Limiting** — Dynamic streaming rate limits protect API quotas (Admin: 7 msgs/min, Staff: 3 msgs/min).
 
 ### 🏥 Reception & Patient Management
@@ -61,12 +65,12 @@ Engineered for speed, offline-resilience, and maximum security, the system strea
 ### 🔬 Lab Operations & Smart Reporting
 - **Master Test Catalog** — Pre-seeded with 65+ standard diagnostic tests.
 - **Dual-Path Report Release:**
-  1. **Structured Result Entry** — Enter parameters (e.g. Hemoglobin, WBC) to auto-render branded PDF reports.
+  1. **Structured Result Entry** — Enter parameters (e.g. Hemoglobin, WBC) to auto-render branded PDF reports. Features a **Clinical Range Visualizer** (real-time bullet chart) that plots patient values against reference ranges instantly as you type.
   2. **Manual PDF Upload** — Drag-and-drop custom or scanned lab PDFs securely into Supabase/local storage.
-- **Report Security & Verification** — Every generated PDF carries an immutable SHA-256 hash validation mechanism plus a modification log.
+- **Report Security & Verification** — Every generated PDF carries an immutable SHA-256 hash validation mechanism plus a modification log. Clickable, verified PDF links are directly accessible.
 
 ### 💬 Real-Time WhatsApp Alerts
-Integrated with the **WASender API** (Cloudflare-bypass enabled) for automated communication:
+- Integrated with the **WASender API** (Cloudflare-bypass enabled) for automated communication:
 - **Welcome Alerts** — Sends the unique Patient ID immediately on registration.
 - **Status Tracking** — Proactive notifications as a sample's status progresses.
 - **Direct Report Delivery** — Finalized PDFs delivered straight to the patient's WhatsApp via secure, temporary download URLs.
@@ -75,6 +79,17 @@ Integrated with the **WASender API** (Cloudflare-bypass enabled) for automated c
 - **Face Recognition Check-in** — Real-time Check-In/Check-Out station for lab staff.
 - **Anti-Spoof Liveness Gating** — Validates pose and image quality before accepting attendance data.
 - **High-Speed Vector Storage** — Uses PostgreSQL's `pgvector` extension for instantaneous facial-recognition matching across the staff database.
+
+---
+
+## 🎨 Clinical Workbench UI (Design System)
+
+The frontend departs from generic SaaS dashboard aesthetics in favor of a **Clinical Workbench** paradigm, designed for a lab director or doctor.
+- **H&E Color Palette**: The design is grounded in clinical reality. Primary colors use Deep Nuclear Blue (`#0a192f`, Hematoxylin) and Critical Rose (`#C0392B`, Eosin).
+- **Tabular Data Precision**: Clinical values, dates, and patient IDs are strictly formatted with `IBM Plex Mono` to ensure perfect vertical alignment and scannability.
+- **Clinical Ledger Grids**: Dashboard metrics are presented in tight, strict data grids with 1px solid high-contrast borders rather than floating, rounded cards.
+- **Opaque Sterile Surfaces**: Complete rejection of glassmorphism. Surfaces are layered, solid, and cast strict diffuse shadows for maximum readability and a premium, expensive feel.
+- **Dark Mode**: Features a "radiology reading room" dark mode, togglable exclusively from the Settings page.
 
 ---
 
@@ -107,7 +122,7 @@ flowchart TB
     subgraph External["🔌 Integrations"]
         WA[WASender — WhatsApp]
         BR[Brevo — Email]
-        AI[NVIDIA API — Copilot]
+        AI[Groq API — Copilot]
     end
 
     Frontend --> RT --> SV --> RP --> MD --> PG
@@ -145,15 +160,15 @@ stateDiagram-v2
 | **Database** | PostgreSQL (`pgvector` + `pg_trgm` extensions), Redis (caching & idempotency) |
 | **Migrations** | Alembic |
 | **Frontend** | Vanilla HTML5, CSS3, ES6+ JavaScript — no heavy VDOM frameworks, built for raw speed |
-| **Design System** | Cream Vanilla (`#EFE6DD`) + Cherry Cola (`#9A0002`) palette, Outfit/Inter typography, custom skeleton loaders |
-| **Integrations** | WASender API (WhatsApp), Brevo (Transactional mail), OpenAI SDK for NVIDIA API (AI Copilot) |
+| **Design System** | Clinical Workbench (H&E Palette: Hematoxylin Navy & Eosin Rose), Public Sans, IBM Plex Mono |
+| **Integrations** | WASender API (WhatsApp), Brevo (Email), Groq API (AI Copilot) |
 | **Deployment** | Docker & Docker Compose |
 
 ---
 
 ## 📂 Project Structure
 
-```
+```text
 Akriti/
 ├── backend/
 │   └── app/
@@ -172,9 +187,9 @@ Akriti/
 ├── docker-compose.yml         # FastAPI + Postgres + Redis stack
 ├── Dockerfile
 ├── main.py                    # Single entry point — backend + static frontend
-├── requirements.txt
-└── brain.md                   # Project knowledge base for future dev/AI onboarding
+└── requirements.txt
 ```
+*(Note: Unnecessary documentation like `brain.md` has been integrated into this file to streamline the repository).*
 
 ---
 
@@ -216,7 +231,7 @@ pip install -r requirements.txt
 
 # 4. Configure environment
 cp .env.example .env
-# Fill in DB credentials, Supabase keys, and WhatsApp tokens
+# Fill in DB credentials, Supabase keys, WhatsApp tokens, and GROQ_API_KEY.
 
 # 5. Generate secure secrets
 python backend/scripts/generate_secrets.py
