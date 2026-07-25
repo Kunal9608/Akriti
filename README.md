@@ -51,7 +51,7 @@ Engineered for speed, offline-resilience, and maximum security, the system strea
 
 ## 🌟 Key Features
 
-### 🤖 AI Copilot <sub>(Powered by Groq Llama 3.1 8B)</sub>
+### 🤖 AI Copilot <sub>(Powered by NVIDIA Llama 3.1 8B)</sub>
 - **Context-Aware Chatbot** — Intelligent AI assistant for answering queries, fetching live patient statistics, and resolving operational roadblocks.
 - **Strict Anti-Hallucination Engine** — Hardened safeguards ensure the AI never invents patient names, financial data, or diagnostics; responds with *"Insufficient info"* if exact data is absent.
 - **Role-Based Dynamic Responses** — AI tailors responses based on the active user role (Admin vs. Staff), including dynamic theme-changing instructions and role-specific permissions.
@@ -122,7 +122,7 @@ flowchart TB
     subgraph External["🔌 Integrations"]
         WA[WASender — WhatsApp]
         BR[Brevo — Email]
-        AI[Groq API — Copilot]
+        AI[NVIDIA API — Copilot]
     end
 
     Frontend --> RT --> SV --> RP --> MD --> PG
@@ -161,7 +161,7 @@ stateDiagram-v2
 | **Migrations** | Alembic |
 | **Frontend** | Vanilla HTML5, CSS3, ES6+ JavaScript — no heavy VDOM frameworks, built for raw speed |
 | **Design System** | Clinical Workbench (H&E Palette: Hematoxylin Navy & Eosin Rose), Public Sans, IBM Plex Mono |
-| **Integrations** | WASender API (WhatsApp), Brevo (Email), Groq API (AI Copilot) |
+| **Integrations** | WASender API (WhatsApp), Brevo (Email), NVIDIA API (AI Copilot) |
 | **Deployment** | Docker & Docker Compose |
 
 ---
@@ -231,7 +231,7 @@ pip install -r requirements.txt
 
 # 4. Configure environment
 cp .env.example .env
-# Fill in DB credentials, Supabase keys, WhatsApp tokens, and GROQ_API_KEY.
+# Fill in DB credentials, Supabase keys, WhatsApp tokens, and NVIDIA_API_KEY.
 
 # 5. Generate secure secrets
 python backend/scripts/generate_secrets.py
