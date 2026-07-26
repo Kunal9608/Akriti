@@ -103,8 +103,8 @@ The system has undergone rigorous **Security & QA Auditing** and is certified pr
 ### 2. Local Setup
 ```bash
 # 1. Clone the repository
-git clone https://github.com/Kunal9608/pathology-lab-management-system.git
-cd pathology-lab-management-system
+git clone https://github.com/Kunal9608/Akriti.git
+cd Akriti
 
 # 2. Setup Virtual Environment
 python -m venv .venv
