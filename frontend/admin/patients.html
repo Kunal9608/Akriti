@@ -616,10 +616,16 @@
                     </div>
                     <div class="report-card-sub">v${r.version} · ${formatDateTime(r.uploaded_at)}<br>Uploaded by: ${escapeHtml(r.uploaded_by_name || 'Unknown')}</div>
                   </div>
-                  <button onclick="handleViewReportClick('${r.id}', '${id}', '${escapeHtml(p.patient_code)}', '${escapeHtml(p.name)}')" class="btn btn-sm btn-secondary" style="flex-shrink:0;height:30px;gap:5px">
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-                    View
-                  </button>
+                  <div style="display:flex;gap:4px">
+                    <button onclick="handleViewReportClick('${r.id}', '${id}', '${escapeHtml(p.patient_code)}', '${escapeHtml(p.name)}')" class="btn btn-sm btn-secondary" style="flex-shrink:0;height:30px;gap:5px" title="View PDF">
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                      View
+                    </button>
+                    <button onclick="handleDownloadReportClick('${r.id}', '${id}', '${escapeHtml(p.patient_code)}', '${escapeHtml(p.name)}')" class="btn btn-sm btn-primary" style="flex-shrink:0;height:30px;gap:5px" title="Download PDF">
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                      Download
+                    </button>
+                  </div>
                 </div>
               `).join('')}
             `;
@@ -868,7 +874,7 @@
       const p = await API.get(`/api/v1/patients/${patientId}`, { silent: true });
       const netPayable = Math.max(0, parseFloat(p.total_amount || 0) - parseFloat(p.discount_amount || 0));
       const due = Math.max(0, netPayable - parseFloat(p.amount_paid || 0));
-      const downloadUrl = `/api/v1/reports/download/${reportId}`;
+      const downloadUrl = `/api/v1/reports/download/${reportId}?action=view`;
       if (due > 0) {
         openPaymentCollectModal(patientId, due, netPayable, code, name, () => {
           window.open(downloadUrl, '_blank');
@@ -879,7 +885,51 @@
         window.open(downloadUrl, '_blank');
       }
     } catch {
-      window.open(`/api/v1/reports/download/${reportId}`, '_blank');
+      window.open(`/api/v1/reports/download/${reportId}?action=view`, '_blank');
+    }
+  };
+
+  window.handleDownloadReportClick = async function(reportId, patientId, code, name) {
+    const doDownload = async () => {
+      try {
+        const res = await fetch(`/api/v1/reports/download/${reportId}?action=download`, {
+          credentials: 'include'
+        });
+        if (!res.ok) {
+          const errData = await res.json().catch(() => ({}));
+          throw new Error(errData.detail || errData.message || 'Failed to download report');
+        }
+        const blob = await res.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        let filename = 'report.pdf';
+        const disposition = res.headers.get('Content-Disposition');
+        if (disposition && disposition.indexOf('filename=') !== -1) {
+          const match = disposition.match(/filename="?([^"]+)"?/);
+          if (match && match[1]) filename = match[1];
+        }
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        window.URL.revokeObjectURL(url);
+      } catch (e) {
+        if (window.Toast) window.Toast.show(e.message, 'error');
+      }
+    };
+
+    try {
+      const p = await API.get(`/api/v1/patients/${patientId}`, { silent: true });
+      const netPayable = Math.max(0, parseFloat(p.total_amount || 0) - parseFloat(p.discount_amount || 0));
+      const due = Math.max(0, netPayable - parseFloat(p.amount_paid || 0));
+      if (due > 0) {
+        openPaymentCollectModal(patientId, due, netPayable, code, name, doDownload, doDownload);
+      } else {
+        await doDownload();
+      }
+    } catch {
+      await doDownload();
     }
   };
 

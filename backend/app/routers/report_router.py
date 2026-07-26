@@ -125,7 +125,9 @@ def list_reports(patient_id: uuid.UUID, current_user=Depends(get_current_user),
 
 
 @router.get("/download/{report_id}")
-def download_report(report_id: uuid.UUID, current_user=Depends(get_current_user),
+def download_report(report_id: uuid.UUID,
+                    action: str = Query("view"),
+                    current_user=Depends(get_current_user),
                     db: Session = Depends(get_db)):
     from backend.app.models.report import Report
     report = db.query(Report).filter(Report.id == report_id).first()
@@ -135,8 +137,11 @@ def download_report(report_id: uuid.UUID, current_user=Depends(get_current_user)
     from backend.app.config import settings
     from fastapi.responses import Response, FileResponse
     
+    disposition = "attachment" if action == "download" else "inline"
+    filename = report.original_filename or 'report.pdf'
+    
     headers = {
-        "Content-Disposition": f"inline; filename=\"{report.original_filename or 'report.pdf'}\""
+        "Content-Disposition": f"{disposition}; filename=\"{filename}\""
     }
 
     if report.file_path.startswith("supabase:"):
