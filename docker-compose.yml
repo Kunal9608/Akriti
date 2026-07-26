@@ -51,7 +51,6 @@ services:
       - HOST=0.0.0.0
       - PORT=8000
     volumes:
-      - .:/app
       - /app/venv/
       - /app/.venv/
       - app_uploads:/app/uploads

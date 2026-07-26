@@ -29,8 +29,8 @@ engine_kwargs = {
 
 if not is_sqlite:
     engine_kwargs.update({
-        "pool_size": 2,
-        "max_overflow": 5,
+        "pool_size": 15,
+        "max_overflow": 20,
         "pool_timeout": 30,
         "pool_recycle": 300,  # Recycle every 5m to prevent stale sockets/leaks on Supabase
         "pool_pre_ping": True,

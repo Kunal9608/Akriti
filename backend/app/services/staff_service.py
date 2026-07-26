@@ -152,6 +152,10 @@ def deactivate_staff(db: Session, staff_id: uuid.UUID, actor_user_id: uuid.UUID)
     user_repo.update_user(db, staff_id,
                           is_active=False,
                           deactivated_at=datetime.now(timezone.utc))
+    
+    from backend.app.repositories import session_repo
+    session_repo.revoke_all_user_sessions(db, staff_id)
+    
     audit_service.log(db, "staff.deactivate", actor_user_id=actor_user_id,
                       entity_type="user", entity_id=staff_id)
     db.commit()

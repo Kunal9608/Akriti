@@ -4,36 +4,31 @@ from typing import Callable, Any, Optional
 
 from backend.app.core.redis_client import get_redis
 
-# Fallback in-memory store if Redis is unavailable (process-scoped, not distributed)
-_fallback_store: dict = {}
-
-
 def with_idempotency(key: str, user_id: str, handler_fn: Callable, ttl: int = 86400) -> Any:
     """
     If we've seen this key before, return the stored response verbatim.
     Otherwise, execute handler_fn(), store result, and return it.
     """
     redis = get_redis()
+    if not redis:
+        from fastapi import HTTPException
+        raise HTTPException(status_code=503, detail="Service Unavailable: Redis is required for idempotent operations.")
+        
     redis_key = f"idem:{key}:{user_id}"
 
     # Check cache and acquire lock
-    if redis:
-        cached = redis.get(redis_key)
-        if cached:
-            if cached == b"PENDING":
-                from fastapi import HTTPException
-                raise HTTPException(status_code=409, detail="Duplicate request is already processing.")
-            return json.loads(cached)
-            
-        # Try to acquire lock
-        acquired = redis.set(redis_key, "PENDING", nx=True, ex=30)
-        if not acquired:
+    cached = redis.get(redis_key)
+    if cached:
+        if cached == b"PENDING":
             from fastapi import HTTPException
             raise HTTPException(status_code=409, detail="Duplicate request is already processing.")
-    else:
-        if redis_key in _fallback_store:
-            return _fallback_store[redis_key]
-        _fallback_store[redis_key] = "PENDING"
+        return json.loads(cached)
+        
+    # Try to acquire lock
+    acquired = redis.set(redis_key, "PENDING", nx=True, ex=30)
+    if not acquired:
+        from fastapi import HTTPException
+        raise HTTPException(status_code=409, detail="Duplicate request is already processing.")
 
     # Execute the actual business logic
     result = handler_fn()
@@ -41,10 +36,7 @@ def with_idempotency(key: str, user_id: str, handler_fn: Callable, ttl: int = 86
     # Serialize and store
     try:
         serialized = json.dumps(result, default=str)
-        if redis:
-            redis.set(redis_key, serialized, ex=ttl)
-        else:
-            _fallback_store[redis_key] = result
+        redis.set(redis_key, serialized, ex=ttl)
     except Exception:
         pass  # Non-fatal — the operation succeeded even if caching fails
 
@@ -54,24 +46,26 @@ def with_idempotency(key: str, user_id: str, handler_fn: Callable, ttl: int = 86
 def check_key_exists(key: str, user_id: str) -> Optional[Any]:
     """Returns stored result if key exists, else None."""
     redis = get_redis()
+    if not redis:
+        from fastapi import HTTPException
+        raise HTTPException(status_code=503, detail="Service Unavailable: Redis is required.")
+        
     redis_key = f"idem:{key}:{user_id}"
-    if redis:
-        cached = redis.get(redis_key)
-        if cached:
-            return json.loads(cached)
-    else:
-        return _fallback_store.get(redis_key)
+    cached = redis.get(redis_key)
+    if cached:
+        return json.loads(cached)
     return None
 
 
 def store_result(key: str, user_id: str, result: Any, ttl: int = 86400):
     redis = get_redis()
+    if not redis:
+        return
+        
     redis_key = f"idem:{key}:{user_id}"
     try:
         serialized = json.dumps(result, default=str)
-        if redis:
-            redis.set(redis_key, serialized, ex=ttl)
-        else:
-            _fallback_store[redis_key] = result
+        redis.set(redis_key, serialized, ex=ttl)
     except Exception:
         pass
+
