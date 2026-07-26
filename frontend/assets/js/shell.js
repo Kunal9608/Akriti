@@ -382,6 +382,36 @@ const Shell = (() => {
       }
     }
 
+    // Sync Conflict Handler
+    window.addEventListener('offline-sync-conflict', async (e) => {
+      const { itemId, payload, existingPatient } = e.detail;
+      const content = `
+        <div style="margin-bottom:16px;font-size:14px;color:var(--color-ink-muted)">
+          A patient with the mobile number <strong>${escapeHtml(payload.mobile)}</strong> was already registered recently.
+        </div>
+        <div style="background:var(--color-bg-alt);border:1px solid var(--color-border);border-radius:var(--radius-md);padding:12px;margin-bottom:20px;">
+          <div style="font-size:12px;font-weight:600;color:var(--color-ink-muted);margin-bottom:4px;text-transform:uppercase;letter-spacing:0.05em">Existing Patient Match:</div>
+          <div style="font-weight:700;color:var(--color-ink)">${escapeHtml(existingPatient.name)}</div>
+          <div style="font-size:13px;color:var(--color-ink-muted);margin-top:4px;">Registered on: ${formatDateTime(existingPatient.created_at)}</div>
+        </div>
+        <div style="font-size:14px;font-weight:500;color:var(--color-ink);margin-bottom:8px">Are these the same person?</div>
+        <div style="font-size:13px;color:var(--color-ink-faint)">
+          If yes, discard your offline draft (you may need to manually update the existing patient). If no, you can force save this as a new patient.
+        </div>
+      `;
+      const forceSave = await window.Modal.confirm('Sync Conflict', content, {
+        confirmText: 'Keep Both (Force Save)',
+        cancelText: 'Discard Draft',
+        danger: true
+      });
+      
+      if (forceSave) {
+        if (window.OfflineQueue) await window.OfflineQueue.resolveConflict(itemId, 'force');
+      } else {
+        if (window.OfflineQueue) await window.OfflineQueue.resolveConflict(itemId, 'discard');
+      }
+    });
+
     // Dynamically load offline-queue.js if not already present
     if (typeof window.OfflineQueue === 'undefined') {
       try {

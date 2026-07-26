@@ -47,10 +47,13 @@ const HTML_PAGES = [
   '/attendance-kiosk.html',
 ];
 
-// ── Install: pre-cache static assets ──────────────────────────────────────
+// ── Install: pre-cache static assets & html pages ──────────────────────────
 self.addEventListener('install', event => {
   event.waitUntil(
-    caches.open(STATIC_CACHE).then(cache => cache.addAll(STATIC_ASSETS)).then(() => self.skipWaiting())
+    Promise.all([
+      caches.open(STATIC_CACHE).then(cache => cache.addAll(STATIC_ASSETS)),
+      caches.open(PAGES_CACHE).then(cache => cache.addAll(HTML_PAGES))
+    ]).then(() => self.skipWaiting())
   );
 });
 
@@ -103,21 +106,34 @@ self.addEventListener('fetch', event => {
   }
 
   // HTML pages — network-first, fall back to cache
+  if (request.mode === 'navigate') {
+    event.respondWith(
+      fetch(request).then(res => {
+        if (res.ok) {
+          const clone = res.clone();
+          caches.open(PAGES_CACHE).then(c => c.put(request, clone));
+        }
+        return res;
+      }).catch(async () => {
+        const cached = await caches.match(request, { ignoreSearch: true });
+        if (cached) return cached;
+        // Fallback to closest offline shell if specific page not cached
+        const fallback = await caches.match('/index.html');
+        if (fallback) return fallback;
+        return new Response('Offline', { status: 503 });
+      })
+    );
+    return;
+  }
+
+  // Other assets (images, fonts not explicitly static)
   event.respondWith(
-    fetch(request).then(res => {
-      if (res.ok) {
-        const clone = res.clone();
-        caches.open(PAGES_CACHE).then(c => c.put(request, clone));
-      }
-      return res;
-    }).catch(() => caches.match(request).then(cached => {
-      if (cached) return cached;
-      // Return offline fallback for navigations
-      if (request.mode === 'navigate') {
-        return caches.match('/index.html');
-      }
-      return new Response('Offline', { status: 503 });
-    }))
+    fetch(request).then(res => res).catch(() => {
+      return caches.match(request).then(cached => {
+        if (cached) return cached;
+        return new Response('Offline', { status: 503 });
+      });
+    })
   );
 });
 

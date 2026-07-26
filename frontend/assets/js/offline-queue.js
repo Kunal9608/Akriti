@@ -115,6 +115,10 @@ const OfflineQueue = (() => {
         onlineBanner.classList.remove('show');
         broadcastState('dismiss');
       }, 3000);
+    } else if (state === 'conflict') {
+      onlineBanner.classList.add('state-offline'); // keep it visible and red/yellow
+      onlineBanner.textContent = customMsg || `⚠️ Sync Paused — Conflict Detected`;
+      onlineBanner.classList.add('show');
     } else if (state === 'hide') {
       onlineBanner.classList.remove('show');
     }
@@ -122,9 +126,13 @@ const OfflineQueue = (() => {
 
   if (channel) {
     channel.onmessage = (event) => {
-      const { state, count, message } = event.data;
+      const { state, count, message, conflictData } = event.data;
       if (state === 'dismiss') {
         if (onlineBanner) onlineBanner.classList.remove('show');
+      } else if (state === 'conflict') {
+        updateBanner(state, count, message);
+        // Dispatch custom event so the UI can show the modal
+        window.dispatchEvent(new CustomEvent('offline-sync-conflict', { detail: conflictData }));
       } else {
         updateBanner(state, count, message);
       }
@@ -169,9 +177,32 @@ const OfflineQueue = (() => {
           },
           body: JSON.stringify(item.payload),
         });
-        if (res.ok || res.status === 409) {
+        if (res.ok) {
           await remove(item.id);
           synced++;
+        } else if (res.status === 409) {
+          const errData = await res.json().catch(() => ({}));
+          const existingPatient = (errData.detail && typeof errData.detail === 'object') ? errData.detail.existing_patient : null;
+          
+          if (existingPatient) {
+            syncInProgress = false; // Pause sync
+            updateBanner('conflict', items.length - i, "⚠️ Sync paused — Duplicate detected.");
+            if (channel) {
+              channel.postMessage({
+                state: 'conflict',
+                count: items.length - i,
+                message: "Sync conflict",
+                conflictData: { itemId: item.id, payload: item.payload, existingPatient }
+              });
+            } else {
+              window.dispatchEvent(new CustomEvent('offline-sync-conflict', { 
+                detail: { itemId: item.id, payload: item.payload, existingPatient } 
+              }));
+            }
+            return; // Exit flush loop to wait for resolution
+          } else {
+            failed++;
+          }
         } else {
           failed++;
         }
@@ -194,6 +225,30 @@ const OfflineQueue = (() => {
       updateBanner('offline', failed, msg);
       broadcastState('offline', failed, msg);
     }
+  }
+
+  async function resolveConflict(itemId, resolution) {
+    const items = await getAll();
+    const item = items.find(i => i.id === itemId);
+    if (!item) {
+        flush();
+        return;
+    }
+    
+    if (resolution === 'discard') {
+        await remove(itemId);
+    } else if (resolution === 'force') {
+        item.payload.force_duplicate = true;
+        const d = await openDB();
+        await new Promise((resolve, reject) => {
+            const tx = d.transaction(STORE, 'readwrite');
+            const req = tx.objectStore(STORE).put(item);
+            tx.oncomplete = resolve;
+            tx.onerror = e => reject(e.target.error);
+        });
+    }
+    
+    flush();
   }
 
   // ── Init: connectivity listeners ──────────────────────────────────────────
@@ -227,7 +282,7 @@ const OfflineQueue = (() => {
     init();
   }
 
-  return { enqueue, flush, getAll, isOnline };
+  return { enqueue, flush, getAll, isOnline, resolveConflict };
 })();
 
 window.OfflineQueue = OfflineQueue;

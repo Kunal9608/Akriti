@@ -628,12 +628,47 @@
         return;
       }
 
-      if (editId) {
-        await API.patch(`/api/v1/patients/${editId}`, payload, { idempotencyKey });
-        Toast.show('Patient updated successfully', 'success');
-      } else {
-        const res = await API.post('/api/v1/patients', payload, { idempotencyKey });
-        Toast.show(`Patient registered — ${res.patient_code}`, 'success');
+      try {
+        if (editId) {
+          await API.patch(`/api/v1/patients/${editId}`, payload, { idempotencyKey, silent: true });
+          Toast.show('Patient updated successfully', 'success');
+        } else {
+          const res = await API.post('/api/v1/patients', payload, { idempotencyKey, silent: true });
+          Toast.show(`Patient registered — ${res.patient_code}`, 'success');
+        }
+      } catch (saveErr) {
+        if (saveErr.status === 409 && saveErr.data?.detail?.existing_patient) {
+          const existing = saveErr.data.detail.existing_patient;
+          const content = `
+            <div style="margin-bottom:16px;font-size:14px;color:var(--color-ink-muted)">
+              A patient with the mobile number <strong>${escapeHtml(payload.mobile)}</strong> was already registered recently.
+            </div>
+            <div style="background:var(--color-bg-alt);border:1px solid var(--color-border);border-radius:var(--radius-md);padding:12px;margin-bottom:20px;">
+              <div style="font-size:12px;font-weight:600;color:var(--color-ink-muted);margin-bottom:4px;text-transform:uppercase;letter-spacing:0.05em">Existing Patient Match:</div>
+              <div style="font-weight:700;color:var(--color-ink)">${escapeHtml(existing.name)}</div>
+            </div>
+            <div style="font-size:14px;font-weight:500;color:var(--color-ink);margin-bottom:8px">Are these the same person?</div>
+          `;
+          const force = await window.Modal.confirm('Duplicate Detected', content, {
+            confirmText: 'Keep Both (Force Save)',
+            cancelText: 'Cancel Save',
+            danger: true
+          });
+          if (force) {
+            payload.force_duplicate = true;
+            if (editId) {
+              await API.patch(`/api/v1/patients/${editId}`, payload, { idempotencyKey });
+              Toast.show('Patient updated successfully', 'success');
+            } else {
+              const res2 = await API.post('/api/v1/patients', payload, { idempotencyKey });
+              Toast.show(`Patient registered — ${res2.patient_code}`, 'success');
+            }
+          } else {
+            return;
+          }
+        } else {
+          throw saveErr;
+        }
       }
 
       localStorage.removeItem('akriti_patient_draft');

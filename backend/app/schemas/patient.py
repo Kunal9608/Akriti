@@ -19,6 +19,7 @@ class PatientCreate(BaseModel):
     amount_paid: float = 0.0
     discount_amount: float = 0.0
     payment_mode: Optional[str] = None
+    force_duplicate: bool = False
 
     @field_validator("name")
     @classmethod
@@ -92,6 +93,7 @@ class PatientUpdate(BaseModel):
     payment_mode: Optional[str] = None
     status: Optional[str] = None
     processing_note: Optional[str] = None
+    force_duplicate: bool = False
     
     # Franchise Fields
     franchise_name: Optional[str] = None

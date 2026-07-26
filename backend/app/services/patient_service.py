@@ -10,11 +10,37 @@ from backend.app.services import audit_service
 from backend.app.schemas.patient import PatientCreate, PatientUpdate
 from backend.app.models.patient import PatientStatusEnum
 
-def _check_duplicates(db: Session, mobile: str, sample_date: date, test_ids: List[uuid.UUID], exclude_patient_id: Optional[uuid.UUID] = None):
+def _check_duplicates(db: Session, mobile: str, sample_date: date, test_ids: List[uuid.UUID], exclude_patient_id: Optional[uuid.UUID] = None, force_duplicate: bool = False):
     from backend.app.models.patient import Patient
     from backend.app.models.patient_test import PatientTest
     from backend.app.models.test import Test
+    from fastapi import HTTPException
+    
+    # 1. Real-time duplicate detection: same mobile within 24 hours
+    if not force_duplicate:
+        time_threshold = datetime.now(timezone.utc) - timedelta(hours=24)
+        recent_query = db.query(Patient).filter(
+            Patient.mobile == mobile,
+            Patient.created_at >= time_threshold,
+            Patient.deleted_at.is_(None)
+        )
+        if exclude_patient_id:
+            recent_query = recent_query.filter(Patient.id != exclude_patient_id)
+            
+        recent_patient = recent_query.order_by(Patient.created_at.desc()).first()
+        if recent_patient:
+            existing_info = {
+                "id": str(recent_patient.id),
+                "name": recent_patient.name,
+                "mobile": recent_patient.mobile,
+                "created_at": recent_patient.created_at.isoformat() if recent_patient.created_at else None
+            }
+            raise HTTPException(
+                status_code=409,
+                detail={"message": "Possible duplicate patient detected.", "existing_patient": existing_info}
+            )
 
+    # 2. Existing check: same day, same tests
     query = db.query(Patient).filter(
         Patient.mobile == mobile,
         Patient.sample_date == sample_date,
@@ -53,7 +79,7 @@ def create_patient(db: Session, payload: PatientCreate, current_user_id: uuid.UU
 
     # Check same-day same-test duplicates for the patient (by contact number)
     sample_date = payload.sample_date or date.today()
-    _check_duplicates(db, payload.mobile, sample_date, payload.test_ids)
+    _check_duplicates(db, payload.mobile, sample_date, payload.test_ids, force_duplicate=payload.force_duplicate)
 
     from decimal import Decimal
 
@@ -156,7 +182,11 @@ def update_patient(db: Session, patient_id: uuid.UUID, payload: PatientUpdate,
     new_test_ids = payload.test_ids if payload.test_ids is not None else [t.id for t in patient.patient_tests]
 
     if payload.mobile is not None or payload.sample_date is not None or payload.test_ids is not None:
-        _check_duplicates(db, new_mobile, new_sample_date, new_test_ids, exclude_patient_id=patient.id)
+        _check_duplicates(db, new_mobile, new_sample_date, new_test_ids, exclude_patient_id=patient.id, force_duplicate=payload.force_duplicate)
+
+    # Remove force_duplicate from update_data so it doesn't try to save it to DB
+    if "force_duplicate" in update_data:
+        update_data.pop("force_duplicate")
 
     # If tests changed, recompute total
     from decimal import Decimal
