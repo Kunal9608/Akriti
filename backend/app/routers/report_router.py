@@ -260,6 +260,18 @@ async def upload_test_attachment(
     if len(file_bytes) > 15 * 1024 * 1024:  # 15MB limit
         raise HTTPException(status_code=400, detail="Attachment file size exceeds 15MB limit.")
 
+    from backend.app.core.upload_security import validate_file_upload
+    try:
+        sanitized_filename = validate_file_upload(
+            file_bytes=file_bytes,
+            filename=file.filename,
+            max_size=15 * 1024 * 1024,
+            allowed_extensions=(".pdf", ".jpg", ".jpeg", ".png", ".webp", ".bmp", ".tiff", ".tif", ".heic", ".heif")
+        )
+        file.filename = sanitized_filename
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
     safe_name = report_service.generate_safe_filename(file.filename, f"{patient.patient_code}_{test_id.hex[:8]}")
     
     from backend.app.config import settings

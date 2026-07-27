@@ -245,14 +245,17 @@ def generate_and_save_structured_report(db: Session, patient_id: uuid.UUID, uplo
     pdf_bytes = generate_structured_report_pdf(patient, booked_tests_data, letterhead_mode=letterhead_mode)
     filename = f"Report_{patient.patient_code}_Structured.pdf"
 
-    # Use a dummy BackgroundTasks instance or direct execution since we are already inside background task or sync call
+    # Use a dummy BackgroundTasks instance that delegates to a background thread
     class DummyBackgroundTasks:
         def add_task(self, func, *args, **kwargs):
-            try:
-                func(*args, **kwargs)
-            except Exception as e:
-                import logging
-                logging.getLogger("akriti.reports").error(f"Failed notification dispatch: {e}")
+            import threading
+            def _run():
+                try:
+                    func(*args, **kwargs)
+                except Exception as e:
+                    import logging
+                    logging.getLogger("akriti.reports").error(f"Failed notification dispatch: {e}")
+            threading.Thread(target=_run, daemon=True).start()
 
     return upload_report(
         db, patient_id, pdf_bytes, filename, uploader_id, DummyBackgroundTasks(),
