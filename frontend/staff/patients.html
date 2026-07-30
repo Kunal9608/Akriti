@@ -842,7 +842,7 @@
       const p = await API.get(`/api/v1/patients/${patientId}`, { silent: true });
       const netPayable = Math.max(0, parseFloat(p.total_amount || 0) - parseFloat(p.discount_amount || 0));
       const due = Math.max(0, netPayable - parseFloat(p.amount_paid || 0));
-      const downloadUrl = `/api/v1/reports/download/${reportId}?action=view`;
+      const downloadUrl = `/api/v1/reports/download/${reportId}?action=view&_t=${Date.now()}`;
       if (due > 0) {
         openPaymentCollectModal(patientId, due, netPayable, code, name, () => {
           window.open(downloadUrl, '_blank');
@@ -853,7 +853,7 @@
         window.open(downloadUrl, '_blank');
       }
     } catch {
-      window.open(`/api/v1/reports/download/${reportId}?action=view`, '_blank');
+      window.open(`/api/v1/reports/download/${reportId}?action=view&_t=${Date.now()}`, '_blank');
     }
   };
 

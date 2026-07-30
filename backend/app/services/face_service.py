@@ -12,14 +12,9 @@ from backend.app.config import settings
 
 logger = logging.getLogger(__name__)
 
-# --- Try to import face_recognition (dlib) or fall back gracefully ---
-try:
-    import face_recognition as fr_lib
-    FACE_RECOGNITION_AVAILABLE = True
-    logger.info("face_recognition library loaded successfully")
-except ImportError:
-    FACE_RECOGNITION_AVAILABLE = False
-    logger.warning("face_recognition not installed — using stub mode for face enrollment")
+# --- Face recognition is disabled right now per user request ---
+FACE_RECOGNITION_AVAILABLE = False
+logger.warning("face_recognition explicitly disabled — using stub mode for face enrollment")
 
 
 def _compute_embedding(image_bytes: bytes) -> Optional[np.ndarray]:
